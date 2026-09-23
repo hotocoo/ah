@@ -10,3 +10,5 @@ bench-results/
 
 # bench sandboxes of failed trials (can include build output such as Rust target/)
 examples/bench/*/*/work/
+examples/bench-supplementary/*/work/
+.serena/
