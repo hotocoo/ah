@@ -33,3 +33,12 @@ describe("model card defaults", () => {
     expect(samplingFrom({ temperature: "hot", top_p: 0.9 })).toEqual({ temperature: undefined, topP: 0.9, topK: undefined, minP: undefined });
   });
 });
+
+describe("architecture facts", () => {
+  test("hybrid models count only full-attention layers for the KV cache", async () => {
+    const { archFromConfig } = await import("../src/models/hf.ts");
+    const cfg = { text_config: { max_position_embeddings: 262144, num_hidden_layers: 32, num_key_value_heads: 4, num_attention_heads: 16, head_dim: 256, layer_types: [...Array(24).fill("linear_attention"), ...Array(8).fill("full_attention")] } };
+    expect(archFromConfig(cfg)).toEqual({ trainedContext: 262144, kv: { layers: 8, kvHeads: 4, headDim: 256 } });
+    expect(archFromConfig({ num_hidden_layers: 28, num_attention_heads: 16, hidden_size: 2048, max_position_embeddings: 40960 })).toEqual({ trainedContext: 40960, kv: { layers: 28, kvHeads: 16, headDim: 128 } });
+  });
+});

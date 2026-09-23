@@ -2,120 +2,192 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="ah-token" content="__AH_TOKEN__" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0b0a09" />
     <title>ah · Aletheia Harness</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2322a06b'/%3E%3Ctext x='16' y='22' font-family='monospace' font-weight='700' font-size='15' text-anchor='middle' fill='white'%3Eah%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f3dfa6'/%3E%3Cstop offset='.5' stop-color='%23d4ad5a'/%3E%3Cstop offset='1' stop-color='%23946f2a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='%230b0a09'/%3E%3Crect x='.5' y='.5' width='31' height='31' rx='7.5' fill='none' stroke='url(%23g)' stroke-opacity='.5'/%3E%3Ctext x='16' y='21.5' font-family='monospace' font-weight='700' font-size='14' text-anchor='middle' fill='url(%23g)'%3Eah%3C/text%3E%3C/svg%3E" />
+    <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="top">
-      <div class="brand"><span class="mark">ah</span><span class="sub">Aletheia Harness</span></div>
-      <nav aria-label="Sections">
-        <button data-tab="overview" class="active">Overview</button>
-        <button data-tab="chat">Agent</button>
-        <button data-tab="runs">Runs</button>
-        <button data-tab="bench">Benchmarks</button>
-        <button data-tab="models">Models</button>
-        <button data-tab="media">Image &amp; 3D</button>
-        <button data-tab="system">System</button>
-      </nav>
-      <div id="hw-pill" class="pill" title="Live hardware">…</div>
-    </header>
-    <main>
-      <section id="tab-overview" class="tab active" aria-labelledby="h-overview">
-        <h1 id="h-overview" class="sr">Overview</h1>
-        <div class="kpis" id="kpis"></div>
-        <div class="grid2">
-          <div class="card"><h2>Runs over time</h2><div id="chart-runs" class="chart"></div></div>
-          <div class="card"><h2>Latency distribution</h2><div id="latency" class="dist"></div></div>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="shell">
+      <aside class="rail">
+        <div class="brand">
+          <span class="mark" aria-hidden="true">ah</span>
+          <span class="brand-text"><strong>Aletheia</strong><span>Harness</span></span>
         </div>
-        <div class="grid2">
-          <div class="card"><h2>By model</h2><div id="by-model" class="table-wrap"></div></div>
-          <div class="card"><h2>Tool health</h2><div id="by-tool" class="table-wrap"></div></div>
-        </div>
-      </section>
-
-      <section id="tab-chat" class="tab" aria-labelledby="h-chat">
-        <h1 id="h-chat" class="sr">Agent</h1>
-        <div class="chat">
-          <div class="chat-head">
-            <label>Model <select id="chat-model"></select></label>
-            <span id="chat-meta" class="muted"></span>
-            <button id="chat-new" class="ghost">New session</button>
+        <nav aria-label="Sections">
+          <div class="tabs" role="tablist" aria-orientation="vertical">
+            <button role="tab" id="t-chat" data-tab="chat" aria-controls="tab-chat" aria-selected="true"><span class="ix">01</span><span class="lbl">Console</span></button>
+            <button role="tab" id="t-overview" data-tab="overview" aria-controls="tab-overview" aria-selected="false" tabindex="-1"><span class="ix">02</span><span class="lbl">Telemetry</span></button>
+            <button role="tab" id="t-runs" data-tab="runs" aria-controls="tab-runs" aria-selected="false" tabindex="-1"><span class="ix">03</span><span class="lbl">Runs</span></button>
+            <button role="tab" id="t-bench" data-tab="bench" aria-controls="tab-bench" aria-selected="false" tabindex="-1"><span class="ix">04</span><span class="lbl">Benchmarks</span></button>
+            <button role="tab" id="t-models" data-tab="models" aria-controls="tab-models" aria-selected="false" tabindex="-1"><span class="ix">05</span><span class="lbl">Models</span></button>
+            <button role="tab" id="t-media" data-tab="media" aria-controls="tab-media" aria-selected="false" tabindex="-1"><span class="ix">06</span><span class="lbl">Studio</span></button>
+            <button role="tab" id="t-system" data-tab="system" aria-controls="tab-system" aria-selected="false" tabindex="-1"><span class="ix">07</span><span class="lbl">System</span></button>
           </div>
-          <div id="chat-log" class="chat-log" aria-live="polite"></div>
-          <form id="chat-form" class="chat-form">
-            <label for="chat-input" class="sr">Task</label>
-            <textarea id="chat-input" rows="3" placeholder="Describe a coding task for the current workspace…"></textarea>
-            <button type="submit" class="primary">Run</button>
-          </form>
-        </div>
-      </section>
-
-      <section id="tab-runs" class="tab" aria-labelledby="h-runs">
-        <h1 id="h-runs" class="sr">Runs</h1>
-        <div class="split">
-          <div class="card"><h2>Recent runs</h2><div id="runs" class="table-wrap"></div></div>
-          <div class="card"><h2>Run detail</h2><div id="run-detail" class="muted">Select a run.</div></div>
-        </div>
-      </section>
-
-      <section id="tab-bench" class="tab" aria-labelledby="h-bench">
-        <h1 id="h-bench" class="sr">Benchmarks</h1>
-        <div class="split">
-          <div class="card"><h2>Benchmark runs</h2><div id="bench-list" class="table-wrap"></div></div>
-          <div class="card"><h2>Result</h2><div id="bench-detail" class="muted">Select a benchmark run.</div></div>
-        </div>
-      </section>
-
-      <section id="tab-models" class="tab" aria-labelledby="h-models">
-        <h1 id="h-models" class="sr">Models</h1>
-        <div class="card">
-          <div class="filters">
-            <label>Search <input id="m-q" placeholder="qwen, coder, flux…" /></label>
-            <label>Kind
-              <select id="m-kind"><option value="">any</option><option>chat</option><option>image-gen</option><option>3d-gen</option><option>embedding</option><option>tts</option></select>
-            </label>
-            <label><input type="checkbox" id="m-local" checked /> local only</label>
-            <label><input type="checkbox" id="m-tools" /> tool calling</label>
-          </div>
-          <div id="models" class="table-wrap"></div>
-        </div>
-      </section>
-
-      <section id="tab-media" class="tab" aria-labelledby="h-media">
-        <h1 id="h-media" class="sr">Image and 3D</h1>
-        <div class="grid2">
-          <div class="card">
-            <h2>Image generation</h2>
-            <form id="img-form" class="stack">
-              <label for="img-prompt">Prompt</label>
-              <textarea id="img-prompt" rows="3">isometric pixel-art server rack, glowing status lights</textarea>
-              <button class="primary" type="submit">Generate</button>
-            </form>
-            <div id="img-out" class="media-out"></div>
-          </div>
-          <div class="card">
-            <h2>3D modelling</h2>
-            <form id="m3d-form" class="stack">
-              <label for="m3d-prompt">Describe the object</label>
-              <textarea id="m3d-prompt" rows="3">a wooden desk with a lamp and a monitor</textarea>
-              <button class="primary" type="submit">Model it</button>
-            </form>
-            <div id="m3d-out" class="media-out"></div>
+        </nav>
+        <div class="rail-foot">
+          <div class="hw" title="Live hardware">
+            <span class="hw-dot" aria-hidden="true"></span>
+            <span id="hw-pill" class="hw-text" aria-live="off">sampling</span>
+            <span class="hw-meter" aria-hidden="true"><span id="hw-meter"></span></span>
           </div>
         </div>
-      </section>
+      </aside>
 
-      <section id="tab-system" class="tab" aria-labelledby="h-system">
-        <h1 id="h-system" class="sr">System</h1>
-        <div class="grid2">
-          <div class="card"><h2>Runtimes</h2><div id="runtimes"></div></div>
-          <div class="card"><h2>Hardware</h2><div id="hardware"></div></div>
-        </div>
-      </section>
-    </main>
+      <main id="main" tabindex="-1">
+        <section id="tab-chat" class="tab active" role="tabpanel" aria-labelledby="h-chat">
+          <div class="console">
+            <div class="chat">
+              <header class="chat-head">
+                <h1 id="h-chat" class="title">Console</h1>
+                <label class="model-pick">
+                  <span class="sr">Model</span>
+                  <select id="chat-model"><option>discovering models</option></select>
+                </label>
+                <span id="chat-meta" class="meta"></span>
+                <button id="chat-new" class="ghost" type="button">New session</button>
+              </header>
+              <div id="chat-log" class="chat-log" aria-live="polite"></div>
+              <form id="chat-form" class="composer">
+                <label for="chat-input" class="sr">Task</label>
+                <textarea id="chat-input" rows="3" placeholder="Describe a task for the agent. It works inside your workspace."></textarea>
+                <div class="composer-bar">
+                  <span class="hint"><kbd>⌘</kbd><kbd>Enter</kbd> to run</span>
+                  <button type="submit" class="primary"><span class="btn-label">Run task</span></button>
+                </div>
+              </form>
+            </div>
+
+            <aside class="instrument" aria-labelledby="h-inst">
+              <h2 id="h-inst" class="inst-title">Live run</h2>
+              <div class="inst-state"><span id="run-state" class="state" data-state="idle">idle</span></div>
+              <dl class="readouts">
+                <div><dt>turn</dt><dd id="run-turn">–</dd></div>
+                <div><dt>TTFT</dt><dd id="run-ttft">–</dd></div>
+                <div><dt>decode</dt><dd id="run-tps">–</dd></div>
+                <div><dt>tools</dt><dd id="run-tools">–</dd></div>
+              </dl>
+              <div class="ctx">
+                <div class="ctx-head"><span>context</span><span id="run-ctx-label" class="num">–</span></div>
+                <div class="meter" role="meter" id="run-ctx" aria-label="Context used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
+              </div>
+              <h3 class="inst-sub">Event trace</h3>
+              <ol id="run-trace" class="trace"><li class="trace-empty">Events stream here while a task runs.</li></ol>
+            </aside>
+          </div>
+        </section>
+
+        <section id="tab-overview" class="tab" role="tabpanel" aria-labelledby="h-overview" hidden>
+          <header class="page-head">
+            <h1 id="h-overview" class="title">Telemetry</h1>
+            <p class="lede">Every run, turn and tool call the harness has recorded.</p>
+          </header>
+          <div class="bento">
+            <div id="kpis" class="kpis cell-kpis"></div>
+            <article class="cell cell-chart"><h2>Runs over time</h2><div id="chart-runs" class="chart"></div></article>
+            <article class="cell cell-dist"><h2>Latency</h2><div id="latency" class="dist"></div></article>
+            <article class="cell cell-model"><h2>By model</h2><div id="by-model" class="table-wrap"></div></article>
+            <article class="cell cell-tool"><h2>Tool health</h2><div id="by-tool" class="table-wrap"></div></article>
+          </div>
+        </section>
+
+        <section id="tab-runs" class="tab" role="tabpanel" aria-labelledby="h-runs" hidden>
+          <header class="page-head">
+            <h1 id="h-runs" class="title">Runs</h1>
+            <p class="lede">The last 200 agent runs. Select one to inspect its turns and tool calls.</p>
+          </header>
+          <div class="split">
+            <article class="cell"><h2>Recent runs</h2><div id="runs" class="table-wrap tall"></div></article>
+            <article class="cell detail"><h2>Run detail</h2><div id="run-detail"><p class="empty-note">Select a run to see its trace.</p></div></article>
+          </div>
+        </section>
+
+        <section id="tab-bench" class="tab" role="tabpanel" aria-labelledby="h-bench" hidden>
+          <header class="page-head">
+            <h1 id="h-bench" class="title">Benchmarks</h1>
+            <p class="lede">Offline task suites scored with pass@1, pass^k and Wilson intervals.</p>
+          </header>
+          <div class="split">
+            <article class="cell"><h2>Benchmark runs</h2><div id="bench-list" class="table-wrap tall"></div></article>
+            <article class="cell detail"><h2>Result</h2><div id="bench-detail"><p class="empty-note">Select a benchmark run.</p></div></article>
+          </div>
+        </section>
+
+        <section id="tab-models" class="tab" role="tabpanel" aria-labelledby="h-models" hidden>
+          <header class="page-head">
+            <h1 id="h-models" class="title">Models</h1>
+            <p class="lede">Discovered at runtime across local runtimes and configured providers.</p>
+          </header>
+          <div class="cell">
+            <div class="filters">
+              <label class="search"><span>Search</span><input id="m-q" type="search" placeholder="qwen, llama, coder" autocomplete="off" /></label>
+              <label><span>Kind</span>
+                <select id="m-kind"><option value="">any</option><option>chat</option><option>image-gen</option><option>3d-gen</option><option>embedding</option><option>tts</option></select>
+              </label>
+              <label class="check"><input type="checkbox" id="m-local" /><span>Local only</span></label>
+              <label class="check"><input type="checkbox" id="m-tools" /><span>Tool calling</span></label>
+              <span id="m-count" class="meta"></span>
+            </div>
+            <div id="models" class="table-wrap tall"></div>
+          </div>
+        </section>
+
+        <section id="tab-media" class="tab" role="tabpanel" aria-labelledby="h-media" hidden>
+          <header class="page-head">
+            <h1 id="h-media" class="title">Studio</h1>
+            <p class="lede">Image generation and prompt-to-3D, routed through the same harness.</p>
+          </header>
+          <div class="studio">
+            <article class="cell">
+              <h2>Image generation</h2>
+              <form id="img-form" class="stack">
+                <label for="img-prompt">Prompt</label>
+                <textarea id="img-prompt" rows="3">isometric pixel-art server rack, glowing status lights</textarea>
+                <button class="primary" type="submit"><span class="btn-label">Generate</span></button>
+              </form>
+              <div id="img-out" class="media-out"><div class="canvas-empty"><span>Output appears here</span></div></div>
+            </article>
+            <article class="cell">
+              <h2>3D modelling</h2>
+              <form id="m3d-form" class="stack">
+                <label for="m3d-prompt">Describe object</label>
+                <textarea id="m3d-prompt" rows="3">a wooden desk with a lamp and a monitor</textarea>
+                <button class="primary" type="submit"><span class="btn-label">Model it</span></button>
+              </form>
+              <div id="m3d-out" class="media-out"><div class="canvas-empty"><span>Preview and .glb appear here</span></div></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="tab-system" class="tab" role="tabpanel" aria-labelledby="h-system" hidden>
+          <header class="page-head">
+            <h1 id="h-system" class="title">System</h1>
+            <p class="lede">Runtimes the harness found on this machine, and the hardware under them.</p>
+          </header>
+          <div class="split system">
+            <article class="cell"><h2>Runtimes</h2><div id="runtimes"></div></article>
+            <article class="cell"><h2>Hardware</h2><div id="hardware"></div></article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <template id="chat-empty">
+      <div class="welcome">
+        <p class="welcome-mark" aria-hidden="true">ah</p>
+        <h2 class="welcome-title">Point the harness at your workspace.</h2>
+        <p class="welcome-sub">Local models first. Every turn, token and tool call is traced live in the instrument panel.</p>
+        <ul class="suggest" aria-label="Suggested tasks">
+          <li><button type="button" class="chip">Map this repository and summarise its architecture</button></li>
+          <li><button type="button" class="chip">Find the failing test and fix it</button></li>
+          <li><button type="button" class="chip">Add input validation to the API routes</button></li>
+        </ul>
+      </div>
+    </template>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

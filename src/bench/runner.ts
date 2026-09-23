@@ -33,6 +33,8 @@ export interface TrialResult {
   gpuUtilAvg: number | null;
   energyJ: number | null;
   contextWindow: number;
+  generation?: { temperature?: number; sampling?: Record<string, number | undefined>; templateKwargs?: Record<string, unknown>; source: string };
+  toolProtocol?: string;
   error?: string;
 }
 
@@ -163,6 +165,8 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
     gpuUtilAvg: run?.gpu_util_avg ?? null,
     energyJ: run?.energy_j ?? null,
     contextWindow: s.context.window,
+    generation: s.generation,
+    toolProtocol: s.toolProtocol,
     ...(summary.error ? { error: summary.error } : {}),
   };
 }

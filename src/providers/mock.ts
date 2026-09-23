@@ -15,7 +15,7 @@ import { ProviderError, type GeneratedImage, type ImageGenRequest, type Provider
 export interface MockTurn {
   text?: string;
   toolCalls?: { name: string; input: Record<string, unknown> }[];
-  stopReason?: "end_turn" | "max_tokens" | "refusal";
+  stopReason?: "end_turn" | "max_tokens" | "refusal" | "tool_use";
 }
 
 export interface MockOptions {

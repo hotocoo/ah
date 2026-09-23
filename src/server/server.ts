@@ -14,12 +14,19 @@ import { assetDir } from "../app/paths.ts";
 import indexHtmlSrc from "./ui/index.html" with { type: "text" };
 import appJs from "./ui/app.js" with { type: "text" };
 import stylesCss from "./ui/styles.css" with { type: "text" };
+import geistFont from "./ui/fonts/geist.woff2" with { type: "file" };
+import geistMonoFont from "./ui/fonts/geist-mono.woff2" with { type: "file" };
 
-// UI files are imported as text so they are embedded in the compiled binary.
-const UI: Record<string, { body: string; type: string }> = {
+// UI files are imported as text (fonts as embedded files) so they ship inside the compiled binary.
+const FONT = "font/woff2";
+const IMMUTABLE = "public, max-age=31536000, immutable";
+const UI: Record<string, { body: string | Blob; type: string; cache?: string }> = {
   "/app.js": { body: appJs, type: "text/javascript; charset=utf-8" },
   "/styles.css": { body: stylesCss, type: "text/css; charset=utf-8" },
+  "/fonts/geist.woff2": { body: Bun.file(geistFont), type: FONT, cache: IMMUTABLE },
+  "/fonts/geist-mono.woff2": { body: Bun.file(geistMonoFont), type: FONT, cache: IMMUTABLE },
 };
+const CSP = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'";
 const EXAMPLES_DIR = assetDir("examples/bench") ?? "";
 
 interface ChatSession {
@@ -78,9 +85,9 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       const url = new URL(req.url);
       const p = url.pathname;
       if (!p.startsWith("/api/")) {
-        if (p === "/" || p === "/index.html") return new Response(indexHtml(), { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'" } });
+        if (p === "/" || p === "/index.html") return new Response(indexHtml(), { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": CSP } });
         const asset = UI[p];
-        if (asset) return new Response(asset.body as unknown as string, { headers: { "content-type": asset.type } });
+        if (asset) return new Response(asset.body as unknown as string, { headers: { "content-type": asset.type, ...(asset.cache ? { "cache-control": asset.cache } : {}) } });
         return new Response("not found", { status: 404 });
       }
       if (!authorized(req, token, server.port!)) return json({ error: "unauthorized" }, 401);

@@ -4,7 +4,7 @@ import { buildSystemPrompt } from "../agent/prompt.ts";
 import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
-import { hubRepoFrom, modelCardDefaults } from "../models/hf.ts";
+import { hubRepoFrom, modelArchFacts, modelCardDefaults } from "../models/hf.ts";
 import { buildMedia } from "../media/services.ts";
 import { OllamaProvider } from "../providers/ollama.ts";
 import { ProviderRegistry } from "../providers/registry.ts";
@@ -83,7 +83,15 @@ export async function resolveModelContext(env: Environment, modelRef: string): P
   const { provider, model } = parseModelRef(modelRef);
   const p = env.registry.get(provider);
   const info = env.catalog.lookup(modelRef);
-  const facts = localFacts(env, provider, model);
+  let facts = localFacts(env, provider, model);
+  // Runtimes without GGUF metadata (MLX, vLLM...): take architecture facts from the
+  // model's config.json on the Hub so context sizing is memory-aware there too.
+  if (facts && !facts.fixedContext && !facts.kv) {
+    const rt = env.registry.runtimes.get(provider);
+    const repo = hubRepoFrom(model) ?? hubRepoFrom(typeof rt?.meta.modelPath === "string" ? rt.meta.modelPath : undefined);
+    const arch = repo ? await modelArchFacts(repo, { store: env.telemetry.store }) : null;
+    if (arch) facts = { ...facts, trainedContext: facts.trainedContext ?? arch.trainedContext, kv: arch.kv, sizeBytes: facts.sizeBytes ?? arch.sizeBytes };
+  }
   if (!facts) return { context: { window: info?.contextWindow ?? env.cfg.memory.minContext, reason: info?.contextWindow ? "catalog" : "unknown; minimum agent context" } };
   const hw = await sampleHardware();
   const resident = p instanceof OllamaProvider ? await p.residentContext(model) : undefined;

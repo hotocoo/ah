@@ -138,6 +138,8 @@ export function markdownReport(run: BenchRun, s: BenchSummary): string {
   lines.push(`- ah ${run.ahVersion}${run.gitSha ? ` @ ${run.gitSha}` : ""} · ${run.trials} trials per task · features: ${JSON.stringify(run.features)}`);
   lines.push(`- Hardware: ${run.hardware.gpuName ?? "?"} · ${gb(run.hardware.memTotalBytes)} · ${run.hardware.cpuCount} threads`);
   if (run.runtime) lines.push(`- Runtime: ${run.runtime.kind} ${run.runtime.version ?? ""} (${run.runtime.baseURL})`);
+  const first = run.results.find((r) => r.generation);
+  if (first?.generation) lines.push(`- Generation: ${JSON.stringify({ temperature: first.generation.temperature, ...first.generation.sampling, templateKwargs: first.generation.templateKwargs })} (from ${first.generation.source}) · context ${first.contextWindow} · tools ${first.toolProtocol}`);
   if (run.skipped.length) lines.push(`- Skipped: ${run.skipped.map((x) => `${x.taskId} (${x.reason})`).join(", ")}`);
   lines.push("", "## Overall", "");
   lines.push("| metric | value |", "|---|---|");

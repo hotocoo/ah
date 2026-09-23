@@ -219,3 +219,17 @@ describe("nudges", () => {
     expect(events.some((e) => e.type === "retry" && e.reason.includes("without an answer"))).toBe(true);
   });
 });
+
+describe("server-dropped tool calls", () => {
+  test("switches to the text protocol when the server reports tool_use but sends no calls", async () => {
+    const { agent, events } = setup([
+      { stopReason: "tool_use" },
+      { text: '<tool_call>{"name":"list_dir","arguments":{}}</tool_call>' },
+      { text: "Listed." },
+    ]);
+    const r = await agent.run("list");
+    expect(r.outcome).toBe("completed");
+    expect(r.toolCalls).toBe(1);
+    expect(events.some((e) => e.type === "retry" && e.reason.includes("text tool protocol"))).toBe(true);
+  });
+});

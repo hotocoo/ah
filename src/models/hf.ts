@@ -80,3 +80,37 @@ export async function modelCardDefaults(repo: string, o: { store?: TelemetryStor
   o.store?.cacheSet(key, JSON.stringify(result));
   return result;
 }
+
+export interface ArchFacts {
+  trainedContext?: number;
+  kv?: { layers: number; kvHeads: number; headDim: number };
+  sizeBytes?: number;
+}
+
+// Architecture facts from config.json for runtimes without GGUF metadata (MLX, vLLM,
+// SGLang). Hybrid models (e.g. linear + full attention) only keep a KV cache for their
+// full-attention layers, so only those are counted.
+export function archFromConfig(cfg: Record<string, unknown> | null): Omit<ArchFacts, "sizeBytes"> {
+  if (!cfg) return {};
+  const t = (typeof cfg.text_config === "object" && cfg.text_config ? cfg.text_config : cfg) as Record<string, unknown>;
+  const n = (k: string) => (typeof t[k] === "number" ? (t[k] as number) : undefined);
+  const layerTypes = Array.isArray(t.layer_types) ? (t.layer_types as string[]) : undefined;
+  const full = layerTypes ? layerTypes.filter((x) => x === "full_attention").length : n("full_attention_interval") && n("num_hidden_layers") ? Math.floor(n("num_hidden_layers")! / n("full_attention_interval")!) : n("num_hidden_layers");
+  const heads = n("num_attention_heads");
+  const headDim = n("head_dim") ?? (n("hidden_size") && heads ? n("hidden_size")! / heads : undefined);
+  const kvHeads = n("num_key_value_heads") ?? heads;
+  return { trainedContext: n("max_position_embeddings"), kv: full && kvHeads && headDim ? { layers: full, kvHeads, headDim } : undefined };
+}
+
+export async function modelArchFacts(repo: string, o: { store?: TelemetryStore | null; fetchImpl?: typeof fetch } = {}): Promise<ArchFacts | null> {
+  const key = `hfarch:${repo}`;
+  const cached = o.store?.cacheGet(key, WEEK);
+  if (cached) return JSON.parse(cached) as ArchFacts | null;
+  const f = o.fetchImpl ?? fetch;
+  const [cfg, info] = await Promise.all([getJson(`${HUB}/${repo}/raw/main/config.json`, f), getJson(`${HUB}/api/models/${repo}?blobs=true`, f)]);
+  const siblings = ((info as { siblings?: { rfilename: string; size?: number }[] } | null)?.siblings ?? []).filter((s) => /\.(safetensors|gguf|bin)$/.test(s.rfilename) && !/mmproj/.test(s.rfilename));
+  const size = siblings.reduce((a, s) => a + (s.size ?? 0), 0);
+  const facts: ArchFacts | null = cfg || size ? { ...archFromConfig(cfg as Record<string, unknown> | null), sizeBytes: size || undefined } : null;
+  o.store?.cacheSet(key, JSON.stringify(facts));
+  return facts;
+}

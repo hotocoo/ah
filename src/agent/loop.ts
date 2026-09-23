@@ -70,6 +70,8 @@ export class Agent {
   }
 
   private runCount = 0;
+  // Set when the server drops native tool calls; persists for the session.
+  private textProtocolFallback = false;
 
   private emit(e: AgentEvent) {
     this.o.onEvent?.(e);
@@ -204,7 +206,7 @@ export class Agent {
       let ttft: number | null = null;
       try {
         const specs = this.o.tools.specs(this.o.mode, this.o.toolContext, this.o.compactTools);
-        const textMode = this.o.toolProtocol === "text";
+        const textMode = this.o.toolProtocol === "text" || this.textProtocolFallback;
         const stream = this.o.provider.stream({
           model: this.o.model,
           system: textMode ? `${this.o.system}\n\n${textProtocolInstructions(specs)}` : this.o.system,
@@ -230,6 +232,14 @@ export class Agent {
           else if (ev.type === "done") done = ev;
         }
         if (!done) throw new Error("provider stream ended without a done event");
+        // The server said it produced tool calls but delivered none (its tool-call parser
+        // failed on this model's format). Switch this session to the text protocol, where
+        // ah parses calls itself, and retry the turn.
+        if (!textMode && done.stopReason === "tool_use" && !toolCallsOf(done.message).length && !textOf(done.message).trim()) {
+          this.textProtocolFallback = true;
+          this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: "server reported tool calls but sent none; switching to text tool protocol", delayMs: 0, t: Date.now() });
+          continue;
+        }
         // A response with no content and no tokens is a server failure, not an answer.
         if (!done.message.content.length && !done.usage.outputTokens && done.stopReason !== "refusal")
           throw new ProviderError(`${this.o.provider.key}: empty response from the model server`, this.o.provider.key, 502, true);
