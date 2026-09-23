@@ -111,6 +111,7 @@ Bugs that only appeared against real local runtimes, each now covered by a test:
 - **Runtimes spawn internal servers**: Ollama's per-model llama.cpp runner listens on a random port and answers `/props`. Listeners whose parent process is a runtime of a different kind are skipped; same-kind parent/child listeners are merged.
 - **Busy servers answer slowly**: fingerprint probes use a 2.5 s timeout so a llama-server busy with a long prefill is still discovered.
 - **Reasoning models with thinking disabled reason in the content** and never reach the JSON; the 3D designer lets them think in their own channel and constrains the answer with a JSON schema (`responseSchema` → Ollama `format`, OpenAI `response_format`).
+- **Every request to a local runtime must carry the context window.** One `ah 3d` call without `num_ctx` made Ollama load qwen3:4b at its 256k default (43 GB resident); the next benchmark reused that "resident" context and the runner crashed (`unexpected EOF`). Context resolution is now one function used by every path (agent, 3D, throughput, web app), and a resident context is reused only if it fits the memory budget. In-stream runner errors are retryable.
 - **Never benchmark two runtimes concurrently on shared unified memory.** Running an Ollama benchmark and ComfyUI next to a 27B llama-server that another client was also driving preceded that server getting stuck in `Compute error.` for every request. Benchmarks are now run one runtime at a time.
 
 ## D22. Edits tolerate indentation slips; empty turns are nudged

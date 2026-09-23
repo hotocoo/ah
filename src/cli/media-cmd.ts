@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, extname, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { autoSelectModel, buildEnvironment } from "../app/session.ts";
+import { autoSelectModel, buildEnvironment, resolveModelContext } from "../app/session.ts";
 import { parseModelRef } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
 import { compileScene, designScene, parseScene } from "../media/model3d.ts";
@@ -44,7 +44,8 @@ export async function cmdMedia(kind: string, argv: string[]): Promise<number> {
     if (!ref) throw new Error("no chat model available to design the scene (see `ah doctor`)");
     const { provider, model } = parseModelRef(ref);
     process.stderr.write(dim(`designing with ${ref}...\n`));
-    scene = await designScene(env.registry.get(provider), model, prompt);
+    const { context } = await resolveModelContext(env, ref);
+    scene = await designScene(env.registry.get(provider), model, prompt, { contextWindow: context.window });
   }
   const g = compileScene(scene, format);
   writeFileSync(out, g.data);

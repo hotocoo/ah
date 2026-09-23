@@ -75,6 +75,41 @@ export interface SessionFeatures {
   toolProtocol?: "auto" | "native" | "text";
 }
 
+// Context window for a model: runtime-fixed value, a healthy resident allocation, or a
+// memory-aware computed window (persisted per model so Ollama is not reloaded).
+// Every request to a local runtime must carry this; see D19.
+export async function resolveModelContext(env: Environment, modelRef: string): Promise<{ facts?: LocalModelFacts; context: ContextDecision }> {
+  const { provider, model } = parseModelRef(modelRef);
+  const p = env.registry.get(provider);
+  const info = env.catalog.lookup(modelRef);
+  const facts = localFacts(env, provider, model);
+  if (!facts) return { context: { window: info?.contextWindow ?? env.cfg.memory.minContext, reason: info?.contextWindow ? "catalog" : "unknown; minimum agent context" } };
+  const hw = await sampleHardware();
+  const resident = p instanceof OllamaProvider ? await p.residentContext(model) : undefined;
+  const computed = resolveContextWindow({
+    facts: facts.fixedContext ? facts : { ...facts },
+    catalogContext: info?.contextWindow,
+    desired: env.cfg.contextWindow,
+    memTotalBytes: hw.memTotalBytes,
+    // When the model is already resident its memory is inside gpuAllocBytes; don't count it twice.
+    otherGpuAllocBytes: facts.fixedContext ? undefined : Math.max(0, (hw.gpuAllocBytes ?? 0) - (resident ? (facts.sizeBytes ?? 0) : 0)),
+    memFraction: env.cfg.memory.fraction,
+    minContext: env.cfg.memory.minContext,
+    kvBytesPerElement: env.cfg.memory.kvBytesPerElement,
+  });
+  if (facts.fixedContext) return { facts, context: computed };
+  // A resident model keeps its context only if that allocation fits the memory budget;
+  // an oversized one (e.g. loaded at a runtime default) is replaced by a healthy window.
+  if (resident && (computed.maxByMemory === undefined || resident <= computed.maxByMemory))
+    return { facts: { ...facts, fixedContext: resident }, context: { window: resident, reason: "model already resident with this context (avoids a reload)" } };
+  const key = `ctx:${modelRef}`;
+  const persisted = Number(env.telemetry.store?.cacheGet(key, Number.POSITIVE_INFINITY) ?? 0);
+  if (persisted && (computed.maxByMemory === undefined || persisted <= computed.maxByMemory))
+    return { facts, context: { window: persisted, reason: "previously chosen for this model (stable num_ctx avoids reloads)" } };
+  env.telemetry.store?.cacheSet(key, String(computed.window));
+  return { facts, context: computed };
+}
+
 export interface SessionOptions {
   features?: SessionFeatures;
   model?: string;
@@ -108,31 +143,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const { provider, model } = parseModelRef(modelRef);
   const p = env.registry.get(provider);
   const info = env.catalog.lookup(modelRef);
-  let facts = localFacts(env, provider, model);
-  // A resident Ollama model keeps its current context; asking for another size reloads it.
-  if (facts && p instanceof OllamaProvider) {
-    const resident = await p.residentContext(model);
-    if (resident) facts = { ...facts, fixedContext: resident };
-  }
-  const hw = facts ? await sampleHardware() : undefined;
-  const persistedKey = `ctx:${modelRef}`;
-  const persisted = facts && !facts.fixedContext ? Number(env.telemetry.store?.cacheGet(persistedKey, Number.POSITIVE_INFINITY) ?? 0) : 0;
-  const context: ContextDecision = persisted
-    ? { window: persisted, reason: "previously chosen for this model (stable num_ctx avoids reloads)" }
-    : facts
-    ? resolveContextWindow({
-        facts,
-        catalogContext: info?.contextWindow,
-        desired: env.cfg.contextWindow,
-        memTotalBytes: hw!.memTotalBytes,
-        // Other processes' GPU memory; a resident model of this runtime is already counted in its size.
-        otherGpuAllocBytes: facts.fixedContext ? undefined : hw!.gpuAllocBytes,
-        memFraction: env.cfg.memory.fraction,
-        minContext: env.cfg.memory.minContext,
-        kvBytesPerElement: env.cfg.memory.kvBytesPerElement,
-      })
-    : { window: info?.contextWindow ?? env.cfg.memory.minContext, reason: info?.contextWindow ? "catalog" : "unknown; minimum agent context" };
-  if (facts && !facts.fixedContext && !persisted) env.telemetry.store?.cacheSet(persistedKey, String(context.window));
+  const { facts, context } = await resolveModelContext(env, modelRef);
   const tools = new ToolRegistry();
   // Compact profile when the window is small relative to the prompt + tool definitions.
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() });

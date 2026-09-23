@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentEvent } from "../agent/events.ts";
-import { autoSelectModel, buildEnvironment, createSession, type Environment, type Session } from "../app/session.ts";
+import { autoSelectModel, buildEnvironment, createSession, resolveModelContext, type Environment, type Session } from "../app/session.ts";
 import { parseModelRef } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
 import { compileScene, designScene } from "../media/model3d.ts";
@@ -203,7 +203,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     if (!ref) return json({ error: "no chat model available" }, 400);
     const { provider, model } = parseModelRef(ref);
     const t0 = performance.now();
-    const scene = await designScene(env.registry.get(provider), model, body.prompt ?? "");
+    const { context } = await resolveModelContext(env, ref);
+    const scene = await designScene(env.registry.get(provider), model, body.prompt ?? "", { contextWindow: context.window });
     const g = compileScene(scene, "glb");
     return json({ model: ref, ms: performance.now() - t0, glb: g.data.toString("base64"), preview: g.preview, scene, triangles: g.triangles });
   }

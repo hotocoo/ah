@@ -1,5 +1,5 @@
 import type { ChatRequest, ContentBlock, LocalModelFacts, Message, ModelInfo, Modality, RuntimeTimings, StreamEvent, Usage } from "../core/types.ts";
-import { ensureOk, ndjson, streamFetch, type EmbedRequest, type Provider, type ProviderCapabilities } from "./provider.ts";
+import { CONTEXT_OVERFLOW, ensureOk, ndjson, ProviderError, streamFetch, type EmbedRequest, type Provider, type ProviderCapabilities } from "./provider.ts";
 
 // Native Ollama adapter (/api/chat). Local, keyless; also works for remote Ollama hosts.
 interface OllamaMsg {
@@ -105,7 +105,8 @@ export class OllamaProvider implements Provider {
         load_duration?: number;
         error?: string;
       };
-      if (chunk.error) throw new Error(`ollama: ${chunk.error}`);
+      // Runner crashes (e.g. out of memory) surface as an in-stream error; retryable.
+      if (chunk.error) throw new ProviderError(`${this.key}: ${chunk.error}`, this.key, 500, true, CONTEXT_OVERFLOW.test(chunk.error) ? "context_overflow" : undefined);
       const msg = chunk.message;
       if (msg?.thinking) yield { type: "thinking_delta", text: msg.thinking };
       if (msg?.content) {
