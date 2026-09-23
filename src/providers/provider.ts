@@ -69,6 +69,12 @@ export async function collect(
 export const isRetryableStatus = (status: number): boolean =>
   status === 408 || status === 409 || status === 429 || status >= 500;
 
+// fetch without Bun's default 300 s whole-request timeout. Local models can spend
+// longer than that on prefill or a long generation, and queue behind other clients;
+// cancellation is always via AbortSignal instead.
+export const streamFetch = (url: string | URL, init: RequestInit = {}): Promise<Response> =>
+  fetch(url, { ...init, timeout: false } as RequestInit);
+
 // Error-body patterns that mean the request exceeded the model's context window.
 export const CONTEXT_OVERFLOW = /context[_ ]length|maximum context|context window|too many tokens|prompt is too long|exceeds the (maximum|context)|input token count/i;
 

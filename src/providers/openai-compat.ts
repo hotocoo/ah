@@ -4,6 +4,7 @@ import {
   parseToolArgs,
   ProviderError,
   sseData,
+  streamFetch,
   type EmbedRequest,
   type GeneratedImage,
   type ImageGenRequest,
@@ -196,7 +197,7 @@ export class OpenAICompatProvider implements Provider {
   // rejects one of our parameters with HTTP 400.
   private async post(req: ChatRequest): Promise<Response> {
     for (let attempt = 0; ; attempt++) {
-      const res = await fetch(this.url("/chat/completions"), {
+      const res = await streamFetch(this.url("/chat/completions"), {
         method: "POST",
         headers: this.headers(),
         body: JSON.stringify(this.buildBody(req)),
@@ -309,7 +310,7 @@ export class OpenAICompatProvider implements Provider {
 
   async generateImage(req: ImageGenRequest): Promise<GeneratedImage[]> {
     const res = await ensureOk(
-      await fetch(this.url("/images/generations"), {
+      await streamFetch(this.url("/images/generations"), {
         method: "POST",
         headers: this.headers(),
         body: JSON.stringify({ model: req.model, prompt: req.prompt, n: req.n ?? 1, size: req.size ?? "1024x1024" }),

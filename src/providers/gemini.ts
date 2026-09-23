@@ -2,6 +2,7 @@ import type { ChatRequest, ContentBlock, Message, ModelInfo, Modality, StreamEve
 import {
   ensureOk,
   sseData,
+  streamFetch,
   type EmbedRequest,
   type GeneratedImage,
   type ImageGenRequest,
@@ -107,7 +108,7 @@ export class GeminiProvider implements Provider {
 
   async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
     const res = await ensureOk(
-      await fetch(`${this.baseURL}/models/${req.model}:streamGenerateContent?alt=sse`, {
+      await streamFetch(`${this.baseURL}/models/${req.model}:streamGenerateContent?alt=sse`, {
         method: "POST",
         headers: this.headers(),
         body: JSON.stringify(this.buildBody(req)),

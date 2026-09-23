@@ -24,7 +24,8 @@ export interface ImageBackend {
 }
 
 async function fetchJson(url: string, init: RequestInit = {}): Promise<unknown> {
-  const res = await fetch(url, init);
+  // Diffusion runs can exceed Bun's default 300 s fetch timeout.
+  const res = await fetch(url, { ...init, timeout: false } as RequestInit);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status} ${(await res.text()).slice(0, 300)}`);
   return res.json();
 }
