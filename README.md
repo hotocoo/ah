@@ -57,6 +57,51 @@ Sampling comes from the model's own `generation_config.json` on Hugging Face (fo
 ## Benchmark results
 
 <!-- BENCH-RESULTS -->
+Measured on Apple M4 Max, 64 GB unified memory. 8 tasks × 3 trials per model; each trial in a fresh sandbox, graded by hidden tests.
+
+| model · runtime | mode | trials passed (95% CI) | pass@1 | pass^k | tasks solved ≥1× / every trial | turns / trial | tool error rate | wall p50 / trial | decode tok/s |
+|---|---|---|---|---|---|---|---|---|---|
+| ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp | ah | 20/24 (64%–93%) | 83% | 75% | 7 / 6 of 8 | 10.8 | 21% | 44 s | 45.0 |
+| ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp | baseline (ah adaptations off) | 18/24 (55%–88%) | 75% | 75% | 6 / 6 of 8 | 10.4 | 12% | 44 s | 46.5 |
+| mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit (tool-parser field fixed) · openai-compatible | ah | 14/24 (39%–76%) | 58% | 50% | 5 / 4 of 8 | 10.3 | 16% | 49 s | 64.5 |
+
+Per task (passes / trials):
+
+| task | ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp | ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp baseline | mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit (tool-parser field fixed) · openai-compatible |
+|---|---|---|---|
+| ts-bugfix-pagination | 3/3 | 3/3 | 3/3 |
+| go-feature-stack | 2/3 | 3/3 | 0/3 |
+| py-bugfix-duration | 3/3 | 3/3 | 3/3 |
+| rust-fix-compile-and-logic | 3/3 | 3/3 | 2/3 |
+| ts-debug-cross-file | 3/3 | 3/3 | 3/3 |
+| ts-feature-lru | 0/3 | 0/3 | 0/3 |
+| ts-multifile-rename | 3/3 | 3/3 | 3/3 |
+| ts-write-tests | 3/3 | 0/3 | 0/3 |
+
+Ablation on ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp (A = baseline, B = ah):
+
+| task | A: baseline | B: ah | Δ pass rate | significance (Wilson 95%) |
+|---|---|---|---|---|
+| go-feature-stack | 3/3 | 2/3 | -33 pts | same |
+| py-bugfix-duration | 3/3 | 3/3 | +0 pts | same |
+| rust-fix-compile-and-logic | 3/3 | 3/3 | +0 pts | same |
+| ts-bugfix-pagination | 3/3 | 3/3 | +0 pts | same |
+| ts-debug-cross-file | 3/3 | 3/3 | +0 pts | same |
+| ts-feature-lru | 0/3 | 0/3 | +0 pts | same |
+| ts-multifile-rename | 3/3 | 3/3 | +0 pts | same |
+| ts-write-tests | 0/3 | 3/3 | +100 pts | same |
+| overall | 18/24 | 20/24 | +8 pts | same |
+
+Reports: [ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp](examples/bench/2026-09-23/llamacpp-mimo-v2.6-distill-qwen-9b-q8_0/report.md) · [ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · llamacpp baseline](examples/bench/2026-09-23/llamacpp-mimo-v2.6-distill-qwen-9b-q8_0-baseline/report.md) · [mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit (tool-parser field fixed) · openai-compatible](examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/report.md)
+<!-- /BENCH-RESULTS -->
+
+How to read these numbers:
+
+- **Model and serving.** [MiMo-V2.6-Distill-Qwen-9B](https://huggingface.co/XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B) (Xiaomi, 2026), served exactly as its cards recommend: `llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF` (Q8_0) and `optiq serve --model mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit`. `ah` applied the card's sampling (temperature 0.6, top_p 0.95, top_k 20) and `enable_thinking: true` automatically.
+- **Ablation.** Same model and server, with every `ah` local-model adaptation switched off (`--baseline`). `ah` passed 20/24 trials vs 18/24; the difference comes from `ts-write-tests` (3/3 vs 0/3) against `go-feature-stack` (2/3 vs 3/3). With three trials per task the Wilson intervals overlap, so this is **not** a statistically significant difference; turns per trial were similar. Several adaptations exist because of failures seen on other runs (see `docs/DECISIONS.md` D21-D24) and matter most on weaker servers and models.
+- **MLX run.** The OptiQ repo's `tokenizer_config.json` names the wrong tool parser, which makes mlx-lm drop every tool call; the run used a local copy with that one field corrected (see `docs/ROADMAP.md`). Two `ts-write-tests` trials were lost when mlx-lm crashed with `[metal::malloc] Resource limit (499000) exceeded` and restarted; `ah` now retries unreachable servers with backoff. A supplementary re-run of that task is in [`examples/bench-supplementary/`](examples/bench-supplementary/).
+- **4-bit vs 8-bit.** The Q8_0 GGUF on llama.cpp solved more tasks than the OptiQ 4-bit MLX build (7/8 vs 5/8); the MLX server decoded faster (64.5 vs 45.0 tok/s).
+- `ts-feature-lru` (implement an LRU cache from a written spec, 20-turn limit) was not solved by any configuration.
 
 Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/bench/). Reproduce with the commands in each report.
 

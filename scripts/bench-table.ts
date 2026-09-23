@@ -6,6 +6,16 @@ import { join, relative } from "node:path";
 import { compareRuns, markdownComparison } from "../src/bench/report.ts";
 import type { BenchSummary } from "../src/bench/report.ts";
 import type { BenchRun } from "../src/bench/runner.ts";
+import { hubRepoFrom } from "../src/models/hf.ts";
+
+// Readable model label: the Hub repo (from an id or cache path) plus the runtime.
+const label = (run: BenchRun) => {
+  const [provider, ...rest] = run.model.split("/");
+  const id = rest.join("/");
+  const repo = hubRepoFrom(id) ?? id;
+  return `${repo}${id.includes("patched") ? " (tool-parser field fixed)" : ""} · ${run.runtime?.kind ?? provider}`;
+};
+const meanOf = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null);
 
 const root = process.argv[2] && !process.argv[2].startsWith("--") ? process.argv[2] : "examples/bench";
 const writeIdx = process.argv.indexOf("--write");
@@ -31,26 +41,26 @@ const isBaseline = (e: Entry) => e.run.features && (e.run.features as { contextS
 
 const lines: string[] = [];
 lines.push(`Measured on ${entries[0]?.run.hardware.gpuName ?? "?"}, ${Math.round((entries[0]?.run.hardware.memTotalBytes ?? 0) / 1024 ** 3)} GB unified memory. 8 tasks × ${entries[0]?.run.trials ?? "?"} trials per model; each trial in a fresh sandbox, graded by hidden tests.`, "");
-lines.push("| model | mode | trials passed (95% CI) | pass@1 | pass^k | tasks solved ≥1× / every trial | wall p50 / trial | decode tok/s | tool calls recovered from text |");
-lines.push("|---|---|---|---|---|---|---|---|---|");
+lines.push("| model · runtime | mode | trials passed (95% CI) | pass@1 | pass^k | tasks solved ≥1× / every trial | turns / trial | tool error rate | wall p50 / trial | decode tok/s |");
+lines.push("|---|---|---|---|---|---|---|---|---|---|");
 for (const e of entries) {
   const o = e.s.overall;
   lines.push(
-    `| \`${e.run.model}\` | ${isBaseline(e) ? "baseline (ah adaptations off)" : "ah"} | ${o.passes}/${o.trials} (${pct(o.wilson.low)}–${pct(o.wilson.high)}) | ${pct(o.meanPassAt1)} | ${pct(o.meanPassHatK)} | ${o.solvedAny} / ${o.solvedAll} of ${e.s.tasks.length} | ${sec(o.p50WallMs)} | ${f1(o.meanDecodeTps)} | ${o.recoveredToolCalls} |`,
+    `| ${label(e.run)} | ${isBaseline(e) ? "baseline (ah adaptations off)" : "ah"} | ${o.passes}/${o.trials} (${pct(o.wilson.low)}–${pct(o.wilson.high)}) | ${pct(o.meanPassAt1)} | ${pct(o.meanPassHatK)} | ${o.solvedAny} / ${o.solvedAll} of ${e.s.tasks.length} | ${f1(meanOf(e.run.results.map((r) => r.turns)))} | ${pct(o.toolErrorRate)} | ${sec(o.p50WallMs)} | ${f1(o.meanDecodeTps)} |`,
   );
 }
 lines.push("", "Per task (passes / trials):", "");
 const tasks = [...new Set(entries.flatMap((e) => e.s.tasks.map((t) => t.taskId)))];
-lines.push(`| task | ${entries.map((e) => `\`${e.run.model.split("/").pop()}\`${isBaseline(e) ? " baseline" : ""}`).join(" | ")} |`);
+lines.push(`| task | ${entries.map((e) => `${label(e.run)}${isBaseline(e) ? " baseline" : ""}`).join(" | ")} |`);
 lines.push(`|---|${entries.map(() => "---").join("|")}|`);
 for (const id of tasks) lines.push(`| ${id} | ${entries.map((e) => { const t = e.s.tasks.find((x) => x.taskId === id); return t ? `${t.passes}/${t.n}` : "skipped"; }).join(" | ")} |`);
 // Ablation: pair each baseline run with the ah run of the same model.
 for (const b of entries.filter(isBaseline)) {
   const a = entries.find((e) => !isBaseline(e) && e.run.model === b.run.model);
   if (!a) continue;
-  lines.push("", `Ablation on \`${b.run.model}\` (A = baseline, B = ah):`, "", markdownComparison("A: baseline", "B: ah", compareRuns(b.run, a.run)).trim());
+  lines.push("", `Ablation on ${label(b.run)} (A = baseline, B = ah):`, "", markdownComparison("A: baseline", "B: ah", compareRuns(b.run, a.run)).trim());
 }
-lines.push("", `Reports: ${entries.map((e) => `[${e.run.model.split("/").pop()}${isBaseline(e) ? " baseline" : ""}](${relative(".", join(e.dir, "report.md"))})`).join(" · ")}`);
+lines.push("", `Reports: ${entries.map((e) => `[${label(e.run)}${isBaseline(e) ? " baseline" : ""}](${relative(".", join(e.dir, "report.md"))})`).join(" · ")}`);
 const md = lines.join("\n");
 
 if (target) {
