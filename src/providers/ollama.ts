@@ -74,6 +74,7 @@ export class OllamaProvider implements Provider {
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
       },
     };
+    if (req.responseSchema) body.format = req.responseSchema;
     if (req.tools.length)
       body.tools = req.tools.map((t) => ({
         type: "function",

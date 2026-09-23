@@ -114,7 +114,7 @@ export const PROBES: { kind: RuntimeKind; probe: Probe }[] = [
 ];
 
 // Runs all probes concurrently and returns the highest-priority match.
-export async function fingerprint(origin: string, timeoutMs = 800): Promise<Omit<RuntimeInfo, "source"> | null> {
+export async function fingerprint(origin: string, timeoutMs = 2500): Promise<Omit<RuntimeInfo, "source"> | null> {
   const clean = origin.replace(/\/+$/, "").replace(/\/v1$/, "");
   // Cheap liveness check first: skip ports that do not speak HTTP at all.
   try {
@@ -143,21 +143,66 @@ export function dedupe(runtimes: RuntimeInfo[]): RuntimeInfo[] {
 // Local listening TCP ports (loopback or wildcard), via lsof. Unprivileged; only this
 // user's processes are visible, which is exactly the set ah can talk to.
 export async function listeningPorts(): Promise<number[]> {
+  return (await listeners()).map((l) => l.port);
+}
+
+export interface Listener {
+  port: number;
+  pid?: number;
+  ppid?: number;
+}
+
+// Listening ports with owning process and its parent (lsof + ps). The parent is used to
+// recognise worker processes that a runtime spawns for itself (e.g. per-model runners).
+export async function listeners(): Promise<Listener[]> {
   const lsof = Bun.which("lsof");
   if (lsof) {
-    const proc = Bun.spawn([lsof, "-nP", "-iTCP", "-sTCP:LISTEN", "-Fn"], { stdout: "pipe", stderr: "ignore" });
+    const proc = Bun.spawn([lsof, "-nP", "-iTCP", "-sTCP:LISTEN", "-Fpn"], { stdout: "pipe", stderr: "ignore" });
     const out = await new Response(proc.stdout).text();
     await proc.exited;
-    return parseLsof(out);
+    const ls = parseLsofListeners(out);
+    const pids = [...new Set(ls.map((l) => l.pid).filter((p): p is number => p !== undefined))];
+    if (pids.length && Bun.which("ps")) {
+      const ps = Bun.spawn(["ps", "-o", "pid=,ppid=", "-p", pids.join(",")], { stdout: "pipe", stderr: "ignore" });
+      const txt = await new Response(ps.stdout).text();
+      await ps.exited;
+      const parent = new Map(txt.trim().split("\n").map((l) => l.trim().split(/\s+/).map(Number) as [number, number]));
+      for (const l of ls) if (l.pid) l.ppid = parent.get(l.pid);
+    }
+    return ls;
   }
   const ss = Bun.which("ss");
   if (ss) {
     const proc = Bun.spawn([ss, "-Htln"], { stdout: "pipe", stderr: "ignore" });
     const out = await new Response(proc.stdout).text();
     await proc.exited;
-    return [...new Set([...out.matchAll(/(?:127\.0\.0\.1|\*|0\.0\.0\.0|\[::1?\]|\[::\]):(\d+)/g)].map((m) => Number(m[1])))].sort((a, b) => a - b);
+    return [...new Set([...out.matchAll(/(?:127\.0\.0\.1|\*|0\.0\.0\.0|\[::1?\]|\[::\]):(\d+)/g)].map((m) => Number(m[1])))]
+      .sort((a, b) => a - b)
+      .map((port) => ({ port }));
   }
   return [];
+}
+
+export function parseLsofListeners(out: string): Listener[] {
+  const seen = new Map<number, Listener>();
+  let pid: number | undefined;
+  for (const line of out.split("\n")) {
+    if (line.startsWith("p")) pid = Number(line.slice(1));
+    const m = line.match(/^n(127\.0\.0\.1|\*|localhost|\[::1\]|\[::\]|0\.0\.0\.0):(\d+)$/);
+    if (m && !seen.has(Number(m[2]))) seen.set(Number(m[2]), { port: Number(m[2]), pid });
+  }
+  return [...seen.values()].sort((a, b) => a.port - b.port);
+}
+
+// Drops runtimes served by a child process of a runtime of a different kind: an engine
+// spawned internally (e.g. a per-model llama.cpp runner under Ollama). Same-kind
+// parent/child listeners are one service and are merged by dedupe().
+export function dropInternalWorkers(runtimes: (RuntimeInfo & { pid?: number; ppid?: number })[]): RuntimeInfo[] {
+  const kindByPid = new Map(runtimes.filter((r) => r.pid !== undefined).map((r) => [r.pid!, r.kind]));
+  return runtimes.filter((r) => {
+    const parentKind = r.ppid !== undefined ? kindByPid.get(r.ppid) : undefined;
+    return !parentKind || parentKind === r.kind;
+  });
 }
 
 export function parseLsof(out: string): number[] {
@@ -195,12 +240,14 @@ export interface DiscoverOptions {
 
 export async function discoverRuntimes(o: DiscoverOptions = {}): Promise<RuntimeInfo[]> {
   const candidates = new Map<string, RuntimeInfo["source"]>();
+  const owner = new Map<string, Listener>();
   for (const e of o.endpoints ?? []) candidates.set(e.replace(/\/+$/, "").replace(/\/v1$/, ""), "config");
   for (const e of envEndpoints()) if (!candidates.has(e)) candidates.set(e, "env");
   if (o.scan !== false)
-    for (const p of await listeningPorts()) {
-      const origin = `http://127.0.0.1:${p}`;
-      const alreadyKnown = [...candidates.keys()].some((c) => new URL(c).port === String(p) && /127\.0\.0\.1|localhost/.test(c));
+    for (const l of await listeners()) {
+      const origin = `http://127.0.0.1:${l.port}`;
+      owner.set(origin, l);
+      const alreadyKnown = [...candidates.keys()].some((c) => new URL(c).port === String(l.port) && /127\.0\.0\.1|localhost/.test(c));
       if (!alreadyKnown) candidates.set(origin, "scan");
     }
   // Config and env first, then scanned ports in ascending order, so dedupe keeps the canonical one.
@@ -211,13 +258,13 @@ export async function discoverRuntimes(o: DiscoverOptions = {}): Promise<Runtime
   for (let i = 0; i < entries.length; i += limit) {
     const batch = await Promise.all(
       entries.slice(i, i + limit).map(async ([origin, source]) => {
-        const r = await fingerprint(origin, o.timeoutMs ?? 800);
-        return r ? ({ ...r, source } as RuntimeInfo) : null;
+        const r = await fingerprint(origin, o.timeoutMs ?? 2500);
+        return r ? ({ ...r, source, pid: owner.get(origin)?.pid, ppid: owner.get(origin)?.ppid } as RuntimeInfo) : null;
       }),
     );
     results.push(...batch.filter((r): r is RuntimeInfo => r !== null));
   }
-  return dedupe(results);
+  return dedupe(dropInternalWorkers(results)).map(({ pid: _p, ppid: _pp, ...r }: RuntimeInfo & { pid?: number; ppid?: number }) => r);
 }
 
 // Binaries of well-known runtimes found on PATH, so `ah doctor` can suggest starting them.

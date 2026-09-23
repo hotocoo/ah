@@ -102,6 +102,9 @@ export interface ChatRequest {
   // Context window the harness budgets for. Local runtimes that size the KV cache per
   // request (Ollama num_ctx) receive it explicitly so prompts are never silently truncated.
   contextWindow?: number;
+  // Constrain the reply to JSON matching this schema (grammar-constrained decoding on
+  // runtimes that support it). Used for structured outputs, never for tool calling.
+  responseSchema?: JsonSchema;
   signal?: AbortSignal;
 }
 

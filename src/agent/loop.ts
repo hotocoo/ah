@@ -217,6 +217,9 @@ export class Agent {
           else if (ev.type === "done") done = ev;
         }
         if (!done) throw new Error("provider stream ended without a done event");
+        // A response with no content and no tokens is a server failure, not an answer.
+        if (!done.message.content.length && !done.usage.outputTokens && done.stopReason !== "refusal")
+          throw new ProviderError(`${this.o.provider.key}: empty response from the model server`, this.o.provider.key, 502, true);
         if (textMode || this.o.parseTextToolCalls !== false) {
           const recovered = recoverToolCalls(done.message, specs.map((s) => s.name), `txt_${this.runId.slice(-6)}_${this.turn}_${attempt}`);
           if (recovered) {

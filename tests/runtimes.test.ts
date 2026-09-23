@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { kvBytesPerToken, resolveContextWindow } from "../src/runtimes/context.ts";
-import { dedupe, envEndpoints, fingerprint, parseLsof, type RuntimeInfo } from "../src/runtimes/discover.ts";
+import { dedupe, dropInternalWorkers, envEndpoints, fingerprint, parseLsof, parseLsofListeners, type RuntimeInfo } from "../src/runtimes/discover.ts";
 import { parseIoreg, parseNvidiaSmi, summarize } from "../src/runtimes/hardware.ts";
 import { ToolRegistry } from "../src/tools/index.ts";
 
@@ -47,6 +47,17 @@ describe("discovery helpers", () => {
   test("parseLsof keeps loopback/wildcard listeners only", () => {
     const out = "p123\nn*:8080\nn127.0.0.1:11434\nn192.168.1.5:9000\nn[::1]:5000\nn127.0.0.1:11434\n";
     expect(parseLsof(out)).toEqual([5000, 8080, 11434]);
+  });
+
+  test("parseLsofListeners attaches owning pid; internal workers are dropped", () => {
+    expect(parseLsofListeners("p10\nf3\nn127.0.0.1:11434\np20\nf4\nn127.0.0.1:64392\n")).toEqual([
+      { port: 11434, pid: 10 },
+      { port: 64392, pid: 20 },
+    ]);
+    const rt = (kind: "ollama" | "llamacpp", port: number, pid: number, ppid: number) => ({ kind, baseURL: `http://127.0.0.1:${port}`, source: "scan" as const, models: [], meta: {}, pid, ppid });
+    // ollama app (pid 5, :61071) -> ollama serve (pid 10, :11434) -> llama.cpp runner (pid 20)
+    const kept = dropInternalWorkers([rt("ollama", 61071, 5, 1), rt("ollama", 11434, 10, 5), rt("llamacpp", 64392, 20, 10), rt("llamacpp", 8080, 30, 1)]);
+    expect(kept.map((r) => new URL(r.baseURL).port)).toEqual(["61071", "11434", "8080"]);
   });
 
   test("envEndpoints reads *_HOST/*_BASE_URL pointing at localhost", () => {

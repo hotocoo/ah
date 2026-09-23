@@ -2,6 +2,8 @@ import type { ChatRequest, ContentBlock, Message, ModelInfo, RuntimeTimings, Sto
 import {
   ensureOk,
   parseToolArgs,
+  CONTEXT_OVERFLOW,
+  isRetryableStatus,
   ProviderError,
   sseData,
   streamFetch,
@@ -181,6 +183,7 @@ export class OpenAICompatProvider implements Provider {
       [wire.maxTokensParam]: req.maxTokens,
     };
     if (wire.streamUsage) body.stream_options = { include_usage: true };
+    if (req.responseSchema) body.response_format = { type: "json_schema", json_schema: { name: "response", schema: req.responseSchema } };
     if (req.tools.length)
       body.tools = req.tools.map((t) => ({
         type: "function",
@@ -227,10 +230,17 @@ export class OpenAICompatProvider implements Provider {
     for await (const data of sseData(res.body!)) {
       if (data === "[DONE]") break;
       const chunk = JSON.parse(data) as {
+        error?: { code?: number; message?: string } | string;
         choices?: { delta?: { content?: string; reasoning_content?: string; reasoning?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string | Record<string, unknown> } }[] }; finish_reason?: string | null }[];
         timings?: { cache_n?: number; prompt_n?: number; prompt_ms?: number; prompt_per_second?: number; predicted_n?: number; predicted_ms?: number; predicted_per_second?: number };
         usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number }; completion_tokens_details?: { reasoning_tokens?: number } };
       };
+      // Servers report mid-stream failures as an SSE payload with an `error` field.
+      if (chunk.error) {
+        const e = typeof chunk.error === "string" ? { message: chunk.error } : chunk.error;
+        const status = typeof e.code === "number" ? e.code : 500;
+        throw new ProviderError(`${this.key}: server error in stream: ${e.message ?? "unknown"}`, this.key, status, isRetryableStatus(status), CONTEXT_OVERFLOW.test(e.message ?? "") ? "context_overflow" : undefined);
+      }
       if (chunk.timings) {
         const t = chunk.timings;
         timings = {

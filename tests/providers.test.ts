@@ -317,3 +317,15 @@ describe("misc", () => {
     expect(out.b).toBeUndefined();
   });
 });
+
+describe("stream error handling", () => {
+  test("an SSE error payload becomes a retryable ProviderError, not an empty answer", async () => {
+    const server = Bun.serve({ port: 0, fetch: () => new Response(`data: ${JSON.stringify({ error: { code: 500, message: "Compute error." } })}\n\n`) });
+    try {
+      const p = new OpenAICompatProvider("t", { baseURL: `http://localhost:${server.port}` });
+      await expect(collect(p.stream({ model: "m", system: "", messages: convo, tools: [], maxTokens: 10 }))).rejects.toMatchObject({ status: 500, retryable: true });
+    } finally {
+      server.stop(true);
+    }
+  });
+});

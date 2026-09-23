@@ -190,3 +190,21 @@ describe("pricing", () => {
     expect(costOf(u, { input: 1 })).toBeNull();
   });
 });
+
+describe("empty responses", () => {
+  test("an empty model response is an error after retries, never a completed run", async () => {
+    const empty: Provider = {
+      key: "empty",
+      kind: "mock",
+      capabilities: new MockProvider().capabilities,
+      async *stream(): AsyncGenerator<StreamEvent> {
+        yield { type: "done", message: { role: "assistant", content: [] }, stopReason: "end_turn", usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 } };
+      },
+    };
+    const { agent, events } = setup([], { provider: empty, maxRetries: 1 });
+    const r = await agent.run("x");
+    expect(r.outcome).toBe("error");
+    expect(r.error).toMatch(/empty response/);
+    expect(events.filter((e) => e.type === "retry")).toHaveLength(1);
+  });
+});

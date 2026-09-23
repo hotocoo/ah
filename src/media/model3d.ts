@@ -69,8 +69,10 @@ export async function designScene(provider: Provider, model: string, prompt: str
       system: SYSTEM,
       messages: lastErr ? [...messages, { role: "assistant", content: [{ type: "text", text: result || "(invalid)" }] }, { role: "user", content: [{ type: "text", text: `That was not valid: ${lastErr}. Reply with only the corrected JSON.` }] }] : messages,
       tools: [],
-      maxTokens: 8192,
-      reasoning: "off",
+      maxTokens: 16_384,
+      // Let reasoning models think in their own channel; constrain the answer to the schema.
+      reasoning: "low",
+      responseSchema: SCENE_SCHEMA,
       contextWindow: opts.contextWindow,
       signal: opts.signal,
     }))
