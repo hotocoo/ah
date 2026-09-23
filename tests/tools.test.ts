@@ -192,3 +192,34 @@ describe("validation + ssrf", () => {
     for (const h of ["example.com", "8.8.8.8", "172.32.0.1"]) expect(isPrivateHost(h)).toBe(false);
   });
 });
+
+describe("tolerant edits", () => {
+  test("matches despite wrong indentation and re-indents the replacement", async () => {
+    const { applyEditTolerant } = await import("../src/tools/edit-match.ts");
+    const file = "function f() {\n  if (x) {\n    return a - b;\n  }\n}\n";
+    const r = applyEditTolerant(file, "\tif (x) {\n\t  return a - b;", "\tif (x) {\n\t  return a + b;", false);
+    expect(r.strategy).toBe("whitespace");
+    expect(r.text).toBe("function f() {\n  if (x) {\n    return a + b;\n  }\n}\n");
+  });
+
+  test("exact match preferred; CRLF preserved; ambiguity and misses reported with hints", async () => {
+    const { applyEditTolerant } = await import("../src/tools/edit-match.ts");
+    expect(applyEditTolerant("a\r\nb\r\n", "b", "c", false)).toEqual({ text: "a\r\nc\r\n", strategy: "exact" });
+    expect(() => applyEditTolerant("  x;\n  x;\n", "    x;", "y;", false)).toThrow(/2 places/);
+    expect(() => applyEditTolerant("  const start = page * size;\n", "const begin = p * s;", "z", false)).toThrow(/not found/);
+    try {
+      applyEditTolerant("line one\n  const start = page * size;\n", "const start = pages * sizes", "z", false);
+    } catch (e) {
+      expect((e as Error).message).toContain('2: "  const start = page * size;"');
+    }
+  });
+
+  test("edit_file reports the tolerant match", async () => {
+    writeFileSync(join(root, "p.ts"), "export function p() {\n  const start = page * size;\n}\n");
+    await run("read_file", { path: "p.ts" });
+    const r = await run("edit_file", { path: "p.ts", old_string: "    const start = page * size;", new_string: "    const start = (page - 1) * size;" });
+    expect(r.isError).toBeFalsy();
+    expect(r.content).toContain("ignoring indentation");
+    expect(readFileSync(join(root, "p.ts"), "utf8")).toContain("\n  const start = (page - 1) * size;\n");
+  });
+});

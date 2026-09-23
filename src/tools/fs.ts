@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
+import { applyEditTolerant } from "./edit-match.ts";
 import { confine, num, rel, str, ToolError, truncate, type Tool } from "./types.ts";
 
 const IMAGE_TYPES: Record<string, string> = {
@@ -77,14 +78,10 @@ export const writeFileTool: Tool = {
   },
 };
 
-// Applies one exact-string replacement. Requires a unique match unless replaceAll.
+// Applies one replacement: exact match first, then an indentation-tolerant match
+// (see edit-match.ts). Requires a unique match unless replaceAll.
 export function applyEdit(text: string, oldStr: string, newStr: string, replaceAll: boolean): string {
-  if (oldStr === "") throw new ToolError("old_string must not be empty");
-  if (oldStr === newStr) throw new ToolError("old_string and new_string are identical");
-  const count = text.split(oldStr).length - 1;
-  if (count === 0) throw new ToolError("old_string not found; re-read the file and copy the exact text including whitespace");
-  if (count > 1 && !replaceAll) throw new ToolError(`old_string matches ${count} times; add surrounding context or set replace_all`);
-  return replaceAll ? text.split(oldStr).join(newStr) : text.replace(oldStr, () => newStr);
+  return applyEditTolerant(text, oldStr, newStr, replaceAll).text;
 }
 
 export const editFileTool: Tool = {
@@ -109,9 +106,10 @@ export const editFileTool: Tool = {
     const abs = confine(ctx.root, input.path);
     if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
     if (!ctx.readFiles.has(abs)) throw new ToolError(`read ${input.path} before editing it`);
-    const next = applyEdit(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true);
-    writeFileSync(abs, next);
-    return { content: `edited ${rel(ctx.root, abs)}`, changedFiles: [rel(ctx.root, abs)] };
+    const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true);
+    writeFileSync(abs, r.text);
+    const note = r.strategy === "whitespace" ? " (old_string matched ignoring indentation; new_string re-indented to the file)" : "";
+    return { content: `edited ${rel(ctx.root, abs)}${note}`, changedFiles: [rel(ctx.root, abs)] };
   },
 };
 

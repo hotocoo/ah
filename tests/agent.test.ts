@@ -208,3 +208,14 @@ describe("empty responses", () => {
     expect(events.filter((e) => e.type === "retry")).toHaveLength(1);
   });
 });
+
+describe("nudges", () => {
+  test("a turn with neither answer nor tool call is nudged, not completed", async () => {
+    const { agent, events } = setup([{ text: "" }, { toolCalls: [{ name: "list_dir", input: {} }] }, { text: "done" }]);
+    const r = await agent.run("x");
+    expect(r.outcome).toBe("completed");
+    expect(r.finalText).toBe("done");
+    expect(r.toolCalls).toBe(1);
+    expect(events.some((e) => e.type === "retry" && e.reason.includes("without an answer"))).toBe(true);
+  });
+});

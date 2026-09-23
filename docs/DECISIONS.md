@@ -112,3 +112,11 @@ Bugs that only appeared against real local runtimes, each now covered by a test:
 - **Busy servers answer slowly**: fingerprint probes use a 2.5 s timeout so a llama-server busy with a long prefill is still discovered.
 - **Reasoning models with thinking disabled reason in the content** and never reach the JSON; the 3D designer lets them think in their own channel and constrains the answer with a JSON schema (`responseSchema` → Ollama `format`, OpenAI `response_format`).
 - **Never benchmark two runtimes concurrently on shared unified memory.** Running an Ollama benchmark and ComfyUI next to a 27B llama-server that another client was also driving preceded that server getting stuck in `Compute error.` for every request. Benchmarks are now run one runtime at a time.
+
+## D22. Edits tolerate indentation slips; empty turns are nudged
+
+Observed on qwen3:4b: six consecutive failed `edit_file` calls because `old_string` used 4 spaces or a tab where the file had 2, and turns that ended with only hidden reasoning (no reply, no tool call). Now:
+
+- `edit_file`/`multi_edit` try an exact match first; if none, a line-by-line match ignoring leading/trailing whitespace. A unique match is applied with `new_string` re-indented to the file's actual indentation, and the tool result says so. Ambiguous matches are still rejected. CRLF files keep CRLF.
+- A miss returns the closest file lines with line numbers, so the next attempt can copy the exact text.
+- A turn with neither text nor tool calls gets a continuation message (at most twice per run) instead of being reported as a completed task.

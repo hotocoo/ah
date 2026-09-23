@@ -95,6 +95,7 @@ export class Agent {
     let jsonRetries = 0;
     let truncationRetries = 0;
     let overflowRetried = false;
+    let nudges = 0;
 
     try {
       while (true) {
@@ -151,6 +152,14 @@ export class Agent {
           break;
         }
         this.messages.push(res.message);
+        // A turn with neither an answer nor a tool call (e.g. a reasoning model that spent
+        // the turn thinking) is not a finished task: nudge the model to continue.
+        if (!calls.length && !textOf(res.message).trim() && res.stopReason !== "max_tokens" && nudges < 2) {
+          nudges++;
+          this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: nudges, reason: "turn ended without an answer or tool call", delayMs: 0, t: Date.now() });
+          this.messages.push({ role: "user", content: [{ type: "text", text: "You ended your turn without a tool call or a reply. Continue the task: use the tools to make the change and verify it, then reply with a short summary." }] });
+          continue;
+        }
         if (!calls.length) {
           finalText = textOf(res.message);
           if (res.stopReason === "max_tokens") outcome = "max_tokens";
