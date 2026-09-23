@@ -7,3 +7,6 @@ coverage/
 bench-results/
 .DS_Store
 .env
+
+# bench sandboxes of failed trials (can include build output such as Rust target/)
+examples/bench/*/*/work/

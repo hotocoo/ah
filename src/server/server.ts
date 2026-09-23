@@ -10,9 +10,17 @@ import { compileScene, designScene } from "../media/model3d.ts";
 import { sampleHardware } from "../runtimes/hardware.ts";
 import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../telemetry/metrics.ts";
 import { dim, green } from "../cli/render.ts";
+import { assetDir } from "../app/paths.ts";
+import indexHtmlSrc from "./ui/index.html" with { type: "text" };
+import appJs from "./ui/app.js" with { type: "text" };
+import stylesCss from "./ui/styles.css" with { type: "text" };
 
-const UI_DIR = resolve(import.meta.dir, "ui");
-const EXAMPLES_DIR = resolve(import.meta.dir, "../../examples/bench");
+// UI files are imported as text so they are embedded in the compiled binary.
+const UI: Record<string, { body: string; type: string }> = {
+  "/app.js": { body: appJs, type: "text/javascript; charset=utf-8" },
+  "/styles.css": { body: stylesCss, type: "text/css; charset=utf-8" },
+};
+const EXAMPLES_DIR = assetDir("examples/bench") ?? "";
 
 interface ChatSession {
   session: Session;
@@ -40,7 +48,7 @@ function listBenchRuns(env: Environment) {
     report: string;
   }[];
   const examples: typeof fromDb = [];
-  if (existsSync(EXAMPLES_DIR))
+  if (EXAMPLES_DIR && existsSync(EXAMPLES_DIR))
     for (const day of readdirSync(EXAMPLES_DIR))
       for (const d of existsSync(join(EXAMPLES_DIR, day)) && statSync(join(EXAMPLES_DIR, day)).isDirectory() ? readdirSync(join(EXAMPLES_DIR, day)) : []) {
         const p = join(EXAMPLES_DIR, day, d, "results.json");
@@ -60,7 +68,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     if (!env.telemetry.store) throw new Error("telemetry disabled");
     return env.telemetry.store.db;
   };
-  const indexHtml = () => readFileSync(join(UI_DIR, "index.html"), "utf8").replace("__AH_TOKEN__", token);
+  const indexHtml = () => (indexHtmlSrc as unknown as string).replace("__AH_TOKEN__", token);
 
   const server = Bun.serve({
     hostname: "127.0.0.1",
@@ -71,8 +79,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       const p = url.pathname;
       if (!p.startsWith("/api/")) {
         if (p === "/" || p === "/index.html") return new Response(indexHtml(), { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'" } });
-        const file = resolve(UI_DIR, `.${p}`);
-        if (file.startsWith(UI_DIR) && existsSync(file) && statSync(file).isFile()) return new Response(Bun.file(file));
+        const asset = UI[p];
+        if (asset) return new Response(asset.body as unknown as string, { headers: { "content-type": asset.type } });
         return new Response("not found", { status: 404 });
       }
       if (!authorized(req, token, server.port!)) return json({ error: "unauthorized" }, 401);

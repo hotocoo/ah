@@ -8,6 +8,7 @@ import { runBench, type BenchRun } from "../bench/runner.ts";
 import { loadSuite } from "../bench/task.ts";
 import { measureThroughput, throughputMarkdown } from "../bench/throughput.ts";
 import { bold, cyan, dim, green, red, yellow } from "./render.ts";
+import { assetDir } from "../app/paths.ts";
 
 const HELP = `ah bench — benchmarks
 
@@ -22,7 +23,7 @@ const HELP = `ah bench — benchmarks
   ah bench list [--suite DIR]
 `;
 
-const DEFAULT_SUITE = resolve(import.meta.dir, "../../bench/suites/core");
+const DEFAULT_SUITE = assetDir("bench/suites/core") ?? "bench/suites/core";
 const slug = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, "_").slice(0, 80);
 
 export async function cmdBench(argv: string[]): Promise<number> {

@@ -1,0 +1,58 @@
+{
+  "objects": [
+    {
+      "shape": "box",
+      "name": "desk",
+      "size": [
+        0.4,
+        0.2,
+        0.2
+      ],
+      "position": [
+        0,
+        0,
+        0
+      ],
+      "color": "#d2b48c"
+    },
+    {
+      "shape": "cylinder",
+      "name": "lamp_base",
+      "radius": 0.02,
+      "height": 0.05,
+      "position": [
+        0.2,
+        0.225,
+        0
+      ],
+      "color": "#404040"
+    },
+    {
+      "shape": "sphere",
+      "name": "lamp_bulb",
+      "radius": 0.01,
+      "position": [
+        0.2,
+        0.25,
+        0
+      ],
+      "color": "#ffffff"
+    },
+    {
+      "shape": "box",
+      "name": "monitor",
+      "size": [
+        0.4,
+        0.2,
+        0.05
+      ],
+      "position": [
+        0.2,
+        0.2,
+        0.1
+      ],
+      "color": "#2e2e2e"
+    }
+  ],
+  "name": "desk_with_lamp_and_monitor"
+}
