@@ -1,0 +1,252 @@
+import type { ChatRequest, ContentBlock, Message, ModelInfo, StopReason, StreamEvent, Usage } from "../core/types.ts";
+import {
+  ensureOk,
+  parseToolArgs,
+  sseData,
+  type EmbedRequest,
+  type GeneratedImage,
+  type ImageGenRequest,
+  type Provider,
+  type ProviderCapabilities,
+} from "./provider.ts";
+
+// Adapter for the OpenAI Chat Completions wire format. Covers OpenAI itself and every
+// compatible gateway (OpenRouter, Groq, Together, DeepSeek, xAI, Mistral, Fireworks,
+// Cerebras, LM Studio, vLLM, llama.cpp server, Hugging Face router, ...).
+export interface OpenAICompatOptions {
+  baseURL: string;
+  apiKey?: string;
+  headers?: Record<string, string>;
+  imageGen?: boolean;
+  embeddings?: boolean;
+}
+
+type OAMessage =
+  | { role: "system" | "user"; content: string | OAPart[] }
+  | { role: "assistant"; content: string | null; tool_calls?: OAToolCall[] }
+  | { role: "tool"; tool_call_id: string; content: string };
+type OAPart = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
+interface OAToolCall {
+  id: string;
+  type: "function";
+  function: { name: string; arguments: string };
+}
+
+export function toOpenAIMessages(system: string, messages: Message[]): OAMessage[] {
+  const out: OAMessage[] = system ? [{ role: "system", content: system }] : [];
+  for (const m of messages) {
+    if (m.role === "assistant") {
+      const text = m.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("");
+      const calls = m.content
+        .filter((b) => b.type === "tool_call")
+        .map((b) => {
+          const c = b as Extract<ContentBlock, { type: "tool_call" }>;
+          return { id: c.id, type: "function" as const, function: { name: c.name, arguments: JSON.stringify(c.input) } };
+        });
+      out.push({ role: "assistant", content: text || null, ...(calls.length ? { tool_calls: calls } : {}) });
+      continue;
+    }
+    // Tool results become separate `tool` messages; remaining parts form a user message.
+    const parts: OAPart[] = [];
+    for (const b of m.content) {
+      if (b.type === "tool_result")
+        out.push({ role: "tool", tool_call_id: b.toolCallId, content: b.isError ? `ERROR: ${b.content}` : b.content });
+      else if (b.type === "text") parts.push({ type: "text", text: b.text });
+      else if (b.type === "image") parts.push({ type: "image_url", image_url: { url: `data:${b.mediaType};base64,${b.data}` } });
+    }
+    if (parts.length) {
+      const onlyText = parts.every((p) => p.type === "text");
+      out.push({ role: "user", content: onlyText ? parts.map((p) => (p as { text: string }).text).join("\n") : parts });
+    }
+  }
+  return out;
+}
+
+const mapFinish = (r: string | null | undefined): StopReason => {
+  switch (r) {
+    case "stop":
+      return "end_turn";
+    case "tool_calls":
+    case "function_call":
+      return "tool_use";
+    case "length":
+      return "max_tokens";
+    case "content_filter":
+      return "refusal";
+    default:
+      return r ? "other" : "end_turn";
+  }
+};
+
+export class OpenAICompatProvider implements Provider {
+  readonly kind = "openai-compatible";
+  readonly capabilities: ProviderCapabilities;
+
+  constructor(
+    readonly key: string,
+    private opts: OpenAICompatOptions,
+  ) {
+    this.capabilities = {
+      chat: true,
+      streaming: true,
+      tools: true,
+      vision: true,
+      embeddings: opts.embeddings ?? true,
+      imageGen: opts.imageGen ?? false,
+      modelListing: true,
+    };
+  }
+
+  private headers(): Record<string, string> {
+    return {
+      "content-type": "application/json",
+      ...(this.opts.apiKey ? { authorization: `Bearer ${this.opts.apiKey}` } : {}),
+      ...this.opts.headers,
+    };
+  }
+
+  private url(path: string): string {
+    return `${this.opts.baseURL.replace(/\/$/, "")}${path}`;
+  }
+
+  buildBody(req: ChatRequest): Record<string, unknown> {
+    const body: Record<string, unknown> = {
+      model: req.model,
+      messages: toOpenAIMessages(req.system, req.messages),
+      stream: true,
+      stream_options: { include_usage: true },
+      max_completion_tokens: req.maxTokens,
+    };
+    if (req.tools.length)
+      body.tools = req.tools.map((t) => ({
+        type: "function",
+        function: { name: t.name, description: t.description, parameters: t.inputSchema },
+      }));
+    if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.reasoning && req.reasoning !== "off")
+      body.reasoning_effort = req.reasoning === "max" ? "high" : req.reasoning;
+    return body;
+  }
+
+  async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
+    const res = await ensureOk(
+      await fetch(this.url("/chat/completions"), {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify(this.buildBody(req)),
+        signal: req.signal,
+      }),
+      this.key,
+    );
+    let text = "";
+    let finish: string | null = null;
+    const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
+    const calls = new Map<number, { id: string; name: string; args: string }>();
+    for await (const data of sseData(res.body!)) {
+      if (data === "[DONE]") break;
+      const chunk = JSON.parse(data) as {
+        choices?: { delta?: { content?: string; reasoning_content?: string; reasoning?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number }; completion_tokens_details?: { reasoning_tokens?: number } };
+      };
+      if (chunk.usage) {
+        usage.inputTokens = chunk.usage.prompt_tokens ?? 0;
+        usage.outputTokens = chunk.usage.completion_tokens ?? 0;
+        usage.cacheReadTokens = chunk.usage.prompt_tokens_details?.cached_tokens ?? 0;
+        usage.reasoningTokens = chunk.usage.completion_tokens_details?.reasoning_tokens ?? 0;
+      }
+      const choice = chunk.choices?.[0];
+      if (!choice) continue;
+      if (choice.finish_reason) finish = choice.finish_reason;
+      const d = choice.delta ?? {};
+      const reasoning = d.reasoning_content ?? d.reasoning;
+      if (reasoning) yield { type: "thinking_delta", text: reasoning };
+      if (d.content) {
+        text += d.content;
+        yield { type: "text_delta", text: d.content };
+      }
+      for (const tc of d.tool_calls ?? []) {
+        let entry = calls.get(tc.index);
+        if (!entry) {
+          entry = { id: tc.id ?? `call_${tc.index}`, name: tc.function?.name ?? "", args: "" };
+          calls.set(tc.index, entry);
+          yield { type: "tool_call_start", id: entry.id, name: entry.name };
+        }
+        if (tc.function?.arguments) {
+          entry.args += tc.function.arguments;
+          yield { type: "tool_call_delta", id: entry.id, partialJson: tc.function.arguments };
+        }
+      }
+    }
+    const content: ContentBlock[] = text ? [{ type: "text", text }] : [];
+    for (const c of calls.values()) {
+      const input = parseToolArgs(c.args);
+      content.push({ type: "tool_call", id: c.id, name: c.name, input: input ?? { __invalid_json: c.args } });
+    }
+    const stopReason = calls.size && (finish === null || finish === "stop") ? "tool_use" : mapFinish(finish);
+    yield { type: "done", message: { role: "assistant", content }, stopReason, usage };
+  }
+
+  async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    const res = await ensureOk(await fetch(this.url("/models"), { headers: this.headers(), signal }), this.key);
+    const json = (await res.json()) as { data?: { id: string; context_length?: number; owned_by?: string }[] };
+    return (json.data ?? []).map((m) => ({
+      id: m.id,
+      provider: this.key,
+      name: m.id,
+      contextWindow: m.context_length,
+      inputModalities: ["text"],
+      outputModalities: ["text"],
+      toolCall: true,
+      reasoning: false,
+      kinds: guessKinds(m.id),
+      source: "live" as const,
+    }));
+  }
+
+  async generateImage(req: ImageGenRequest): Promise<GeneratedImage[]> {
+    const res = await ensureOk(
+      await fetch(this.url("/images/generations"), {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({ model: req.model, prompt: req.prompt, n: req.n ?? 1, size: req.size ?? "1024x1024" }),
+        signal: req.signal,
+      }),
+      this.key,
+    );
+    const json = (await res.json()) as { data: { b64_json?: string; url?: string; revised_prompt?: string }[] };
+    return Promise.all(
+      json.data.map(async (d) => {
+        if (d.b64_json) return { mediaType: "image/png", data: d.b64_json, revisedPrompt: d.revised_prompt };
+        const img = await ensureOk(await fetch(d.url!, { signal: req.signal }), this.key);
+        const type = img.headers.get("content-type") ?? "image/png";
+        return { mediaType: type, data: Buffer.from(await img.arrayBuffer()).toString("base64"), revisedPrompt: d.revised_prompt };
+      }),
+    );
+  }
+
+  async embed(req: EmbedRequest): Promise<number[][]> {
+    const res = await ensureOk(
+      await fetch(this.url("/embeddings"), {
+        method: "POST",
+        headers: this.headers(),
+        body: JSON.stringify({ model: req.model, input: req.input }),
+        signal: req.signal,
+      }),
+      this.key,
+    );
+    const json = (await res.json()) as { data: { embedding: number[] }[] };
+    return json.data.map((d) => d.embedding);
+  }
+}
+
+// Heuristic model classification from its id, used when a listing has no metadata.
+export function guessKinds(id: string): ModelInfo["kinds"] {
+  const s = id.toLowerCase();
+  if (/embed/.test(s)) return ["embedding"];
+  if (/(dall-e|gpt-image|imagen|flux|stable-diffusion|sdxl|sd3|image-gen)/.test(s)) return ["image-gen"];
+  if (/(tts|speech)/.test(s)) return ["tts"];
+  if (/(whisper|transcribe|stt)/.test(s)) return ["stt"];
+  if (/rerank/.test(s)) return ["rerank"];
+  if (/moderation|guard/.test(s)) return ["moderation"];
+  return ["chat"];
+}

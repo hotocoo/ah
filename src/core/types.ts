@@ -1,0 +1,148 @@
+// Provider-neutral data model. Every provider adapter converts to and from these shapes,
+// so the agent loop, telemetry and benchmarks never depend on a vendor wire format.
+
+export type Role = "user" | "assistant";
+
+export interface TextBlock {
+  type: "text";
+  text: string;
+}
+
+export interface ImageBlock {
+  type: "image";
+  mediaType: string; // e.g. image/png
+  data: string; // base64, no data: prefix
+}
+
+export interface ToolCallBlock {
+  type: "tool_call";
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+  // Opaque provider data that must round-trip (e.g. Gemini thought signatures).
+  signature?: string;
+}
+
+export interface ToolResultBlock {
+  type: "tool_result";
+  toolCallId: string;
+  content: string;
+  isError?: boolean;
+}
+
+export interface ThinkingBlock {
+  type: "thinking";
+  text: string;
+  // Opaque provider data that must be echoed back unchanged (e.g. Anthropic signatures).
+  signature?: string;
+}
+
+export type ContentBlock = TextBlock | ImageBlock | ToolCallBlock | ToolResultBlock | ThinkingBlock;
+
+export interface Message {
+  role: Role;
+  content: ContentBlock[];
+}
+
+export interface JsonSchema {
+  type?: string | string[];
+  properties?: Record<string, JsonSchema>;
+  required?: string[];
+  items?: JsonSchema;
+  enum?: unknown[];
+  description?: string;
+  default?: unknown;
+  additionalProperties?: boolean | JsonSchema;
+  minimum?: number;
+  maximum?: number;
+}
+
+export interface ToolSpec {
+  name: string;
+  description: string;
+  inputSchema: JsonSchema;
+}
+
+export type StopReason = "end_turn" | "tool_use" | "max_tokens" | "refusal" | "error" | "other";
+
+export interface Usage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  reasoningTokens: number;
+}
+
+export const emptyUsage = (): Usage => ({
+  inputTokens: 0,
+  outputTokens: 0,
+  cacheReadTokens: 0,
+  cacheWriteTokens: 0,
+  reasoningTokens: 0,
+});
+
+export const addUsage = (a: Usage, b: Usage): Usage => ({
+  inputTokens: a.inputTokens + b.inputTokens,
+  outputTokens: a.outputTokens + b.outputTokens,
+  cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens,
+  cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens,
+  reasoningTokens: a.reasoningTokens + b.reasoningTokens,
+});
+
+export interface ChatRequest {
+  model: string;
+  system: string;
+  messages: Message[];
+  tools: ToolSpec[];
+  maxTokens: number;
+  temperature?: number;
+  reasoning?: "off" | "low" | "medium" | "high" | "max";
+  signal?: AbortSignal;
+}
+
+// Streamed events emitted by every provider. `done` is always last on success.
+export type StreamEvent =
+  | { type: "text_delta"; text: string }
+  | { type: "thinking_delta"; text: string }
+  | { type: "tool_call_start"; id: string; name: string }
+  | { type: "tool_call_delta"; id: string; partialJson: string }
+  | { type: "done"; message: Message; stopReason: StopReason; usage: Usage };
+
+export interface ChatResult {
+  message: Message;
+  stopReason: StopReason;
+  usage: Usage;
+}
+
+export type Modality = "text" | "image" | "audio" | "video" | "pdf" | "3d" | "embedding";
+
+export interface ModelInfo {
+  id: string; // provider-local id, e.g. claude-opus-5
+  provider: string; // provider key, e.g. anthropic
+  name: string;
+  family?: string;
+  contextWindow?: number;
+  maxOutput?: number;
+  inputModalities: Modality[];
+  outputModalities: Modality[];
+  toolCall: boolean;
+  reasoning: boolean;
+  openWeights?: boolean;
+  // USD per million tokens
+  cost?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
+  kinds: ModelKind[];
+  releaseDate?: string;
+  source: "models.dev" | "live" | "openrouter" | "builtin" | "huggingface";
+}
+
+// Functional category of a model. A model can have several.
+export type ModelKind = "chat" | "embedding" | "image-gen" | "3d-gen" | "tts" | "stt" | "rerank" | "moderation";
+
+export const textOf = (m: Message): string =>
+  m.content
+    .filter((b): b is TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("");
+
+export const toolCallsOf = (m: Message): ToolCallBlock[] =>
+  m.content.filter((b): b is ToolCallBlock => b.type === "tool_call");

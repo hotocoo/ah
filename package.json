@@ -1,0 +1,24 @@
+{
+  "name": "ah",
+  "version": "0.1.0",
+  "description": "ah: a coding-specialised agent harness with multi-provider model discovery, image and 3D generation, full telemetry and a benchmarking suite",
+  "type": "module",
+  "license": "MIT",
+  "bin": { "ah": "./src/cli/main.ts" },
+  "scripts": {
+    "ah": "bun run src/cli/main.ts",
+    "dev": "bun run src/cli/main.ts serve",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "typecheck": "tsc --noEmit",
+    "build": "bun build src/cli/main.ts --compile --outfile dist/ah",
+    "bench:offline": "bun run src/cli/main.ts bench run --model mock/scripted --trials 3"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "typescript": "^7.0.2"
+  }
+}

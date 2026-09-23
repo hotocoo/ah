@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.ah/
+coverage/
+*.sqlite
+*.sqlite-*
+bench-results/
+.DS_Store
+.env
