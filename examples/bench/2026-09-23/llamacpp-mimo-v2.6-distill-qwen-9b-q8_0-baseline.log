@@ -1,0 +1,28 @@
+bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 8 tasks × 3 trials · {"contextSizing":false,"textToolParsing":false,"compactTools":false,"toolProtocol":"native","projectFacts":false,"tolerantEdits":false,"recoveries":false} · /Users/acotech/workspace/ah/examples/bench/2026-09-23/llamacpp-mimo-v2.6-distill-qwen-9b-q8_0-baseline
+  PASS ts-bugfix-pagination #1 41.8s · 11 turns · 13 tools (4 err)
+  PASS ts-bugfix-pagination #2 54.9s · 15 turns · 17 tools (2 err)
+  PASS ts-bugfix-pagination #3 50.7s · 15 turns · 18 tools (6 err)
+  PASS go-feature-stack #1 41.8s · 11 turns · 10 tools (3 err)
+  PASS go-feature-stack #2 51.6s · 9 turns · 9 tools (1 err)
+  PASS go-feature-stack #3 32.5s · 6 turns · 7 tools
+  PASS py-bugfix-duration #1 15.7s · 8 turns · 9 tools (2 err)
+  PASS py-bugfix-duration #2 14.2s · 8 turns · 9 tools (1 err)
+  PASS py-bugfix-duration #3 22.0s · 8 turns · 9 tools (1 err)
+  PASS rust-fix-compile-and-logic #1 63.2s · 13 turns · 17 tools (2 err)
+  PASS rust-fix-compile-and-logic #2 49.6s · 9 turns · 10 tools
+  PASS rust-fix-compile-and-logic #3 45.8s · 8 turns · 9 tools (2 err)
+  PASS ts-debug-cross-file #1 38.2s · 8 turns · 13 tools
+  PASS ts-debug-cross-file #2 36.0s · 7 turns · 12 tools
+  PASS ts-debug-cross-file #3 38.7s · 8 turns · 12 tools (1 err)
+  FAIL ts-feature-lru #1 221.1s · 20 turns · 22 tools (6 err) · max_turns
+  FAIL ts-feature-lru #2 205.6s · 20 turns · 24 tools · max_turns
+  FAIL ts-feature-lru #3 1466.0s · 12 turns · 14 tools (1 err) · timeout
+  PASS ts-multifile-rename #1 25.2s · 7 turns · 15 tools
+  PASS ts-multifile-rename #2 22.9s · 7 turns · 11 tools
+  PASS ts-multifile-rename #3 29.0s · 7 turns · 14 tools (1 err)
+  FAIL ts-write-tests #1 600.0s · 14 turns · 16 tools (5 err) · timeout
+  FAIL ts-write-tests #2 119.3s · 15 turns · 17 tools · max_turns
+  FAIL ts-write-tests #3 600.0s · 4 turns · 4 tools · timeout
+
+result 18/24 trials · pass@1 75% · pass^3 75% · 6/8 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/2026-09-23/llamacpp-mimo-v2.6-distill-qwen-9b-q8_0-baseline/report.md
