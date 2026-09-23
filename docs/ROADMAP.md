@@ -2,7 +2,7 @@
 
 ## Known limitations (honest status)
 
-- **Verified live** on this machine: Ollama (qwen3:0.6b, qwen3:4b), llama.cpp `llama-server` (Qwen3.8 27B Q6_K), ComfyUI image generation (SD 1.5), procedural 3D. **Implemented, tested against fake servers only**: LM Studio, sdapi servers, vLLM/SGLang/mlx_lm (generic OpenAI-compatible path), Anthropic, Gemini, OTLP export to a real collector.
+- **Verified live** on this machine: Ollama (qwen3:0.6b, qwen3:4b, qwen3:14b: agent runs and full benchmark suites), llama.cpp `llama-server` (Qwen3.8 27B Q6_K: interactive fixes and two benchmark trials; the full suite could not complete because the shared server got stuck returning `Compute error.` and needs a restart by its owner), ComfyUI image generation (SD 1.5), procedural 3D designed by a local model. **Implemented, tested against fake servers only**: LM Studio, sdapi servers, vLLM/SGLang/mlx_lm (generic OpenAI-compatible path), Anthropic, Gemini, OTLP export to a real collector.
 - Image-to-3D servers (Hunyuan3D, TRELLIS) are not wired in; 3D is procedural (primitives) only.
 - Token counts before a request are estimated (≈4 chars/token); exact counts come from the runtime afterwards.
 - `ah chat` has no rich TUI (line-based REPL); the web app is the richer interface.

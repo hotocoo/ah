@@ -100,3 +100,15 @@ Order: runtime-fixed context (llama.cpp `n_ctx`, LM Studio loaded context, **Oll
 ## D20. Tool surface follows context and backends
 
 Tools declare `available(ctx)` (media tools need a backend, `git_status` needs a repo) and `optional`. Unavailable tools are never offered; when the window is small relative to prompt + tool definitions (`compactToolsRatio`), optional tools are dropped. Observed motivation: a 0.6B model called `generate_3d` with no backend configured.
+
+## D21. Lessons from live verification
+
+Bugs that only appeared against real local runtimes, each now covered by a test:
+
+- **Bun's implicit 300 s `fetch` timeout** killed long local prefills and requests queued behind other clients (measured: aborts at 300 123 ms). Model streams use `timeout: false`; cancellation is by AbortSignal only.
+- **Errors inside an SSE stream** (`data: {"error": {"code": 500, "message": "Compute error."}}`) were read as an empty answer and counted as a completed run. They are now retryable `ProviderError`s, and an empty reply is always an error.
+- **Chat templates enforce their own parameter values** (`Unexpected reasoning effort high. Supported types are xhigh, medium, and low`); learned per model (D5).
+- **Runtimes spawn internal servers**: Ollama's per-model llama.cpp runner listens on a random port and answers `/props`. Listeners whose parent process is a runtime of a different kind are skipped; same-kind parent/child listeners are merged.
+- **Busy servers answer slowly**: fingerprint probes use a 2.5 s timeout so a llama-server busy with a long prefill is still discovered.
+- **Reasoning models with thinking disabled reason in the content** and never reach the JSON; the 3D designer lets them think in their own channel and constrains the answer with a JSON schema (`responseSchema` → Ollama `format`, OpenAI `response_format`).
+- **Never benchmark two runtimes concurrently on shared unified memory.** Running an Ollama benchmark and ComfyUI next to a 27B llama-server that another client was also driving preceded that server getting stuck in `Compute error.` for every request. Benchmarks are now run one runtime at a time.
