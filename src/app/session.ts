@@ -4,6 +4,7 @@ import { buildSystemPrompt } from "../agent/prompt.ts";
 import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
+import { buildMedia } from "../media/services.ts";
 import { OllamaProvider } from "../providers/ollama.ts";
 import { ProviderRegistry } from "../providers/registry.ts";
 import { resolveContextWindow, type ContextDecision } from "../runtimes/context.ts";
@@ -147,7 +148,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     bashTimeoutMs: env.cfg.bashTimeoutMs,
     todos: [],
     readFiles: new Set<string>(),
-    media: o.media ?? {},
+    media: o.media ?? buildMedia(env.cfg, env.registry, { provider, model, contextWindow: context.window }),
     ...o.toolContextExtras,
   };
   const agent = new Agent({

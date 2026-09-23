@@ -38,6 +38,8 @@ export interface AhConfig {
   compactToolsRatio: number;
   // "auto": native tool calls when the runtime reports tool support, else text protocol.
   toolProtocol: "auto" | "native" | "text";
+  // Image generation defaults for local diffusion backends (ComfyUI, sdapi).
+  image: { width: number; height: number; steps: number; cfg: number; sampler: string; scheduler: string; negative: string };
   hardwareSampling: { enabled: boolean; intervalMs: number };
 }
 
@@ -63,6 +65,7 @@ export const defaultConfig = (): AhConfig => ({
   contextBudgetRatio: 0.8,
   memory: { fraction: 0.75, minContext: 16_384, kvBytesPerElement: 2 },
   compactToolsRatio: 6,
+  image: { width: 1024, height: 1024, steps: 20, cfg: 7, sampler: "euler", scheduler: "normal", negative: "blurry, low quality, watermark, text" },
   toolProtocol: (process.env.AH_TOOL_PROTOCOL as "auto" | "native" | "text" | undefined) ?? "auto",
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
 });
@@ -88,6 +91,7 @@ export function loadConfig(cwd = process.cwd()): AhConfig {
     providers: { ...base.providers, ...user.providers, ...project.providers },
     telemetry: { ...base.telemetry, ...user.telemetry, ...project.telemetry },
     runtimes: { ...base.runtimes, ...user.runtimes, ...project.runtimes },
+    image: { ...base.image, ...user.image, ...project.image },
   };
   mkdirSync(merged.dataDir, { recursive: true });
   return merged;
