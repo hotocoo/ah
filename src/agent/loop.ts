@@ -3,6 +3,7 @@ import { ProviderError, type Provider } from "../providers/provider.ts";
 import { addCost, costOf, type Pricing } from "../telemetry/pricing.ts";
 import type { ToolRegistry, PermissionMode } from "../tools/index.ts";
 import type { ApprovalFn, ToolContext } from "../tools/types.ts";
+import { RepetitionGuard } from "./repetition.ts";
 import { recoverToolCalls, textProtocolInstructions, toTextProtocol } from "./toolcall-parser.ts";
 import { COMPACTION_PROMPT, elideOldToolResults, estimateTokens, renderTranscript, safeCutIndex, stripThinking } from "./context.ts";
 import type { AgentEvent, AgentEventHandler, RunOutcome, RunSummary } from "./events.ts";
@@ -47,6 +48,8 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
   });
 
+class LoopDetected extends Error {}
+
 export const newRunId = () => `run_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 
 // The core agent loop: stream a model turn, execute requested tools, feed results
@@ -70,6 +73,7 @@ export class Agent {
   }
 
   private runCount = 0;
+  private loopRecoveries = 0;
   // Set when the server drops native tool calls; persists for the session.
   private textProtocolFallback = false;
 
@@ -204,6 +208,12 @@ export class Agent {
       this.emit({ type: "model_request", runId: this.runId, turn: this.turn, attempt, t: Date.now() });
       const t0 = performance.now();
       let ttft: number | null = null;
+      // Per-request abort so a looping generation can be cut without ending the run.
+      const req = new AbortController();
+      const onAbort = () => req.abort();
+      this.o.signal?.addEventListener("abort", onAbort);
+      const guard = new RepetitionGuard();
+      let looped = false;
       try {
         const specs = this.o.tools.specs(this.o.mode, this.o.toolContext, this.o.compactTools);
         const textMode = this.o.toolProtocol === "text" || this.textProtocolFallback;
@@ -218,7 +228,7 @@ export class Agent {
           ...this.o.sampling,
           templateKwargs: this.o.templateKwargs,
           contextWindow: this.o.contextWindow,
-          signal: this.o.signal,
+          signal: req.signal,
         });
         let done: Extract<StreamEvent, { type: "done" }> | undefined;
         for await (const ev of stream) {
@@ -229,8 +239,14 @@ export class Agent {
           }
           if (ev.type === "text_delta") this.emit({ type: "text_delta", runId: this.runId, turn: this.turn, text: ev.text });
           else if (ev.type === "thinking_delta") this.emit({ type: "thinking_delta", runId: this.runId, turn: this.turn, text: ev.text });
+          if ((ev.type === "text_delta" || ev.type === "thinking_delta" || ev.type === "tool_call_delta") && guard.push(ev.type === "tool_call_delta" ? ev.partialJson : ev.text)) {
+            looped = true;
+            req.abort();
+            break;
+          }
           else if (ev.type === "done") done = ev;
         }
+        if (looped) throw new LoopDetected();
         if (!done) throw new Error("provider stream ended without a done event");
         // The server said it produced tool calls but delivered none (its tool-call parser
         // failed on this model's format). Switch this session to the text protocol, where
@@ -273,11 +289,24 @@ export class Agent {
         return { message: done.message, stopReason: done.stopReason };
       } catch (err) {
         if (this.o.signal?.aborted) throw new Error("aborted");
+        if (err instanceof LoopDetected || looped) {
+          // Tell the model what happened and let it try the turn again (at most twice).
+          if (this.loopRecoveries++ >= 2) throw new Error("model output kept looping");
+          this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: "repetitive output detected; request cut and retried", delayMs: 0, t: Date.now() });
+          const note = { type: "text" as const, text: "[ah] Your previous reply started repeating itself and was cut off. Do not repeat; take the next concrete step with a tool, or give the final answer." };
+          const last = this.messages.at(-1);
+          // Attach to the pending user turn to keep roles alternating.
+          if (last?.role === "user") this.messages[this.messages.length - 1] = { ...last, content: [...last.content, note] };
+          else this.messages.push({ role: "user", content: [note] });
+          continue;
+        }
         const retryable = err instanceof ProviderError && err.retryable && err.code !== "invalid_tool_json";
         if (!retryable || attempt > maxRetries) throw err;
         const delayMs = Math.min(30_000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
         this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: (err as Error).message.slice(0, 200), delayMs, t: Date.now() });
         await sleep(delayMs, this.o.signal);
+      } finally {
+        this.o.signal?.removeEventListener("abort", onAbort);
       }
     }
   }
