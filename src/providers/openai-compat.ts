@@ -2,6 +2,7 @@ import type { ChatRequest, ContentBlock, Message, ModelInfo, StopReason, StreamE
 import {
   ensureOk,
   parseToolArgs,
+  ProviderError,
   sseData,
   type EmbedRequest,
   type GeneratedImage,
@@ -19,6 +20,10 @@ export interface OpenAICompatOptions {
   headers?: Record<string, string>;
   imageGen?: boolean;
   embeddings?: boolean;
+  // Wire-format divergences between compatible servers.
+  maxTokensParam?: "max_tokens" | "max_completion_tokens";
+  reasoningParam?: "openai" | "openrouter" | "none";
+  streamUsage?: boolean; // send stream_options.include_usage
 }
 
 type OAMessage =
@@ -114,17 +119,18 @@ export class OpenAICompatProvider implements Provider {
       model: req.model,
       messages: toOpenAIMessages(req.system, req.messages),
       stream: true,
-      stream_options: { include_usage: true },
-      max_completion_tokens: req.maxTokens,
+      [this.opts.maxTokensParam ?? "max_tokens"]: req.maxTokens,
     };
+    if (this.opts.streamUsage) body.stream_options = { include_usage: true };
     if (req.tools.length)
       body.tools = req.tools.map((t) => ({
         type: "function",
         function: { name: t.name, description: t.description, parameters: t.inputSchema },
       }));
     if (req.temperature !== undefined) body.temperature = req.temperature;
-    if (req.reasoning && req.reasoning !== "off")
-      body.reasoning_effort = req.reasoning === "max" ? "high" : req.reasoning;
+    const effort = req.reasoning && req.reasoning !== "off" ? (req.reasoning === "max" ? "high" : req.reasoning) : undefined;
+    if (effort && this.opts.reasoningParam === "openai") body.reasoning_effort = effort;
+    if (effort && this.opts.reasoningParam === "openrouter") body.reasoning = { effort };
     return body;
   }
 
@@ -180,7 +186,9 @@ export class OpenAICompatProvider implements Provider {
     const content: ContentBlock[] = text ? [{ type: "text", text }] : [];
     for (const c of calls.values()) {
       const input = parseToolArgs(c.args);
-      content.push({ type: "tool_call", id: c.id, name: c.name, input: input ?? { __invalid_json: c.args } });
+      if (!input)
+        throw new ProviderError(`${this.key}: tool ${c.name} arguments are not valid JSON`, this.key, undefined, true, "invalid_tool_json");
+      content.push({ type: "tool_call", id: c.id, name: c.name, input });
     }
     const stopReason = calls.size && (finish === null || finish === "stop") ? "tool_use" : mapFinish(finish);
     yield { type: "done", message: { role: "assistant", content }, stopReason, usage };

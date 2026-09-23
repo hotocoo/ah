@@ -124,7 +124,9 @@ export class AnthropicProvider implements Provider {
     if (LEGACY_THINKING.test(req.model)) {
       if (effort) {
         const budget = { low: 2048, medium: 8192, high: 16384, max: 32000 }[effort];
-        params.thinking = { type: "enabled", budget_tokens: Math.min(budget, req.maxTokens - 1024) };
+        // budget_tokens must be >= 1024 and < max_tokens.
+        if (req.maxTokens > 2048)
+          params.thinking = { type: "enabled", budget_tokens: Math.max(1024, Math.min(budget, req.maxTokens - 1024)) };
       }
       if (req.temperature !== undefined && !effort) params.temperature = req.temperature;
     } else {
@@ -175,11 +177,15 @@ export class AnthropicProvider implements Provider {
         usage,
       };
     } catch (err) {
+      if (req.signal?.aborted) throw err;
       if (err instanceof Anthropic.APIError) {
         const status = typeof err.status === "number" ? err.status : undefined;
         const retryable = err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError || err instanceof Anthropic.APIConnectionError;
         throw new ProviderError(`anthropic: ${err.message}`, this.key, status, retryable);
       }
+      // The SDK raises a bare AnthropicError when eager-streamed tool JSON cannot be parsed.
+      if (err instanceof Anthropic.AnthropicError && /parse tool parameter JSON/.test(err.message))
+        throw new ProviderError(`anthropic: ${err.message}`, this.key, undefined, true, "invalid_tool_json");
       throw err;
     }
   }
@@ -200,7 +206,7 @@ export class AnthropicProvider implements Provider {
         inputModalities: input,
         outputModalities: ["text"],
         toolCall: true,
-        reasoning: Boolean(caps?.thinking),
+        reasoning: Boolean(caps?.thinking?.supported),
         kinds: ["chat"],
         releaseDate: m.created_at?.slice(0, 10),
         source: "live",

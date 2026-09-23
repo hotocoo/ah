@@ -110,7 +110,7 @@ export class MockProvider implements Provider {
     const message: Message = { role: "assistant", content };
     const usage: Usage = {
       ...emptyUsage(),
-      inputTokens: estimateTokens("x".repeat(requestChars(req))),
+      inputTokens: Math.ceil(requestChars(req) / 4),
       outputTokens: estimateTokens(JSON.stringify(content)),
     };
     const stopReason = turn.stopReason ?? (turn.toolCalls?.length ? "tool_use" : "end_turn");

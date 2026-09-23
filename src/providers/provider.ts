@@ -47,6 +47,7 @@ export class ProviderError extends Error {
     readonly provider: string,
     readonly status?: number,
     readonly retryable = false,
+    readonly code?: "invalid_tool_json" | "context_overflow",
   ) {
     super(message);
     this.name = "ProviderError";

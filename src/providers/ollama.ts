@@ -72,7 +72,9 @@ export class OllamaProvider implements Provider {
         type: "function",
         function: { name: t.name, description: t.description, parameters: t.inputSchema },
       }));
-    if (req.reasoning) body.think = req.reasoning !== "off";
+    // Only thinking-capable models accept `think`; others return HTTP 400.
+    if (req.reasoning && (await this.capabilitiesOf(req.model, req.signal)).includes("thinking"))
+      body.think = req.reasoning !== "off";
     const res = await ensureOk(
       await fetch(this.url("/api/chat"), { method: "POST", body: JSON.stringify(body), signal: req.signal }),
       this.key,
@@ -118,7 +120,7 @@ export class OllamaProvider implements Provider {
     const json = (await res.json()) as { models?: { name: string; details?: { family?: string } }[] };
     return Promise.all(
       (json.models ?? []).map(async (m) => {
-        const caps = await this.showCapabilities(m.name, signal);
+        const caps = await this.capabilitiesOf(m.name, signal);
         const input: Modality[] = caps.includes("vision") ? ["text", "image"] : ["text"];
         const embedding = caps.includes("embedding");
         return {
@@ -138,6 +140,17 @@ export class OllamaProvider implements Provider {
         } satisfies ModelInfo;
       }),
     );
+  }
+
+  private capsCache = new Map<string, Promise<string[] & { context?: number }>>();
+
+  private capabilitiesOf(model: string, signal?: AbortSignal): Promise<string[] & { context?: number }> {
+    let p = this.capsCache.get(model);
+    if (!p) {
+      p = this.showCapabilities(model, signal);
+      this.capsCache.set(model, p);
+    }
+    return p;
   }
 
   private async showCapabilities(model: string, signal?: AbortSignal): Promise<string[] & { context?: number }> {
