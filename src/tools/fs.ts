@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
-import { confine, num, rel, str, ToolError, type Tool } from "./types.ts";
+import { confine, num, rel, str, ToolError, truncate, type Tool } from "./types.ts";
 
 const IMAGE_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -11,6 +11,7 @@ const IMAGE_TYPES: Record<string, string> = {
 };
 const MAX_READ_LINES = 2000;
 const MAX_LINE_CHARS = 2000;
+const MAX_READ_CHARS = 100_000;
 export const IGNORED_DIRS = new Set([".git", "node_modules", "dist", "build", ".next", "target", "__pycache__", ".venv", "venv", ".ah", "coverage"]);
 
 const isBinary = (buf: Buffer) => buf.subarray(0, 8000).includes(0);
@@ -49,7 +50,7 @@ export const readFileTool: Tool = {
       .map((l, i) => `${offset + i}\t${l.length > MAX_LINE_CHARS ? `${l.slice(0, MAX_LINE_CHARS)}…` : l}`)
       .join("\n");
     const more = offset - 1 + slice.length < lines.length ? `\n[showing lines ${offset}-${offset + slice.length - 1} of ${lines.length}]` : "";
-    return { content: (body || "[empty file]") + more };
+    return { content: truncate(body || "[empty file]", MAX_READ_CHARS) + more };
   },
 };
 

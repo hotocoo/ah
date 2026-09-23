@@ -4,7 +4,7 @@ import type { StopReason, Usage } from "../core/types.ts";
 // monotonic offsets are measured with performance.now() inside the loop, so
 // telemetry, the CLI renderer and the web UI all consume the same stream.
 export type AgentEvent =
-  | { type: "run_start"; runId: string; model: string; provider: string; prompt: string; t: number }
+  | { type: "run_start"; runId: string; sessionId: string; model: string; provider: string; prompt: string; t: number }
   | { type: "turn_start"; runId: string; turn: number; contextTokens: number; t: number }
   | { type: "model_request"; runId: string; turn: number; attempt: number; t: number }
   | { type: "first_token"; runId: string; turn: number; ttftMs: number; t: number }

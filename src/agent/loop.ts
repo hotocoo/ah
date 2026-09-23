@@ -19,6 +19,7 @@ export interface AgentOptions {
   reasoning?: "off" | "low" | "medium" | "high" | "max";
   temperature?: number;
   contextWindow?: number;
+  maxOutputTokens?: number; // model's hard output cap, from the models registry
   contextBudgetRatio?: number;
   pricing?: Pricing;
   budgetUsd?: number;
@@ -43,7 +44,8 @@ export const newRunId = () => `run_${Date.now().toString(36)}_${Math.random().to
 // back, repeat until the model ends its turn, a limit is hit, or the run is aborted.
 // History is append-only except during compaction.
 export class Agent {
-  readonly runId: string;
+  readonly sessionId: string;
+  runId: string;
   messages: Message[] = [];
   private usage: Usage = emptyUsage();
   private cost: number | null = null;
@@ -55,7 +57,10 @@ export class Agent {
 
   constructor(private o: AgentOptions) {
     this.runId = o.runId ?? newRunId();
+    this.sessionId = this.runId.replace(/^run_/, "ses_");
   }
+
+  private runCount = 0;
 
   private emit(e: AgentEvent) {
     this.o.onEvent?.(e);
@@ -64,9 +69,17 @@ export class Agent {
   // Runs one user request to completion. Can be called repeatedly for multi-turn chat.
   async run(prompt: string | ContentBlock[]): Promise<RunSummary> {
     const start = performance.now();
+    // Each call is its own run (own id and counters); the session keeps the history.
+    if (this.runCount++ > 0) this.runId = newRunId();
+    this.usage = emptyUsage();
+    this.cost = null;
+    this.toolCalls = 0;
+    this.toolErrors = 0;
+    this.firstTtft = null;
+    this.changed = new Set();
     const content: ContentBlock[] = typeof prompt === "string" ? [{ type: "text", text: prompt }] : prompt;
     this.messages.push({ role: "user", content });
-    this.emit({ type: "run_start", runId: this.runId, model: this.o.model, provider: this.o.provider.key, prompt: textOf({ role: "user", content }), t: Date.now() });
+    this.emit({ type: "run_start", runId: this.runId, sessionId: this.sessionId, model: this.o.model, provider: this.o.provider.key, prompt: textOf({ role: "user", content }), t: Date.now() });
     const startTurn = this.turn;
     let outcome: RunOutcome = "completed";
     let error: string | undefined;
@@ -74,6 +87,7 @@ export class Agent {
     let maxTokens = this.o.maxTokens;
     let jsonRetries = 0;
     let truncationRetries = 0;
+    let overflowRetried = false;
 
     try {
       while (true) {
@@ -86,7 +100,7 @@ export class Agent {
           outcome = "budget";
           break;
         }
-        await this.maybeCompact();
+        await this.maybeCompact(false);
         this.turn++;
         this.emit({ type: "turn_start", runId: this.runId, turn: this.turn, contextTokens: estimateTokens(this.messages, this.o.system), t: Date.now() });
 
@@ -95,6 +109,13 @@ export class Agent {
           res = await this.callModel(maxTokens);
           jsonRetries = 0;
         } catch (err) {
+          // The real context limit was hit: force summarisation and retry the turn once.
+          if (err instanceof ProviderError && err.code === "context_overflow" && !overflowRetried) {
+            overflowRetried = true;
+            this.turn--;
+            await this.maybeCompact(true);
+            continue;
+          }
           if (err instanceof ProviderError && err.code === "invalid_tool_json" && jsonRetries++ < 2) {
             this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: jsonRetries, reason: "invalid tool JSON", delayMs: 0, t: Date.now() });
             this.turn--;
@@ -112,8 +133,8 @@ export class Agent {
         // A tool input cut off at max_tokens can parse as a valid partial object:
         // never run it. Retry the turn once with a doubled output budget.
         if (res.stopReason === "max_tokens" && calls.length) {
-          if (truncationRetries++ < 1) {
-            maxTokens = maxTokens * 2;
+          if (truncationRetries++ < 1 && maxTokens < (this.o.maxOutputTokens ?? Number.POSITIVE_INFINITY)) {
+            maxTokens = Math.min(maxTokens * 2, this.o.maxOutputTokens ?? maxTokens * 2);
             this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: truncationRetries, reason: "tool input truncated at max_tokens", delayMs: 0, t: Date.now() });
             this.turn--;
             continue;
@@ -255,20 +276,20 @@ export class Agent {
   }
 
   // Keeps the context under budget: first elide old tool output, then summarise.
-  private async maybeCompact() {
+  private async maybeCompact(force: boolean) {
     const window = this.o.contextWindow;
-    if (!window) return;
-    const budget = window * (this.o.contextBudgetRatio ?? 0.8);
+    if (!window && !force) return;
+    const budget = (window ?? 0) * (this.o.contextBudgetRatio ?? 0.8);
     const before = estimateTokens(this.messages, this.o.system);
-    if (before <= budget) return;
+    if (!force && before <= budget) return;
     const elided = elideOldToolResults(this.messages);
     const afterElide = estimateTokens(elided, this.o.system);
-    if (afterElide <= budget * 0.9) {
+    if (!force && afterElide <= budget * 0.9) {
       this.messages = stripThinking(elided);
       this.emit({ type: "compaction", runId: this.runId, turn: this.turn, beforeTokens: before, afterTokens: afterElide, strategy: "elide", t: Date.now() });
       return;
     }
-    const cut = safeCutIndex(this.messages, 6);
+    const cut = safeCutIndex(this.messages, force ? 2 : 6);
     if (cut <= 0) return;
     const head = this.messages.slice(0, cut);
     const tail = this.messages.slice(cut);

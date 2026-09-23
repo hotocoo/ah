@@ -119,6 +119,8 @@ export class AnthropicProvider implements Provider {
       messages: toAnthropicMessages(req.messages),
       tools,
       stream: true,
+      // Auto-caching: marks the longest stable prefix (system + tools + history) for reuse.
+      cache_control: { type: "ephemeral" },
     };
     const effort = req.reasoning && req.reasoning !== "off" ? req.reasoning : undefined;
     if (LEGACY_THINKING.test(req.model)) {
@@ -182,7 +184,8 @@ export class AnthropicProvider implements Provider {
       if (err instanceof Anthropic.APIError) {
         const status = typeof err.status === "number" ? err.status : undefined;
         const retryable = err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError || err instanceof Anthropic.APIConnectionError;
-        throw new ProviderError(`anthropic: ${err.message}`, this.key, status, retryable);
+        const overflow = status === 400 && /prompt is too long|context window|too many tokens/i.test(err.message);
+        throw new ProviderError(`anthropic: ${err.message}`, this.key, status, retryable, overflow ? "context_overflow" : undefined);
       }
       // The SDK raises a bare AnthropicError when eager-streamed tool JSON cannot be parsed.
       if (err instanceof Anthropic.AnthropicError && /parse tool parameter JSON/.test(err.message))

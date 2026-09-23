@@ -69,15 +69,20 @@ export async function collect(
 export const isRetryableStatus = (status: number): boolean =>
   status === 408 || status === 409 || status === 429 || status >= 500;
 
+// Error-body patterns that mean the request exceeded the model's context window.
+export const CONTEXT_OVERFLOW = /context[_ ]length|maximum context|context window|too many tokens|prompt is too long|exceeds the (maximum|context)|input token count/i;
+
 // Throws a ProviderError for non-2xx responses, keeping the body for diagnosis.
 export async function ensureOk(res: Response, provider: string): Promise<Response> {
   if (res.ok) return res;
   const body = await res.text().catch(() => "");
+  const overflow = res.status === 400 && CONTEXT_OVERFLOW.test(body);
   throw new ProviderError(
     `${provider} HTTP ${res.status}: ${body.slice(0, 500)}`,
     provider,
     res.status,
     isRetryableStatus(res.status),
+    overflow ? "context_overflow" : undefined,
   );
 }
 
