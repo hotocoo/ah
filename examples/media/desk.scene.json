@@ -2,57 +2,249 @@
   "objects": [
     {
       "shape": "box",
-      "name": "desk",
       "size": [
-        0.4,
-        0.2,
-        0.2
+        1.4,
+        0.06,
+        0.65
       ],
       "position": [
         0,
-        0,
+        0.75,
         0
       ],
-      "color": "#d2b48c"
-    },
-    {
-      "shape": "cylinder",
-      "name": "lamp_base",
-      "radius": 0.02,
-      "height": 0.05,
-      "position": [
-        0.2,
-        0.225,
-        0
-      ],
-      "color": "#404040"
-    },
-    {
-      "shape": "sphere",
-      "name": "lamp_bulb",
-      "radius": 0.01,
-      "position": [
-        0.2,
-        0.25,
-        0
-      ],
-      "color": "#ffffff"
+      "color": "#A06A3C"
     },
     {
       "shape": "box",
-      "name": "monitor",
       "size": [
-        0.4,
-        0.2,
+        0.075,
+        0.73,
+        0.075
+      ],
+      "position": [
+        -0.62,
+        0.365,
+        -0.27
+      ],
+      "color": "#7A5230"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.075,
+        0.73,
+        0.075
+      ],
+      "position": [
+        0.62,
+        0.365,
+        -0.27
+      ],
+      "color": "#7A5230"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.075,
+        0.73,
+        0.075
+      ],
+      "position": [
+        -0.62,
+        0.365,
+        0.27
+      ],
+      "color": "#7A5230"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.075,
+        0.73,
+        0.075
+      ],
+      "position": [
+        0.62,
+        0.365,
+        0.27
+      ],
+      "color": "#7A5230"
+    },
+    {
+      "shape": "box",
+      "size": [
+        1.2,
+        0.05,
         0.05
       ],
       "position": [
-        0.2,
-        0.2,
-        0.1
+        0,
+        0.3,
+        -0.27
       ],
-      "color": "#2e2e2e"
+      "color": "#7A5230"
+    },
+    {
+      "shape": "box",
+      "size": [
+        1.2,
+        0.05,
+        0.05
+      ],
+      "position": [
+        0,
+        0.3,
+        0.27
+      ],
+      "color": "#7A5230"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.28,
+        0.02,
+        0.22
+      ],
+      "position": [
+        0.15,
+        0.77,
+        0.05
+      ],
+      "color": "#3A3F47"
+    },
+    {
+      "shape": "cylinder",
+      "radius": 0.025,
+      "height": 0.28,
+      "position": [
+        0.15,
+        0.91,
+        0.05
+      ],
+      "color": "#3A3F47"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.18,
+        0.03,
+        0.12
+      ],
+      "position": [
+        0.15,
+        1.06,
+        0.05
+      ],
+      "color": "#3A3F47"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.55,
+        0.36,
+        0.045
+      ],
+      "position": [
+        0.15,
+        1.25,
+        0.05
+      ],
+      "color": "#2B2F36"
+    },
+    {
+      "shape": "box",
+      "size": [
+        0.49,
+        0.29,
+        0.012
+      ],
+      "position": [
+        0.15,
+        1.25,
+        0.076
+      ],
+      "color": "#0F1418"
+    },
+    {
+      "shape": "cylinder",
+      "radius": 0.075,
+      "height": 0.018,
+      "position": [
+        -0.45,
+        0.775,
+        -0.1
+      ],
+      "color": "#1A1A1A"
+    },
+    {
+      "shape": "cylinder",
+      "radius": 0.014,
+      "height": 0.28,
+      "position": [
+        -0.45,
+        0.925,
+        -0.1
+      ],
+      "color": "#1A1A1A"
+    },
+    {
+      "shape": "cylinder",
+      "radius": 0.014,
+      "height": 0.33,
+      "position": [
+        -0.45,
+        1.05,
+        -0.1
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "color": "#1A1A1A"
+    },
+    {
+      "shape": "cylinder",
+      "radius": 0.014,
+      "height": 0.33,
+      "position": [
+        -0.12,
+        1.05,
+        -0.1
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "color": "#1A1A1A"
+    },
+    {
+      "shape": "cone",
+      "radius": 0.095,
+      "height": 0.13,
+      "position": [
+        -0.12,
+        0.955,
+        -0.1
+      ],
+      "rotation": [
+        180,
+        0,
+        0
+      ],
+      "color": "#1A1A1A"
+    },
+    {
+      "shape": "cylinder",
+      "radius": 0.06,
+      "height": 0.006,
+      "position": [
+        -0.12,
+        0.895,
+        -0.1
+      ],
+      "color": "#FFD98A"
     }
-  ],
-  "name": "desk_with_lamp_and_monitor"
+  ]
 }
