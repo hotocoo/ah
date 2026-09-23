@@ -48,7 +48,7 @@ describe("catalog parsing", () => {
     expect(opus).toMatchObject({ provider: "anthropic", contextWindow: 1_000_000, maxOutput: 128_000, toolCall: true, kinds: ["chat"] });
     expect(opus.cost).toEqual({ input: 5, output: 25, cacheRead: 0.5, cacheWrite: undefined });
     expect(opus.inputModalities).toContain("pdf");
-    expect(ms.find((m) => m.id === "flux-pro")).toMatchObject({ provider: "together", kinds: ["image-gen"] });
+    expect(ms.find((m) => m.id === "flux-pro")).toMatchObject({ provider: "togetherai", kinds: ["image-gen"] });
     expect(ms.find((m) => m.id === "m2-bert-embed")!.kinds).toEqual(["embedding"]);
   });
 
@@ -76,7 +76,7 @@ describe("catalog parsing", () => {
     expect(searchModels(ms, { text: "opus", provider: "openrouter" })).toHaveLength(1);
     expect(searchModels(ms, { input: "pdf" })).toHaveLength(1);
     expect(searchModels(ms, { minContext: 500_000, sort: "cost" })[0]!.cost!.input).toBeCloseTo(5);
-    expect(searchModels(ms, { onlyConfigured: true }, new Set(["together"]))).toHaveLength(2);
+    expect(searchModels(ms, { onlyConfigured: true }, new Set(["togetherai"]))).toHaveLength(2);
   });
 });
 
@@ -98,7 +98,7 @@ describe("ModelCatalog", () => {
     // offline reload uses cache without fetching
     const offline = new ModelCatalog({ store, offline: true, fetchImpl: (() => { throw new Error("no net"); }) as unknown as typeof fetch });
     await offline.load();
-    expect(offline.lookup("together/flux-pro")).toBeDefined();
+    expect(offline.lookup("togetherai/flux-pro")).toBeDefined();
   });
 
   test("records errors when the network fails", async () => {

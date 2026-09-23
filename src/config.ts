@@ -3,18 +3,25 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 export interface ProviderConfig {
-  kind: "anthropic" | "openai-compatible" | "gemini" | "ollama" | "mock" | "fal" | "stability" | "replicate" | "meshy" | "tripo";
+  kind: "anthropic" | "openai-compatible" | "llamacpp" | "lmstudio" | "gemini" | "ollama" | "mock";
   baseURL?: string;
   apiKey?: string;
   apiKeyEnv?: string;
   headers?: Record<string, string>;
   enabled?: boolean;
+  imageGen?: boolean;
+  serverFallbacks?: boolean;
 }
 
 export interface AhConfig {
-  defaultModel: string;
-  imageModel: string;
-  model3d: string;
+  // All optional: when unset, ah picks from what it discovers at runtime.
+  defaultModel?: string;
+  imageModel?: string;
+  model3d?: string;
+  // Extra runtime endpoints to probe (e.g. a remote Ollama); local ports are scanned automatically.
+  runtimes: { endpoints: string[]; scan: boolean };
+  // Desired context window for local models; capped by the model's trained maximum.
+  contextWindow?: number;
   maxTokens: number;
   maxTurns: number;
   reasoning: "off" | "low" | "medium" | "high" | "max";
@@ -29,9 +36,11 @@ export interface AhConfig {
 export const AH_HOME = process.env.AH_HOME ?? join(homedir(), ".ah");
 
 export const defaultConfig = (): AhConfig => ({
-  defaultModel: process.env.AH_MODEL ?? "anthropic/claude-opus-5",
-  imageModel: process.env.AH_IMAGE_MODEL ?? "openai/gpt-image-1",
-  model3d: process.env.AH_3D_MODEL ?? "procedural/scene",
+  defaultModel: process.env.AH_MODEL,
+  imageModel: process.env.AH_IMAGE_MODEL,
+  model3d: process.env.AH_3D_MODEL,
+  runtimes: { endpoints: [], scan: process.env.AH_SCAN !== "0" },
+  contextWindow: process.env.AH_CONTEXT ? Number(process.env.AH_CONTEXT) : undefined,
   maxTokens: 32_000,
   maxTurns: 60,
   reasoning: "high",
@@ -66,6 +75,7 @@ export function loadConfig(cwd = process.cwd()): AhConfig {
     ...project,
     providers: { ...base.providers, ...user.providers, ...project.providers },
     telemetry: { ...base.telemetry, ...user.telemetry, ...project.telemetry },
+    runtimes: { ...base.runtimes, ...user.runtimes, ...project.runtimes },
   };
   mkdirSync(merged.dataDir, { recursive: true });
   return merged;

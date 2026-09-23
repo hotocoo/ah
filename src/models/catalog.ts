@@ -1,22 +1,10 @@
 import type { Modality, ModelInfo, ModelKind } from "../core/types.ts";
-import { guessKinds } from "../providers/openai-compat.ts";
 import type { ProviderRegistry } from "../providers/registry.ts";
 import type { TelemetryStore } from "../telemetry/store.ts";
 
 const DAY = 86_400_000;
 const MODELS_DEV_URL = "https://models.dev/api.json";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/models";
-
-// models.dev provider ids that differ from ah provider keys.
-const MODELS_DEV_ALIASES: Record<string, string> = {
-  togetherai: "together",
-  "fireworks-ai": "fireworks",
-  "google-vertex": "vertex",
-  zhipuai: "zai",
-  moonshotai: "moonshot",
-  huggingface: "huggingface",
-  lmstudio: "lmstudio",
-};
 
 const MODALITIES = new Set<Modality>(["text", "image", "audio", "video", "pdf", "3d", "embedding"]);
 const asModalities = (xs: unknown): Modality[] =>
@@ -35,19 +23,21 @@ interface ModelsDevModel {
   cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
 }
 
-function kindsFor(id: string, output: Modality[]): ModelKind[] {
-  if (output.includes("image") && !output.includes("text")) return ["image-gen"];
-  if (output.includes("embedding")) return ["embedding"];
-  if (output.includes("audio") && !output.includes("text")) return ["tts"];
-  const k = guessKinds(id);
-  if (output.includes("image") && !k.includes("image-gen")) return [...k, "image-gen"];
-  return k;
+// Model kinds derived purely from declared output modalities.
+export function kindsFor(output: Modality[]): ModelKind[] {
+  const kinds: ModelKind[] = [];
+  if (output.includes("text")) kinds.push("chat");
+  if (output.includes("image")) kinds.push("image-gen");
+  if (output.includes("3d")) kinds.push("3d-gen");
+  if (output.includes("embedding")) kinds.push("embedding");
+  if (output.includes("audio") && !output.includes("text")) kinds.push("tts");
+  return kinds.length ? kinds : ["chat"];
 }
 
 export function parseModelsDev(json: Record<string, { id: string; models?: Record<string, ModelsDevModel> }>): ModelInfo[] {
   const out: ModelInfo[] = [];
   for (const [pid, p] of Object.entries(json)) {
-    const provider = MODELS_DEV_ALIASES[pid] ?? pid;
+    const provider = pid;
     for (const m of Object.values(p.models ?? {})) {
       const output = asModalities(m.modalities?.output);
       out.push({
@@ -63,7 +53,7 @@ export function parseModelsDev(json: Record<string, { id: string; models?: Recor
         reasoning: Boolean(m.reasoning),
         openWeights: m.open_weights,
         cost: m.cost ? { input: m.cost.input, output: m.cost.output, cacheRead: m.cost.cache_read, cacheWrite: m.cost.cache_write } : undefined,
-        kinds: kindsFor(m.id, output),
+        kinds: kindsFor(output),
         releaseDate: m.release_date,
         source: "models.dev",
       });
@@ -105,7 +95,7 @@ export function parseOpenRouter(json: { data?: OpenRouterModel[] }): ModelInfo[]
         cacheRead: perMillion(m.pricing?.input_cache_read),
         cacheWrite: perMillion(m.pricing?.input_cache_write),
       },
-      kinds: kindsFor(m.id, output),
+      kinds: kindsFor(output),
       releaseDate: m.created ? new Date(m.created * 1000).toISOString().slice(0, 10) : undefined,
       source: "openrouter",
     } satisfies ModelInfo;

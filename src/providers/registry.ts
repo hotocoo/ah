@@ -1,63 +1,55 @@
 import type { AhConfig, ProviderConfig } from "../config.ts";
+import type { RuntimeInfo } from "../runtimes/discover.ts";
+import type { TelemetryStore } from "../telemetry/store.ts";
 import { AnthropicProvider } from "./anthropic.ts";
 import { GeminiProvider } from "./gemini.ts";
 import { MockProvider } from "./mock.ts";
 import { OllamaProvider } from "./ollama.ts";
-import { OpenAICompatProvider } from "./openai-compat.ts";
+import { OpenAICompatProvider, type WireFormat } from "./openai-compat.ts";
 import type { Provider } from "./provider.ts";
 
-// Built-in provider presets. Each is enabled when its API key env var is set
-// (or, for local servers, always registered and probed lazily).
-type Preset = ProviderConfig & {
-  local?: boolean;
-  imageGen?: boolean;
-  maxTokensParam?: "max_tokens" | "max_completion_tokens";
-  reasoningParam?: "openai" | "openrouter" | "none";
-  streamUsage?: boolean;
-};
+// Providers come from four sources, none of them a built-in vendor list:
+// 1. runtimes discovered on this machine (src/runtimes/discover.ts),
+// 2. cloud providers described by the models.dev catalog whose API-key env var is set,
+// 3. explicit entries in the user's config,
+// 4. the deterministic mock provider (tests and offline benchmarks).
 
-export const PRESETS: Record<string, Preset> = {
-  anthropic: { kind: "anthropic", apiKeyEnv: "ANTHROPIC_API_KEY" },
-  openai: { kind: "openai-compatible", baseURL: "https://api.openai.com/v1", apiKeyEnv: "OPENAI_API_KEY", imageGen: true, maxTokensParam: "max_completion_tokens", reasoningParam: "openai", streamUsage: true },
-  google: { kind: "gemini", apiKeyEnv: "GEMINI_API_KEY" },
-  openrouter: { kind: "openai-compatible", baseURL: "https://openrouter.ai/api/v1", apiKeyEnv: "OPENROUTER_API_KEY", reasoningParam: "openrouter", streamUsage: true },
-  groq: { kind: "openai-compatible", baseURL: "https://api.groq.com/openai/v1", apiKeyEnv: "GROQ_API_KEY", streamUsage: true },
-  together: { kind: "openai-compatible", baseURL: "https://api.together.xyz/v1", apiKeyEnv: "TOGETHER_API_KEY", imageGen: true, streamUsage: true },
-  deepseek: { kind: "openai-compatible", baseURL: "https://api.deepseek.com/v1", apiKeyEnv: "DEEPSEEK_API_KEY", streamUsage: true },
-  xai: { kind: "openai-compatible", baseURL: "https://api.x.ai/v1", apiKeyEnv: "XAI_API_KEY", imageGen: true, streamUsage: true },
-  mistral: { kind: "openai-compatible", baseURL: "https://api.mistral.ai/v1", apiKeyEnv: "MISTRAL_API_KEY" },
-  fireworks: { kind: "openai-compatible", baseURL: "https://api.fireworks.ai/inference/v1", apiKeyEnv: "FIREWORKS_API_KEY", streamUsage: true },
-  cerebras: { kind: "openai-compatible", baseURL: "https://api.cerebras.ai/v1", apiKeyEnv: "CEREBRAS_API_KEY", streamUsage: true },
-  perplexity: { kind: "openai-compatible", baseURL: "https://api.perplexity.ai", apiKeyEnv: "PERPLEXITY_API_KEY" },
-  nvidia: { kind: "openai-compatible", baseURL: "https://integrate.api.nvidia.com/v1", apiKeyEnv: "NVIDIA_API_KEY", streamUsage: true },
-  huggingface: { kind: "openai-compatible", baseURL: "https://router.huggingface.co/v1", apiKeyEnv: "HF_TOKEN", streamUsage: true },
-  moonshot: { kind: "openai-compatible", baseURL: "https://api.moonshot.ai/v1", apiKeyEnv: "MOONSHOT_API_KEY", streamUsage: true },
-  zai: { kind: "openai-compatible", baseURL: "https://api.z.ai/api/paas/v4", apiKeyEnv: "ZAI_API_KEY", streamUsage: true },
-  ollama: { kind: "ollama", baseURL: process.env.OLLAMA_HOST ?? "http://localhost:11434", local: true },
-  lmstudio: { kind: "openai-compatible", baseURL: "http://localhost:1234/v1", local: true },
-  vllm: { kind: "openai-compatible", baseURL: process.env.VLLM_BASE_URL ?? "http://localhost:8000/v1", local: true, streamUsage: true },
-  llamacpp: { kind: "openai-compatible", baseURL: "http://localhost:8080/v1", local: true },
-  mock: { kind: "mock", local: true },
-};
+const resolveKey = (c: ProviderConfig): string | undefined => c.apiKey ?? (c.apiKeyEnv ? process.env[c.apiKeyEnv] : undefined);
 
-const resolveKey = (c: ProviderConfig): string | undefined =>
-  c.apiKey ?? (c.apiKeyEnv ? process.env[c.apiKeyEnv] : undefined);
+interface ProviderContext {
+  store?: TelemetryStore | null;
+}
 
-export function createProvider(key: string, c: Preset): Provider | null {
+function wireFor(key: string, ctx: ProviderContext) {
+  const saved = ctx.store?.cacheGet(`wire:${key}`, Number.POSITIVE_INFINITY);
+  return {
+    wire: saved ? (JSON.parse(saved) as WireFormat) : undefined,
+    onWireChange: (w: WireFormat) => ctx.store?.cacheSet(`wire:${key}`, JSON.stringify(w)),
+  };
+}
+
+export function createProvider(key: string, c: ProviderConfig, ctx: ProviderContext = {}, meta?: RuntimeInfo["meta"]): Provider | null {
   const apiKey = resolveKey(c);
   switch (c.kind) {
     case "anthropic":
-      return new AnthropicProvider(key, { apiKey, baseURL: c.baseURL });
+      return new AnthropicProvider(key, { apiKey, baseURL: c.baseURL, serverFallbacks: c.serverFallbacks });
     case "openai-compatible":
+    case "llamacpp":
+    case "lmstudio": {
+      if (!c.baseURL) return null;
+      const base = /\/v\d+\/?$/.test(c.baseURL) ? c.baseURL : `${c.baseURL.replace(/\/$/, "")}/v1`;
+      const modalities = meta?.modalities as { vision?: boolean } | undefined;
       return new OpenAICompatProvider(key, {
-        baseURL: c.baseURL!,
+        baseURL: base,
         apiKey,
         headers: c.headers,
         imageGen: c.imageGen,
-        maxTokensParam: c.maxTokensParam,
-        reasoningParam: c.reasoningParam,
-        streamUsage: c.streamUsage,
+        ...wireFor(key, ctx),
+        modelMeta: meta
+          ? { contextWindow: typeof meta.nCtx === "number" ? meta.nCtx : undefined, toolCall: meta.hasToolTemplate as boolean | undefined, vision: modalities?.vision }
+          : undefined,
       });
+    }
     case "gemini":
       return new GeminiProvider(key, apiKey ?? "", c.baseURL);
     case "ollama":
@@ -65,23 +57,84 @@ export function createProvider(key: string, c: Preset): Provider | null {
     case "mock":
       return new MockProvider();
     default:
-      return null; // media-only backends live in src/media
+      return null;
   }
+}
+
+// models.dev `npm` package -> ah adapter. Unknown SDK packages are OpenAI-compatible when
+// the provider publishes an API base URL, otherwise unsupported.
+export function adapterForNpm(npm: string | undefined, api: string | undefined): ProviderConfig["kind"] | null {
+  if (!npm) return api ? "openai-compatible" : null;
+  if (npm.includes("anthropic")) return "anthropic";
+  if (/@ai-sdk\/google$/.test(npm)) return "gemini";
+  if (/bedrock|vertex|azure/.test(npm)) return null; // need cloud SDK auth, not supported
+  return api || npm.includes("openai") ? "openai-compatible" : null;
+}
+
+interface ModelsDevProvider {
+  id: string;
+  name?: string;
+  env?: string[];
+  npm?: string;
+  api?: string;
+}
+
+// Cloud providers from the models.dev catalog that have credentials in the environment.
+export function cloudProvidersFromCatalog(catalog: Record<string, ModelsDevProvider>, env = process.env): Record<string, ProviderConfig> {
+  const out: Record<string, ProviderConfig> = {};
+  for (const [id, p] of Object.entries(catalog)) {
+    const keyVar = (p.env ?? []).find((v) => env[v]);
+    if (!keyVar) continue;
+    const kind = adapterForNpm(p.npm, p.api);
+    if (!kind) continue;
+    if (kind === "openai-compatible" && !p.api) continue;
+    out[id] = { kind, baseURL: p.api, apiKeyEnv: keyVar };
+  }
+  return out;
+}
+
+export function runtimeProviderKey(r: RuntimeInfo, taken: Set<string>): string {
+  const base = r.kind;
+  if (!taken.has(base)) return base;
+  return `${base}-${new URL(r.baseURL).port}`;
 }
 
 export class ProviderRegistry {
   private providers = new Map<string, Provider>();
+  readonly runtimes = new Map<string, RuntimeInfo>();
 
-  static fromConfig(cfg: AhConfig): ProviderRegistry {
+  static build(opts: {
+    cfg: AhConfig;
+    runtimes?: RuntimeInfo[];
+    catalog?: Record<string, ModelsDevProvider> | null;
+    store?: TelemetryStore | null;
+  }): ProviderRegistry {
     const reg = new ProviderRegistry();
-    const all = { ...PRESETS, ...cfg.providers };
-    for (const [key, c] of Object.entries(all)) {
-      if (c.enabled === false) continue;
-      const preset = PRESETS[key];
-      const isLocal = preset?.local ?? false;
-      const configured = key in cfg.providers;
-      if (!isLocal && !configured && !resolveKey(c)) continue;
-      const p = createProvider(key, { ...preset, ...c });
+    const ctx = { store: opts.store };
+    reg.register(new MockProvider());
+    for (const r of opts.runtimes ?? []) {
+      if (r.kind === "comfyui" || r.kind === "sdapi") {
+        reg.runtimes.set(runtimeProviderKey(r, new Set(reg.runtimes.keys())), r);
+        continue;
+      }
+      const key = runtimeProviderKey(r, new Set([...reg.providers.keys(), ...reg.runtimes.keys()]));
+      const p = createProvider(key, { kind: r.kind, baseURL: r.baseURL }, ctx, r.meta);
+      if (p) {
+        reg.register(p);
+        reg.runtimes.set(key, r);
+      }
+    }
+    for (const [key, c] of Object.entries(opts.catalog ? cloudProvidersFromCatalog(opts.catalog) : {})) {
+      if (opts.cfg.providers[key]?.enabled === false || reg.has(key)) continue;
+      const p = createProvider(key, c, ctx);
+      if (p) reg.register(p);
+    }
+    for (const [key, c] of Object.entries(opts.cfg.providers)) {
+      if (c.enabled === false) {
+        reg.providers.delete(key);
+        continue;
+      }
+      const p = createProvider(key, c, ctx);
       if (p) reg.register(p);
     }
     return reg;
@@ -93,11 +146,7 @@ export class ProviderRegistry {
 
   get(key: string): Provider {
     const p = this.providers.get(key);
-    if (!p) {
-      const preset = PRESETS[key];
-      const hint = preset?.apiKeyEnv ? ` (set ${preset.apiKeyEnv})` : "";
-      throw new Error(`provider "${key}" is not configured${hint}`);
-    }
+    if (!p) throw new Error(`provider "${key}" is not available. Available: ${[...this.providers.keys()].join(", ")}. Run \`ah doctor\` to see discovered runtimes.`);
     return p;
   }
 

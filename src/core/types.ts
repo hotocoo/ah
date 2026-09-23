@@ -99,7 +99,22 @@ export interface ChatRequest {
   maxTokens: number;
   temperature?: number;
   reasoning?: "off" | "low" | "medium" | "high" | "max";
+  // Context window the harness budgets for. Local runtimes that size the KV cache per
+  // request (Ollama num_ctx) receive it explicitly so prompts are never silently truncated.
+  contextWindow?: number;
   signal?: AbortSignal;
+}
+
+// Server-side timing reported by local runtimes (llama.cpp `timings`, Ollama durations).
+export interface RuntimeTimings {
+  promptTokens?: number;
+  promptMs?: number;
+  prefillTokensPerSec?: number;
+  decodeTokens?: number;
+  decodeMs?: number;
+  decodeTokensPerSec?: number;
+  cachedTokens?: number; // prompt tokens served from the KV cache
+  loadMs?: number; // model load time before this request
 }
 
 // Streamed events emitted by every provider. `done` is always last on success.
@@ -108,7 +123,7 @@ export type StreamEvent =
   | { type: "thinking_delta"; text: string }
   | { type: "tool_call_start"; id: string; name: string }
   | { type: "tool_call_delta"; id: string; partialJson: string }
-  | { type: "done"; message: Message; stopReason: StopReason; usage: Usage };
+  | { type: "done"; message: Message; stopReason: StopReason; usage: Usage; timings?: RuntimeTimings };
 
 export interface ChatResult {
   message: Message;

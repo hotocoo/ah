@@ -16,16 +16,20 @@ type BetaMessageParam = Anthropic.Beta.Messages.BetaMessageParam;
 type BetaContent = Anthropic.Beta.Messages.BetaContentBlockParam;
 type BetaTool = Anthropic.Beta.Messages.BetaTool;
 
-// Models that still need the legacy fixed thinking budget instead of adaptive thinking.
-const LEGACY_THINKING = /claude-(3|haiku-4-5|sonnet-4-5|opus-4-5|opus-4-1|opus-4-0|sonnet-4-0)/;
-// Models where `fallbacks: "default"` is supported for safety-classifier refusals.
-const FALLBACK_MODELS = /claude-(opus-5|fable-5|mythos-5)/;
 const FALLBACK_BETA = "server-side-fallback-2026-07-01";
+
+// What a model supports, read from the Models API (capabilities), never from its name.
+export interface AnthropicModelCaps {
+  adaptiveThinking: boolean;
+  budgetThinking: boolean;
+  effort: boolean;
+  effortLevels: string[];
+}
 
 export interface AnthropicOptions {
   apiKey?: string;
   baseURL?: string;
-  // Opt out of server-side refusal fallbacks (on by default for models that support them).
+  // Server-side refusal fallbacks. Sent by default; dropped automatically if the API rejects them.
   serverFallbacks?: boolean;
 }
 
@@ -94,6 +98,8 @@ export class AnthropicProvider implements Provider {
     modelListing: true,
   };
   private client: Anthropic;
+  private caps = new Map<string, Promise<AnthropicModelCaps | null>>();
+  private fallbacksRejected = false;
 
   constructor(
     readonly key = "anthropic",
@@ -102,7 +108,32 @@ export class AnthropicProvider implements Provider {
     this.client = new Anthropic({ apiKey: opts.apiKey, baseURL: opts.baseURL });
   }
 
-  buildParams(req: ChatRequest): { params: BetaParams; betas: string[] } {
+  // Capabilities from GET /v1/models/{id}; null if unavailable (then current-API defaults apply).
+  capabilitiesOf(model: string): Promise<AnthropicModelCaps | null> {
+    let p = this.caps.get(model);
+    if (!p) {
+      p = this.client.models
+        .retrieve(model)
+        .then((m) => {
+          const c = m.capabilities;
+          if (!c) return null;
+          const effortLevels = c.effort?.supported
+            ? (["low", "medium", "high", "xhigh", "max"] as const).filter((l) => c.effort[l]?.supported)
+            : [];
+          return {
+            adaptiveThinking: Boolean(c.thinking?.types?.adaptive?.supported),
+            budgetThinking: Boolean(c.thinking?.types?.enabled?.supported),
+            effort: Boolean(c.effort?.supported),
+            effortLevels,
+          };
+        })
+        .catch(() => null);
+      this.caps.set(model, p);
+    }
+    return p;
+  }
+
+  buildParams(req: ChatRequest, caps: AnthropicModelCaps | null = null): { params: BetaParams; betas: string[] } {
     const betas: string[] = [];
     const tools: BetaTool[] = req.tools.map((t) => ({
       name: t.name,
@@ -123,7 +154,8 @@ export class AnthropicProvider implements Provider {
       cache_control: { type: "ephemeral" },
     };
     const effort = req.reasoning && req.reasoning !== "off" ? req.reasoning : undefined;
-    if (LEGACY_THINKING.test(req.model)) {
+    // Budget thinking only when the model supports it and not adaptive thinking.
+    if (caps && caps.budgetThinking && !caps.adaptiveThinking) {
       if (effort) {
         const budget = { low: 2048, medium: 8192, high: 16384, max: 32000 }[effort];
         // budget_tokens must be >= 1024 and < max_tokens.
@@ -134,9 +166,10 @@ export class AnthropicProvider implements Provider {
     } else {
       // Current models: adaptive thinking; depth controlled by effort.
       params.thinking = { type: "adaptive" };
-      if (effort) params.output_config = { effort };
+      const effortOk = !caps || (caps.effort && caps.effortLevels.includes(effort ?? ""));
+      if (effort && effortOk) params.output_config = { effort };
     }
-    if (this.opts.serverFallbacks !== false && FALLBACK_MODELS.test(req.model)) {
+    if (this.opts.serverFallbacks !== false && !this.fallbacksRejected) {
       params.fallbacks = "default";
       betas.push(FALLBACK_BETA);
     }
@@ -144,7 +177,7 @@ export class AnthropicProvider implements Provider {
   }
 
   async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
-    const { params, betas } = this.buildParams(req);
+    const { params, betas } = this.buildParams(req, await this.capabilitiesOf(req.model));
     const idsByIndex = new Map<number, string>();
     try {
       const stream = this.client.beta.messages.stream(
@@ -181,6 +214,12 @@ export class AnthropicProvider implements Provider {
       };
     } catch (err) {
       if (req.signal?.aborted) throw err;
+      // Fallbacks unsupported for this model/account: remember, retry without them.
+      if (err instanceof Anthropic.BadRequestError && /fallback/i.test(err.message) && !this.fallbacksRejected) {
+        this.fallbacksRejected = true;
+        yield* this.stream(req);
+        return;
+      }
       if (err instanceof Anthropic.APIError) {
         const status = typeof err.status === "number" ? err.status : undefined;
         const retryable = err instanceof Anthropic.RateLimitError || err instanceof Anthropic.InternalServerError || err instanceof Anthropic.APIConnectionError;

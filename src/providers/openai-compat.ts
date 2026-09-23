@@ -1,4 +1,4 @@
-import type { ChatRequest, ContentBlock, Message, ModelInfo, StopReason, StreamEvent, Usage } from "../core/types.ts";
+import type { ChatRequest, ContentBlock, Message, ModelInfo, RuntimeTimings, StopReason, StreamEvent, Usage } from "../core/types.ts";
 import {
   ensureOk,
   parseToolArgs,
@@ -20,10 +20,34 @@ export interface OpenAICompatOptions {
   headers?: Record<string, string>;
   imageGen?: boolean;
   embeddings?: boolean;
-  // Wire-format divergences between compatible servers.
-  maxTokensParam?: "max_tokens" | "max_completion_tokens";
-  reasoningParam?: "openai" | "openrouter" | "none";
-  streamUsage?: boolean; // send stream_options.include_usage
+  // Wire-format divergences between compatible servers. These start from defaults and
+  // are corrected automatically when a server rejects a parameter (see adaptWire).
+  wire?: Partial<WireFormat>;
+  onWireChange?: (w: WireFormat) => void;
+  // Facts about the served model learned during runtime discovery.
+  modelMeta?: { contextWindow?: number; toolCall?: boolean; vision?: boolean };
+}
+
+export interface WireFormat {
+  maxTokensParam: "max_tokens" | "max_completion_tokens";
+  reasoningParam: "reasoning_effort" | "reasoning" | "none";
+  streamUsage: boolean;
+}
+
+export const DEFAULT_WIRE: WireFormat = { maxTokensParam: "max_tokens", reasoningParam: "reasoning_effort", streamUsage: true };
+
+// Given a 400 error body, returns a corrected wire format, or null if the error is
+// not about a parameter we control.
+export function adaptWire(w: WireFormat, body: string): WireFormat | null {
+  const b = body.toLowerCase();
+  const mentions = (p: string) => b.includes(p);
+  if (mentions("max_completion_tokens") && w.maxTokensParam === "max_tokens") return { ...w, maxTokensParam: "max_completion_tokens" };
+  if (mentions("max_completion_tokens") && w.maxTokensParam === "max_completion_tokens") return { ...w, maxTokensParam: "max_tokens" };
+  if (mentions("max_tokens") && w.maxTokensParam === "max_tokens") return { ...w, maxTokensParam: "max_completion_tokens" };
+  if (mentions("stream_options") && w.streamUsage) return { ...w, streamUsage: false };
+  if (mentions("reasoning_effort") && w.reasoningParam === "reasoning_effort") return { ...w, reasoningParam: "reasoning" };
+  if (mentions("reasoning") && w.reasoningParam !== "none") return { ...w, reasoningParam: "none" };
+  return null;
 }
 
 type OAMessage =
@@ -86,11 +110,13 @@ const mapFinish = (r: string | null | undefined): StopReason => {
 export class OpenAICompatProvider implements Provider {
   readonly kind = "openai-compatible";
   readonly capabilities: ProviderCapabilities;
+  wire: WireFormat;
 
   constructor(
     readonly key: string,
     private opts: OpenAICompatOptions,
   ) {
+    this.wire = { ...DEFAULT_WIRE, ...opts.wire };
     this.capabilities = {
       chat: true,
       streaming: true,
@@ -119,9 +145,9 @@ export class OpenAICompatProvider implements Provider {
       model: req.model,
       messages: toOpenAIMessages(req.system, req.messages),
       stream: true,
-      [this.opts.maxTokensParam ?? "max_tokens"]: req.maxTokens,
+      [this.wire.maxTokensParam]: req.maxTokens,
     };
-    if (this.opts.streamUsage) body.stream_options = { include_usage: true };
+    if (this.wire.streamUsage) body.stream_options = { include_usage: true };
     if (req.tools.length)
       body.tools = req.tools.map((t) => ({
         type: "function",
@@ -129,21 +155,33 @@ export class OpenAICompatProvider implements Provider {
       }));
     if (req.temperature !== undefined) body.temperature = req.temperature;
     const effort = req.reasoning && req.reasoning !== "off" ? (req.reasoning === "max" ? "high" : req.reasoning) : undefined;
-    if (effort && this.opts.reasoningParam === "openai") body.reasoning_effort = effort;
-    if (effort && this.opts.reasoningParam === "openrouter") body.reasoning = { effort };
+    if (effort && this.wire.reasoningParam === "reasoning_effort") body.reasoning_effort = effort;
+    if (effort && this.wire.reasoningParam === "reasoning") body.reasoning = { effort };
     return body;
   }
 
-  async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
-    const res = await ensureOk(
-      await fetch(this.url("/chat/completions"), {
+  // POSTs a chat request, adapting the wire format up to 3 times when the server
+  // rejects one of our parameters with HTTP 400.
+  private async post(req: ChatRequest): Promise<Response> {
+    for (let attempt = 0; ; attempt++) {
+      const res = await fetch(this.url("/chat/completions"), {
         method: "POST",
         headers: this.headers(),
         body: JSON.stringify(this.buildBody(req)),
         signal: req.signal,
-      }),
-      this.key,
-    );
+      });
+      if (res.status !== 400 || attempt >= 3) return ensureOk(res, this.key);
+      const body = await res.text();
+      const next = adaptWire(this.wire, body);
+      if (!next) return ensureOk(new Response(body, { status: 400 }), this.key);
+      this.wire = next;
+      this.opts.onWireChange?.(next);
+    }
+  }
+
+  async *stream(req: ChatRequest): AsyncGenerator<StreamEvent> {
+    const res = await this.post(req);
+    let timings: RuntimeTimings | undefined;
     let text = "";
     let finish: string | null = null;
     const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
@@ -151,9 +189,22 @@ export class OpenAICompatProvider implements Provider {
     for await (const data of sseData(res.body!)) {
       if (data === "[DONE]") break;
       const chunk = JSON.parse(data) as {
-        choices?: { delta?: { content?: string; reasoning_content?: string; reasoning?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[];
+        choices?: { delta?: { content?: string; reasoning_content?: string; reasoning?: string; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string | Record<string, unknown> } }[] }; finish_reason?: string | null }[];
+        timings?: { cache_n?: number; prompt_n?: number; prompt_ms?: number; prompt_per_second?: number; predicted_n?: number; predicted_ms?: number; predicted_per_second?: number };
         usage?: { prompt_tokens?: number; completion_tokens?: number; prompt_tokens_details?: { cached_tokens?: number }; completion_tokens_details?: { reasoning_tokens?: number } };
       };
+      if (chunk.timings) {
+        const t = chunk.timings;
+        timings = {
+          promptTokens: t.prompt_n,
+          promptMs: t.prompt_ms,
+          prefillTokensPerSec: t.prompt_per_second,
+          decodeTokens: t.predicted_n,
+          decodeMs: t.predicted_ms,
+          decodeTokensPerSec: t.predicted_per_second,
+          cachedTokens: t.cache_n,
+        };
+      }
       if (chunk.usage) {
         usage.inputTokens = chunk.usage.prompt_tokens ?? 0;
         usage.outputTokens = chunk.usage.completion_tokens ?? 0;
@@ -177,9 +228,12 @@ export class OpenAICompatProvider implements Provider {
           calls.set(tc.index, entry);
           yield { type: "tool_call_start", id: entry.id, name: entry.name };
         }
-        if (tc.function?.arguments) {
-          entry.args += tc.function.arguments;
-          yield { type: "tool_call_delta", id: entry.id, partialJson: tc.function.arguments };
+        // Some servers (llama.cpp) send arguments as an object instead of a JSON string.
+        const args = tc.function?.arguments;
+        const piece = typeof args === "string" ? args : args ? JSON.stringify(args) : "";
+        if (piece) {
+          entry.args += piece;
+          yield { type: "tool_call_delta", id: entry.id, partialJson: piece };
         }
       }
     }
@@ -191,22 +245,27 @@ export class OpenAICompatProvider implements Provider {
       content.push({ type: "tool_call", id: c.id, name: c.name, input });
     }
     const stopReason = calls.size && (finish === null || finish === "stop") ? "tool_use" : mapFinish(finish);
-    yield { type: "done", message: { role: "assistant", content }, stopReason, usage };
+    // llama.cpp reports prompt tokens only in timings when usage is absent.
+    if (!usage.inputTokens && timings?.promptTokens) usage.inputTokens = (timings.promptTokens ?? 0) + (timings.cachedTokens ?? 0);
+    if (!usage.outputTokens && timings?.decodeTokens) usage.outputTokens = timings.decodeTokens;
+    if (!usage.cacheReadTokens && timings?.cachedTokens) usage.cacheReadTokens = timings.cachedTokens;
+    yield { type: "done", message: { role: "assistant", content }, stopReason, usage, timings };
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const res = await ensureOk(await fetch(this.url("/models"), { headers: this.headers(), signal }), this.key);
     const json = (await res.json()) as { data?: { id: string; context_length?: number; owned_by?: string }[] };
+    const meta = this.opts.modelMeta ?? {};
     return (json.data ?? []).map((m) => ({
       id: m.id,
       provider: this.key,
       name: m.id,
-      contextWindow: m.context_length,
-      inputModalities: ["text"],
+      contextWindow: m.context_length ?? meta.contextWindow,
+      inputModalities: meta.vision ? ["text", "image"] : ["text"],
       outputModalities: ["text"],
-      toolCall: true,
+      toolCall: meta.toolCall ?? true,
       reasoning: false,
-      kinds: guessKinds(m.id),
+      kinds: ["chat"],
       source: "live" as const,
     }));
   }
@@ -245,16 +304,4 @@ export class OpenAICompatProvider implements Provider {
     const json = (await res.json()) as { data: { embedding: number[] }[] };
     return json.data.map((d) => d.embedding);
   }
-}
-
-// Heuristic model classification from its id, used when a listing has no metadata.
-export function guessKinds(id: string): ModelInfo["kinds"] {
-  const s = id.toLowerCase();
-  if (/embed/.test(s)) return ["embedding"];
-  if (/(dall-e|gpt-image|imagen|flux|stable-diffusion|sdxl|sd3|image-gen)/.test(s)) return ["image-gen"];
-  if (/(tts|speech)/.test(s)) return ["tts"];
-  if (/(whisper|transcribe|stt)/.test(s)) return ["stt"];
-  if (/rerank/.test(s)) return ["rerank"];
-  if (/moderation|guard/.test(s)) return ["moderation"];
-  return ["chat"];
 }

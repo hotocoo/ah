@@ -1,5 +1,4 @@
 import type { ChatRequest, ContentBlock, Message, ModelInfo, Modality, StreamEvent, Usage } from "../core/types.ts";
-import { guessKinds } from "./openai-compat.ts";
 import {
   ensureOk,
   sseData,
@@ -176,7 +175,7 @@ export class GeminiProvider implements Provider {
       for (const m of j.models ?? []) {
         const id = m.name.replace(/^models\//, "");
         const methods = m.supportedGenerationMethods ?? [];
-        const kinds: ModelInfo["kinds"] = methods.includes("embedContent") ? ["embedding"] : methods.includes("predict") ? ["image-gen"] : guessKinds(id);
+        const kinds: ModelInfo["kinds"] = methods.includes("embedContent") ? ["embedding"] : methods.includes("predict") ? ["image-gen"] : ["chat"];
         const imageOut = /image/.test(id) && !methods.includes("embedContent");
         out.push({
           id,

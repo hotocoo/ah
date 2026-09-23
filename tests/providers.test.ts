@@ -7,9 +7,9 @@ import { AnthropicProvider, toAnthropicMessages } from "../src/providers/anthrop
 import { GeminiProvider, toGeminiContents } from "../src/providers/gemini.ts";
 import { MockProvider } from "../src/providers/mock.ts";
 import { toOllamaMessages } from "../src/providers/ollama.ts";
-import { guessKinds, OpenAICompatProvider, toOpenAIMessages } from "../src/providers/openai-compat.ts";
+import { adaptWire, DEFAULT_WIRE, OpenAICompatProvider, toOpenAIMessages } from "../src/providers/openai-compat.ts";
 import { collect, ndjson, parseToolArgs, sseData } from "../src/providers/provider.ts";
-import { ProviderRegistry } from "../src/providers/registry.ts";
+import { cloudProvidersFromCatalog, ProviderRegistry } from "../src/providers/registry.ts";
 import { defaultConfig } from "../src/config.ts";
 
 const convo: Message[] = [
@@ -103,48 +103,65 @@ describe("request builders", () => {
     reasoning: "high" as const,
   };
 
-  test("openai-compatible defaults to max_tokens and no reasoning param", () => {
+  test("openai-compatible defaults: max_tokens, stream usage, reasoning_effort", () => {
     const body = new OpenAICompatProvider("x", { baseURL: "http://h" }).buildBody(req);
     expect(body.max_tokens).toBe(1000);
     expect(body.max_completion_tokens).toBeUndefined();
-    expect(body.reasoning_effort).toBeUndefined();
-    expect(body.stream_options).toBeUndefined();
-  });
-
-  test("openai preset uses max_completion_tokens and reasoning_effort", () => {
-    const body = new OpenAICompatProvider("openai", {
-      baseURL: "http://h",
-      maxTokensParam: "max_completion_tokens",
-      reasoningParam: "openai",
-      streamUsage: true,
-    }).buildBody(req);
-    expect(body.max_completion_tokens).toBe(1000);
     expect(body.reasoning_effort).toBe("high");
     expect(body.stream_options).toEqual({ include_usage: true });
   });
 
-  test("openrouter nests reasoning effort", () => {
-    const body = new OpenAICompatProvider("or", { baseURL: "http://h", reasoningParam: "openrouter" }).buildBody(req);
+  test("openai-compatible honours an adapted wire format", () => {
+    const body = new OpenAICompatProvider("x", { baseURL: "http://h", wire: { maxTokensParam: "max_completion_tokens", reasoningParam: "reasoning", streamUsage: false } }).buildBody(req);
+    expect(body.max_completion_tokens).toBe(1000);
     expect(body.reasoning).toEqual({ effort: "high" });
+    expect(body.stream_options).toBeUndefined();
   });
 
-  test("anthropic uses adaptive thinking + effort on current models, fallbacks on opus-5", () => {
+  test("openai-compatible adapts after a 400 naming a parameter, then persists", async () => {
+    const bodies: Record<string, unknown>[] = [];
+    const server = Bun.serve({
+      port: 0,
+      async fetch(r) {
+        const b = (await r.json()) as Record<string, unknown>;
+        bodies.push(b);
+        if ("max_tokens" in b) return new Response("Unsupported parameter: 'max_tokens'. Use 'max_completion_tokens'.", { status: 400 });
+        return new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: "ok" }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`);
+      },
+    });
+    try {
+      let saved: unknown = null;
+      const p = new OpenAICompatProvider("t", { baseURL: `http://localhost:${server.port}`, onWireChange: (w) => (saved = w) });
+      const r = await collect(p.stream({ ...req, tools: [] }));
+      expect(r.message.content).toEqual([{ type: "text", text: "ok" }]);
+      expect(bodies).toHaveLength(2);
+      expect(saved).toMatchObject({ maxTokensParam: "max_completion_tokens" });
+    } finally {
+      server.stop(true);
+    }
+  });
+
+  test("anthropic: adaptive thinking + effort when capabilities allow; fallbacks sent", () => {
     const p = new AnthropicProvider("anthropic", { apiKey: "x" });
-    const { params, betas } = p.buildParams({ ...req, model: "claude-opus-5" });
+    const caps = { adaptiveThinking: true, budgetThinking: false, effort: true, effortLevels: ["low", "medium", "high"] };
+    const { params, betas } = p.buildParams({ ...req, model: "any-model" }, caps);
     expect(params.thinking).toEqual({ type: "adaptive" });
     expect(params.output_config).toEqual({ effort: "high" });
     expect(params.fallbacks).toBe("default");
     expect(betas).toContain("server-side-fallback-2026-07-01");
+    expect(params.cache_control).toEqual({ type: "ephemeral" });
     expect((params.tools![0] as { eager_input_streaming?: boolean }).eager_input_streaming).toBe(true);
+    const noEffort = p.buildParams({ ...req, model: "m" }, { ...caps, effort: false, effortLevels: [] });
+    expect(noEffort.params.output_config).toBeUndefined();
   });
 
-  test("anthropic uses budget_tokens on legacy models and clamps it", () => {
-    const p = new AnthropicProvider("anthropic", { apiKey: "x" });
-    const { params, betas } = p.buildParams({ ...req, model: "claude-haiku-4-5", maxTokens: 4096 });
+  test("anthropic: budget thinking when the model only supports it, clamped", () => {
+    const p = new AnthropicProvider("anthropic", { apiKey: "x", serverFallbacks: false });
+    const caps = { adaptiveThinking: false, budgetThinking: true, effort: false, effortLevels: [] };
+    const { params, betas } = p.buildParams({ ...req, model: "m", maxTokens: 4096 }, caps);
     expect(params.thinking).toEqual({ type: "enabled", budget_tokens: 3072 });
     expect(betas).toEqual([]);
-    const small = p.buildParams({ ...req, model: "claude-haiku-4-5", maxTokens: 1500 });
-    expect(small.params.thinking).toBeUndefined();
+    expect(p.buildParams({ ...req, model: "m", maxTokens: 1500 }, caps).params.thinking).toBeUndefined();
   });
 
   test("gemini strips unsupported schema keys", () => {
@@ -238,11 +255,12 @@ describe("misc", () => {
     expect(() => parseModelRef("nope")).toThrow();
   });
 
-  test("guessKinds", () => {
-    expect(guessKinds("text-embedding-3-large")).toEqual(["embedding"]);
-    expect(guessKinds("gpt-image-1")).toEqual(["image-gen"]);
-    expect(guessKinds("whisper-1")).toEqual(["stt"]);
-    expect(guessKinds("gpt-5")).toEqual(["chat"]);
+  test("adaptWire flips rejected parameters", () => {
+    expect(adaptWire(DEFAULT_WIRE, "Unsupported parameter: 'max_tokens'. Use 'max_completion_tokens'")!.maxTokensParam).toBe("max_completion_tokens");
+    expect(adaptWire(DEFAULT_WIRE, "unknown field stream_options")!.streamUsage).toBe(false);
+    expect(adaptWire(DEFAULT_WIRE, "reasoning_effort is not supported")!.reasoningParam).toBe("reasoning");
+    expect(adaptWire({ ...DEFAULT_WIRE, reasoningParam: "reasoning" }, "reasoning not allowed")!.reasoningParam).toBe("none");
+    expect(adaptWire(DEFAULT_WIRE, "messages: invalid role")).toBeNull();
   });
 
   test("encodePng writes a valid header and decodable pixels", () => {
@@ -255,14 +273,42 @@ describe("misc", () => {
     expect([...raw]).toEqual([0, 0, 0, 0, 255, 255, 0, 0, 255]);
   });
 
-  test("registry registers keyless local providers and skips unkeyed cloud ones", () => {
-    const saved = process.env.OPENAI_API_KEY;
-    delete process.env.OPENAI_API_KEY;
-    const reg = ProviderRegistry.fromConfig(defaultConfig());
-    expect(reg.has("mock")).toBe(true);
+  test("registry builds from runtimes, catalog credentials and config only", () => {
+    const cfg = defaultConfig();
+    const reg = ProviderRegistry.build({
+      cfg: { ...cfg, providers: { mine: { kind: "openai-compatible", baseURL: "http://h:1/v1" } } },
+      runtimes: [
+        { kind: "ollama", baseURL: "http://127.0.0.1:11434", source: "scan", models: ["a"], meta: {} },
+        { kind: "ollama", baseURL: "http://127.0.0.1:12434", source: "scan", models: [], meta: {} },
+        { kind: "llamacpp", baseURL: "http://127.0.0.1:8080", source: "scan", models: ["m"], meta: { nCtx: 4096, hasToolTemplate: true } },
+      ],
+      catalog: {
+        acme: { id: "acme", env: ["ACME_TEST_KEY"], npm: "@ai-sdk/openai-compatible", api: "https://acme.test/v1" },
+        nokey: { id: "nokey", env: ["NOKEY_TEST_KEY_UNSET"], npm: "@ai-sdk/openai-compatible", api: "https://x/v1" },
+      },
+    });
     expect(reg.has("ollama")).toBe(true);
-    expect(reg.has("openai")).toBe(false);
-    expect(() => reg.get("openai")).toThrow(/OPENAI_API_KEY/);
-    if (saved) process.env.OPENAI_API_KEY = saved;
+    expect(reg.has("ollama-12434")).toBe(true);
+    expect(reg.has("llamacpp")).toBe(true);
+    expect(reg.has("mine")).toBe(true);
+    expect(reg.has("mock")).toBe(true);
+    expect(reg.has("nokey")).toBe(false);
+    expect(() => reg.get("nope")).toThrow(/ah doctor/);
+  });
+
+  test("cloud providers are derived from models.dev entries with credentials", () => {
+    const out = cloudProvidersFromCatalog(
+      {
+        a: { id: "a", env: ["K1"], npm: "@ai-sdk/anthropic" },
+        g: { id: "g", env: ["K2"], npm: "@ai-sdk/google" },
+        o: { id: "o", env: ["K3"], npm: "@ai-sdk/openai-compatible", api: "https://o/v1" },
+        b: { id: "b", env: ["K4"], npm: "@ai-sdk/amazon-bedrock" },
+      },
+      { K1: "x", K2: "x", K3: "x", K4: "x" },
+    );
+    expect(out.a).toMatchObject({ kind: "anthropic", apiKeyEnv: "K1" });
+    expect(out.g!.kind).toBe("gemini");
+    expect(out.o).toMatchObject({ kind: "openai-compatible", baseURL: "https://o/v1" });
+    expect(out.b).toBeUndefined();
   });
 });
