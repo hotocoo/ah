@@ -223,3 +223,23 @@ describe("tolerant edits", () => {
     expect(readFileSync(join(root, "p.ts"), "utf8")).toContain("\n  const start = (page - 1) * size;\n");
   });
 });
+
+describe("process hygiene", () => {
+  test("timeout kills grandchildren that hold the pipe open", async () => {
+    const t0 = performance.now();
+    // The backgrounded sleep inherits stdout; killing only sh would hang the read.
+    const r = await run("bash", { command: "(sleep 30; echo late) & sleep 30", timeout_ms: 1000 });
+    expect(r.content).toContain("[timed out]");
+    expect(performance.now() - t0).toBeLessThan(5000);
+  });
+
+  test("secret-looking environment variables are not visible to commands", async () => {
+    process.env.AH_TEST_API_KEY = "sk-should-not-leak";
+    process.env.AH_TEST_PLAIN = "visible";
+    const r = await run("bash", { command: "env" });
+    expect(r.content).not.toContain("sk-should-not-leak");
+    expect(r.content).toContain("AH_TEST_PLAIN=visible");
+    delete process.env.AH_TEST_API_KEY;
+    delete process.env.AH_TEST_PLAIN;
+  });
+});

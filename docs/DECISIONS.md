@@ -121,3 +121,7 @@ Observed on qwen3:4b: six consecutive failed `edit_file` calls because `old_stri
 - `edit_file`/`multi_edit` try an exact match first; if none, a line-by-line match ignoring leading/trailing whitespace. A unique match is applied with `new_string` re-indented to the file's actual indentation, and the tool result says so. Ambiguous matches are still rejected. CRLF files keep CRLF.
 - A miss returns the closest file lines with line numbers, so the next attempt can copy the exact text.
 - A turn with neither text nor tool calls gets a continuation message (at most twice per run) instead of being reported as a completed task.
+
+## D23. Tool subprocess hygiene
+
+Found during the MiMo baseline run: `npx vitest run 2>&1 | tail -30` outlived both the 120 s command timeout and the 900 s trial limit, because killing `sh` left `npm exec` → `node` → vitest workers holding the pipe open. The same process listing showed that commands inherited the harness's full environment, including session tokens. Commands now run with credential-like variables removed, and timeouts/aborts kill the entire process tree and stop waiting on the pipes one second later.

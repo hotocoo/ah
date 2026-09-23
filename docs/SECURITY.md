@@ -9,7 +9,8 @@
 - **Read before write**: `edit_file`/`multi_edit` require a prior read; `write_file` will not overwrite a file that was not read.
 - **Permission modes**: `ask` (default for `ah run`/`ah chat`: every write tool asks), `auto` (`--yes`), `read-only` (`--read-only`: write tools are hidden and blocked).
 - **Dangerous commands** (`sudo`, `rm -rf /` and similar, `git push --force`, `git reset --hard`, `curl … | sh`, `mkfs`, `dd of=/dev/…`, fork bombs, shutdown) always need explicit approval, even in `auto` mode. Non-interactive runs deny them.
-- **Shell**: commands run with a timeout, no stdin, output truncated.
+- **Shell**: commands run with a timeout, no stdin, output truncated. On timeout or abort the whole process tree is killed (grandchildren such as `npx` → `node` workers would otherwise keep running and hold the output open).
+- **Environment scrubbing**: variables whose names look like credentials (`*TOKEN*`, `*SECRET*`, `*PASSWORD*`, `*API_KEY*`, `*ACCESS_KEY*`, `*PRIVATE_KEY*`, `*CREDENTIAL*`, `*AUTH*`, `*COOKIE*`, `*SESSION*`) are removed from the environment of model-run commands, so `env` cannot leak API keys. `SSH_AUTH_SOCK` is kept (socket path, not a key).
 - **`web_fetch`** refuses loopback, private and link-local addresses (SSRF).
 - **Secrets**: the system prompt tells the model never to print or commit credentials; `ah` itself never sends API keys anywhere but their provider.
 

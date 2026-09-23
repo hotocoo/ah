@@ -26,6 +26,58 @@ export interface ExecResult {
   durationMs: number;
 }
 
+// Environment for model-run commands: the user's environment minus anything that looks
+// like a credential, so a model cannot read API keys or tokens with `env`.
+const SECRET_NAME = /(TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|CREDENTIAL|AUTH|COOKIE|SESSION)/i;
+
+export function scrubbedEnv(env: Record<string, string | undefined>): Record<string, string> {
+  const out: Record<string, string> = {};
+  // SSH_AUTH_SOCK is a socket path (agent access without exposing keys), not a secret.
+  for (const [k, v] of Object.entries(env)) if (v !== undefined && (!SECRET_NAME.test(k) || k === "SSH_AUTH_SOCK")) out[k] = v;
+  return out;
+}
+
+// All descendants of a process (children first), via pgrep.
+function descendants(pid: number): number[] {
+  const r = Bun.spawnSync(["pgrep", "-P", String(pid)], { stdout: "pipe", stderr: "ignore" });
+  const kids = r.stdout.toString().trim().split("\n").filter(Boolean).map(Number);
+  return kids.flatMap((k) => [...descendants(k), k]);
+}
+
+// Kills a process and everything it started. Killing only the shell leaves
+// grandchildren (npx -> node -> workers) holding the output pipes open.
+export function killTree(pid: number): void {
+  for (const p of [...descendants(pid), pid]) {
+    try {
+      process.kill(p, "SIGKILL");
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+// Reads a stream into a string until it ends or `stop` resolves.
+async function drain(stream: ReadableStream<Uint8Array>, stop: Promise<void>): Promise<string> {
+  const reader = stream.getReader();
+  const dec = new TextDecoder();
+  let out = "";
+  let stopped = false;
+  void stop.then(() => {
+    stopped = true;
+    void reader.cancel().catch(() => {});
+  });
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done || stopped) break;
+      out += dec.decode(value, { stream: true });
+    }
+  } catch {
+    /* cancelled */
+  }
+  return out;
+}
+
 export async function exec(command: string, ctx: Pick<ToolContext, "root" | "signal" | "env" | "shellPrefix">, timeoutMs: number): Promise<ExecResult> {
   const start = performance.now();
   const argv = ctx.shellPrefix ? [...ctx.shellPrefix, "sh", "-c", command] : ["sh", "-c", command];
@@ -34,18 +86,28 @@ export async function exec(command: string, ctx: Pick<ToolContext, "root" | "sig
     stdout: "pipe",
     stderr: "pipe",
     stdin: "ignore",
-    env: { ...process.env, ...ctx.env, CI: "1", NO_COLOR: "1", TERM: "dumb" },
+    env: { ...scrubbedEnv(process.env), ...ctx.env, CI: "1", NO_COLOR: "1", TERM: "dumb" },
   });
   let timedOut = false;
+  let release!: () => void;
+  // After a kill, give pipes a moment to flush, then stop waiting on them.
+  const killed = new Promise<void>((r) => (release = r));
+  const kill = () => {
+    killTree(proc.pid);
+    setTimeout(release, 1000);
+  };
   const timer = setTimeout(() => {
     timedOut = true;
-    proc.kill("SIGKILL");
+    kill();
   }, timeoutMs);
-  const onAbort = () => proc.kill("SIGKILL");
+  const onAbort = () => kill();
   ctx.signal?.addEventListener("abort", onAbort);
-  const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
-  const code = await proc.exited;
+  const exited = proc.exited.then(() => undefined);
+  const [stdout, stderr] = await Promise.all([drain(proc.stdout, killed), drain(proc.stderr, killed)]);
+  const code = await Promise.race([proc.exited, killed.then(() => null)]);
   clearTimeout(timer);
+  release();
+  void exited;
   ctx.signal?.removeEventListener("abort", onAbort);
   return { stdout, stderr, code: timedOut ? null : code, timedOut, durationMs: performance.now() - start };
 }
