@@ -282,7 +282,8 @@ export class Agent {
           costUsd: cost,
           latencyMs,
           ttftMs: ttft,
-          outputTokensPerSec: genMs > 0 && done.usage.outputTokens ? (done.usage.outputTokens / genMs) * 1000 : null,
+          // Rates over very short windows are burst artefacts (e.g. a tool call sent in one chunk).
+          outputTokensPerSec: genMs >= 250 && done.usage.outputTokens ? (done.usage.outputTokens / genMs) * 1000 : null,
           toolCalls: toolCallsOf(done.message).length,
           timings: done.timings,
           t: Date.now(),

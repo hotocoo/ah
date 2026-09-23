@@ -125,7 +125,8 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
   const passed = g.code === 0 && !g.timedOut;
 
   const row = o.env.telemetry.store?.db
-    .query("SELECT AVG(prefill_tps) p, AVG(decode_tps) d FROM turns WHERE run_id = ?")
+    // Runtime-reported rates when available, otherwise ah's own measurement.
+    .query("SELECT AVG(prefill_tps) p, AVG(COALESCE(decode_tps, tokens_per_sec)) d FROM turns WHERE run_id = ?")
     .get(summary.runId) as { p: number | null; d: number | null } | undefined;
   const run = o.env.telemetry.store?.db.query("SELECT gpu_util_avg, energy_j FROM runs WHERE run_id = ?").get(summary.runId) as
     | { gpu_util_avg: number | null; energy_j: number | null }
