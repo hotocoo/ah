@@ -1,4 +1,4 @@
-import type { StopReason, Usage } from "../core/types.ts";
+import type { RuntimeTimings, StopReason, Usage } from "../core/types.ts";
 
 // Every observable step of an agent run. Timestamps are epoch ms (Date.now()) and
 // monotonic offsets are measured with performance.now() inside the loop, so
@@ -21,8 +21,10 @@ export type AgentEvent =
       ttftMs: number | null;
       outputTokensPerSec: number | null;
       toolCalls: number;
+      timings?: RuntimeTimings;
       t: number;
     }
+  | { type: "context_truncated"; runId: string; turn: number; reportedTokens: number; estimatedTokens: number; window: number; t: number }
   | { type: "retry"; runId: string; turn: number; attempt: number; reason: string; delayMs: number; t: number }
   | { type: "tool_start"; runId: string; turn: number; id: string; name: string; input: Record<string, unknown>; summary: string; t: number }
   | {

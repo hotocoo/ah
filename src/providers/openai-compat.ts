@@ -32,6 +32,21 @@ export interface WireFormat {
   maxTokensParam: "max_tokens" | "max_completion_tokens";
   reasoningParam: "reasoning_effort" | "reasoning" | "none";
   streamUsage: boolean;
+  // Effort values the server/template accepts, learned from its error messages.
+  supportedEfforts?: string[];
+}
+
+const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
+
+// Maps a requested effort to the closest value the server accepts (ties go higher).
+export function nearestEffort(requested: string, supported?: string[]): string {
+  if (!supported?.length || supported.includes(requested)) return requested;
+  const r = EFFORT_ORDER.indexOf(requested);
+  return [...supported].sort((a, b) => {
+    const da = Math.abs(EFFORT_ORDER.indexOf(a) - r);
+    const db = Math.abs(EFFORT_ORDER.indexOf(b) - r);
+    return da - db || EFFORT_ORDER.indexOf(b) - EFFORT_ORDER.indexOf(a);
+  })[0]!;
 }
 
 export const DEFAULT_WIRE: WireFormat = { maxTokensParam: "max_tokens", reasoningParam: "reasoning_effort", streamUsage: true };
@@ -41,6 +56,12 @@ export const DEFAULT_WIRE: WireFormat = { maxTokensParam: "max_tokens", reasonin
 export function adaptWire(w: WireFormat, body: string): WireFormat | null {
   const b = body.toLowerCase();
   const mentions = (p: string) => b.includes(p);
+  // e.g. chat template: "Unexpected reasoning effort high. Supported types are xhigh (default), medium, and low."
+  const eff = body.match(/reasoning[ _]effort[^.]*\.\s*supported (?:types|values) (?:are|:)\s*([^"\n}]+)/i);
+  if (eff) {
+    const supported = [...eff[1]!.matchAll(/\b(minimal|low|medium|high|xhigh|max)\b/gi)].map((m) => m[1]!.toLowerCase());
+    if (supported.length && JSON.stringify(supported) !== JSON.stringify(w.supportedEfforts)) return { ...w, supportedEfforts: supported };
+  }
   if (mentions("max_completion_tokens") && w.maxTokensParam === "max_tokens") return { ...w, maxTokensParam: "max_completion_tokens" };
   if (mentions("max_completion_tokens") && w.maxTokensParam === "max_completion_tokens") return { ...w, maxTokensParam: "max_tokens" };
   if (mentions("max_tokens") && w.maxTokensParam === "max_tokens") return { ...w, maxTokensParam: "max_completion_tokens" };
@@ -154,7 +175,7 @@ export class OpenAICompatProvider implements Provider {
         function: { name: t.name, description: t.description, parameters: t.inputSchema },
       }));
     if (req.temperature !== undefined) body.temperature = req.temperature;
-    const effort = req.reasoning && req.reasoning !== "off" ? (req.reasoning === "max" ? "high" : req.reasoning) : undefined;
+    const effort = req.reasoning && req.reasoning !== "off" ? nearestEffort(req.reasoning, this.wire.supportedEfforts) : undefined;
     if (effort && this.wire.reasoningParam === "reasoning_effort") body.reasoning_effort = effort;
     if (effort && this.wire.reasoningParam === "reasoning") body.reasoning = { effort };
     return body;
@@ -170,10 +191,15 @@ export class OpenAICompatProvider implements Provider {
         body: JSON.stringify(this.buildBody(req)),
         signal: req.signal,
       });
-      if (res.status !== 400 || attempt >= 3) return ensureOk(res, this.key);
+      // 400s, and 500s raised by chat templates, can name a parameter we control.
+      if ((res.status !== 400 && res.status !== 500) || attempt >= 3) return ensureOk(res, this.key);
       const body = await res.text();
       const next = adaptWire(this.wire, body);
-      if (!next) return ensureOk(new Response(body, { status: 400 }), this.key);
+      if (!next) {
+        // A template exception is deterministic: retrying the same request cannot succeed.
+        if (/jinja|template/i.test(body)) throw new ProviderError(`${this.key} HTTP ${res.status}: ${body.slice(0, 500)}`, this.key, res.status, false);
+        return ensureOk(new Response(body, { status: res.status }), this.key);
+      }
       this.wire = next;
       this.opts.onWireChange?.(next);
     }

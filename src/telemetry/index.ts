@@ -2,6 +2,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentEvent, AgentEventHandler } from "../agent/events.ts";
 import type { AhConfig } from "../config.ts";
+import { HardwareSampler, summarize } from "../runtimes/hardware.ts";
 import { OtlpExporter } from "./otlp.ts";
 import { TelemetryStore } from "./store.ts";
 
@@ -13,9 +14,13 @@ export class Telemetry {
   readonly store: TelemetryStore | null;
   readonly otlp: OtlpExporter | null;
 
-  constructor(opts: { store?: TelemetryStore | null; otlp?: OtlpExporter | null; jsonlDir?: string } = {}) {
+  readonly sampler: HardwareSampler | null;
+
+  constructor(opts: { store?: TelemetryStore | null; otlp?: OtlpExporter | null; jsonlDir?: string; sampler?: HardwareSampler | null } = {}) {
     this.store = opts.store ?? null;
     this.otlp = opts.otlp ?? null;
+    this.sampler = opts.sampler ?? null;
+    if (this.sampler) this.sinks.push(this.hardwareSink());
     if (this.store) this.sinks.push(this.store.record);
     if (this.otlp) this.sinks.push(this.otlp.record);
     if (opts.jsonlDir) this.sinks.push(jsonlSink(opts.jsonlDir));
@@ -27,7 +32,29 @@ export class Telemetry {
       store: new TelemetryStore(join(cfg.dataDir, "telemetry.sqlite")),
       otlp: cfg.telemetry.otlpEndpoint ? new OtlpExporter(cfg.telemetry.otlpEndpoint, cfg.telemetry.otlpHeaders) : null,
       jsonlDir: join(cfg.dataDir, "events"),
+      sampler: cfg.hardwareSampling.enabled ? new HardwareSampler(cfg.hardwareSampling.intervalMs) : null,
     });
+  }
+
+  // Attributes hardware samples to turns (model_request..model_response) and runs.
+  private hardwareSink(): AgentEventHandler {
+    const turnStart = new Map<string, number>();
+    const runStart = new Map<string, number>();
+    let active = 0;
+    return (e) => {
+      const s = this.sampler!;
+      if (e.type === "run_start") {
+        runStart.set(e.runId, e.t);
+        if (active++ === 0) s.start();
+      } else if (e.type === "model_request") turnStart.set(`${e.runId}:${e.turn}`, e.t);
+      else if (e.type === "model_response") {
+        const from = turnStart.get(`${e.runId}:${e.turn}`) ?? e.t;
+        this.store?.recordHardware(e.runId, e.turn, summarize(s.window(from)));
+      } else if (e.type === "run_end") {
+        this.store?.recordHardware(e.runId, null, summarize(s.window(runStart.get(e.runId) ?? e.t)));
+        if (--active === 0) s.stop();
+      }
+    };
   }
 
   add(sink: AgentEventHandler): () => void {

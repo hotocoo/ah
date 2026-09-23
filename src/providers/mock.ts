@@ -64,7 +64,7 @@ export class MockProvider implements Provider {
       toolCall: true,
       reasoning: false,
       cost: { input: 0, output: 0 },
-      source: "builtin" as const,
+      source: "live" as const,
     };
     return [
       { ...base, id: "scripted", name: "Mock scripted", inputModalities: ["text"], outputModalities: ["text"], kinds: ["chat"] },

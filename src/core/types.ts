@@ -149,7 +149,19 @@ export interface ModelInfo {
   cost?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
   kinds: ModelKind[];
   releaseDate?: string;
-  source: "models.dev" | "live" | "openrouter" | "builtin" | "huggingface";
+  source: "models.dev" | "live" | "openrouter" | "huggingface";
+  // Facts about a locally served model, used for memory-aware context sizing.
+  local?: LocalModelFacts;
+}
+
+export interface LocalModelFacts {
+  runtime: string; // provider key of the serving runtime
+  sizeBytes?: number; // weights on disk
+  quantization?: string;
+  parameterSize?: string;
+  trainedContext?: number;
+  fixedContext?: number; // runtimes that fix n_ctx at load time (llama.cpp, LM Studio)
+  kv?: { layers: number; kvHeads: number; headDim: number };
 }
 
 // Functional category of a model. A model can have several.

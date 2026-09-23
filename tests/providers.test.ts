@@ -7,7 +7,7 @@ import { AnthropicProvider, toAnthropicMessages } from "../src/providers/anthrop
 import { GeminiProvider, toGeminiContents } from "../src/providers/gemini.ts";
 import { MockProvider } from "../src/providers/mock.ts";
 import { toOllamaMessages } from "../src/providers/ollama.ts";
-import { adaptWire, DEFAULT_WIRE, OpenAICompatProvider, toOpenAIMessages } from "../src/providers/openai-compat.ts";
+import { adaptWire, DEFAULT_WIRE, nearestEffort, OpenAICompatProvider, toOpenAIMessages } from "../src/providers/openai-compat.ts";
 import { collect, ndjson, parseToolArgs, sseData } from "../src/providers/provider.ts";
 import { cloudProvidersFromCatalog, ProviderRegistry } from "../src/providers/registry.ts";
 import { defaultConfig } from "../src/config.ts";
@@ -261,6 +261,11 @@ describe("misc", () => {
     expect(adaptWire(DEFAULT_WIRE, "reasoning_effort is not supported")!.reasoningParam).toBe("reasoning");
     expect(adaptWire({ ...DEFAULT_WIRE, reasoningParam: "reasoning" }, "reasoning not allowed")!.reasoningParam).toBe("none");
     expect(adaptWire(DEFAULT_WIRE, "messages: invalid role")).toBeNull();
+    const t = adaptWire(DEFAULT_WIRE, 'Jinja Exception: Unexpected reasoning effort high. Supported types are xhigh (default), medium, and low."');
+    expect(t!.supportedEfforts).toEqual(["xhigh", "medium", "low"]);
+    expect(nearestEffort("high", t!.supportedEfforts)).toBe("xhigh");
+    expect(nearestEffort("max", ["low", "medium"])).toBe("medium");
+    expect(nearestEffort("low", undefined)).toBe("low");
   });
 
   test("encodePng writes a valid header and decodable pixels", () => {

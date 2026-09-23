@@ -100,7 +100,8 @@ export class Agent {
           outcome = "budget";
           break;
         }
-        await this.maybeCompact(false);
+        await this.maybeCompact(this.truncated);
+        this.truncated = false;
         this.turn++;
         this.emit({ type: "turn_start", runId: this.runId, turn: this.turn, contextTokens: estimateTokens(this.messages, this.o.system), t: Date.now() });
 
@@ -192,6 +193,7 @@ export class Agent {
           maxTokens,
           reasoning: this.o.reasoning,
           temperature: this.o.temperature,
+          contextWindow: this.o.contextWindow,
           signal: this.o.signal,
         });
         let done: Extract<StreamEvent, { type: "done" }> | undefined;
@@ -222,8 +224,10 @@ export class Agent {
           ttftMs: ttft,
           outputTokensPerSec: genMs > 0 && done.usage.outputTokens ? (done.usage.outputTokens / genMs) * 1000 : null,
           toolCalls: toolCallsOf(done.message).length,
+          timings: done.timings,
           t: Date.now(),
         });
+        this.checkTruncation(done.usage.inputTokens);
         return { message: done.message, stopReason: done.stopReason };
       } catch (err) {
         if (this.o.signal?.aborted) throw new Error("aborted");
@@ -233,6 +237,20 @@ export class Agent {
         this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: (err as Error).message.slice(0, 200), delayMs, t: Date.now() });
         await sleep(delayMs, this.o.signal);
       }
+    }
+  }
+
+  // Local runtimes can drop the start of an over-long prompt without an error. When the
+  // runtime saw far fewer tokens than we sent and sat at the window edge, flag it and
+  // compact before the next turn.
+  private truncated = false;
+  private checkTruncation(reported: number) {
+    const window = this.o.contextWindow;
+    if (!window || !reported) return;
+    const estimate = estimateTokens(this.messages, this.o.system);
+    if (reported >= window * 0.9 && estimate > reported * 1.3) {
+      this.truncated = true;
+      this.emit({ type: "context_truncated", runId: this.runId, turn: this.turn, reportedTokens: reported, estimatedTokens: estimate, window, t: Date.now() });
     }
   }
 

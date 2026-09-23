@@ -31,6 +31,9 @@ export interface AhConfig {
   dataDir: string;
   bashTimeoutMs: number;
   contextBudgetRatio: number; // compact when context exceeds this share of the window
+  // Memory planning for local models (tunables, not model data).
+  memory: { fraction: number; minContext: number; kvBytesPerElement: number };
+  hardwareSampling: { enabled: boolean; intervalMs: number };
 }
 
 export const AH_HOME = process.env.AH_HOME ?? join(homedir(), ".ah");
@@ -53,6 +56,8 @@ export const defaultConfig = (): AhConfig => ({
   dataDir: AH_HOME,
   bashTimeoutMs: 120_000,
   contextBudgetRatio: 0.8,
+  memory: { fraction: 0.75, minContext: 16_384, kvBytesPerElement: 2 },
+  hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
 });
 
 function readJson(path: string): Partial<AhConfig> {

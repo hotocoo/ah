@@ -1,4 +1,4 @@
-import type { ChatRequest, ContentBlock, Message, ModelInfo, Modality, StreamEvent, Usage } from "../core/types.ts";
+import type { ChatRequest, ContentBlock, LocalModelFacts, Message, ModelInfo, Modality, RuntimeTimings, StreamEvent, Usage } from "../core/types.ts";
 import { ensureOk, ndjson, type EmbedRequest, type Provider, type ProviderCapabilities } from "./provider.ts";
 
 // Native Ollama adapter (/api/chat). Local, keyless; also works for remote Ollama hosts.
@@ -39,6 +39,8 @@ export function toOllamaMessages(system: string, messages: Message[]): OllamaMsg
   return out;
 }
 
+type Caps = string[] & { context?: number; kv?: { layers: number; kvHeads: number; headDim: number } };
+
 export class OllamaProvider implements Provider {
   readonly kind = "ollama";
   readonly capabilities: ProviderCapabilities = {
@@ -65,7 +67,12 @@ export class OllamaProvider implements Provider {
       model: req.model,
       messages: toOllamaMessages(req.system, req.messages),
       stream: true,
-      options: { num_predict: req.maxTokens, ...(req.temperature !== undefined ? { temperature: req.temperature } : {}) },
+      // num_ctx is always explicit: Ollama silently drops the start of prompts longer than its default.
+      options: {
+        num_predict: req.maxTokens,
+        ...(req.contextWindow ? { num_ctx: req.contextWindow } : {}),
+        ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+      },
     };
     if (req.tools.length)
       body.tools = req.tools.map((t) => ({
@@ -83,9 +90,20 @@ export class OllamaProvider implements Provider {
     const content: ContentBlock[] = [];
     const usage: Usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 };
     let doneReason = "stop";
+    let timings: RuntimeTimings | undefined;
     let n = 0;
     for await (const raw of ndjson(res.body!)) {
-      const chunk = raw as { message?: OllamaMsg; done?: boolean; done_reason?: string; prompt_eval_count?: number; eval_count?: number; error?: string };
+      const chunk = raw as {
+        message?: OllamaMsg;
+        done?: boolean;
+        done_reason?: string;
+        prompt_eval_count?: number;
+        prompt_eval_duration?: number;
+        eval_count?: number;
+        eval_duration?: number;
+        load_duration?: number;
+        error?: string;
+      };
       if (chunk.error) throw new Error(`ollama: ${chunk.error}`);
       const msg = chunk.message;
       if (msg?.thinking) yield { type: "thinking_delta", text: msg.thinking };
@@ -103,6 +121,17 @@ export class OllamaProvider implements Provider {
         usage.inputTokens = chunk.prompt_eval_count ?? 0;
         usage.outputTokens = chunk.eval_count ?? 0;
         doneReason = chunk.done_reason ?? "stop";
+        const ms = (ns?: number) => (ns === undefined ? undefined : ns / 1e6);
+        const rate = (n?: number, ns?: number) => (n && ns ? n / (ns / 1e9) : undefined);
+        timings = {
+          promptTokens: chunk.prompt_eval_count,
+          promptMs: ms(chunk.prompt_eval_duration),
+          prefillTokensPerSec: rate(chunk.prompt_eval_count, chunk.prompt_eval_duration),
+          decodeTokens: chunk.eval_count,
+          decodeMs: ms(chunk.eval_duration),
+          decodeTokensPerSec: rate(chunk.eval_count, chunk.eval_duration),
+          loadMs: ms(chunk.load_duration),
+        };
       }
     }
     if (text) content.unshift({ type: "text", text });
@@ -112,12 +141,13 @@ export class OllamaProvider implements Provider {
       message: { role: "assistant", content },
       stopReason: hasCalls ? "tool_use" : doneReason === "length" ? "max_tokens" : "end_turn",
       usage,
+      timings,
     };
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const res = await ensureOk(await fetch(this.url("/api/tags"), { signal }), this.key);
-    const json = (await res.json()) as { models?: { name: string; details?: { family?: string } }[] };
+    const json = (await res.json()) as { models?: { name: string; size?: number; details?: { family?: string; quantization_level?: string; parameter_size?: string } }[] };
     return Promise.all(
       (json.models ?? []).map(async (m) => {
         const caps = await this.capabilitiesOf(m.name, signal);
@@ -135,16 +165,24 @@ export class OllamaProvider implements Provider {
           reasoning: caps.includes("thinking"),
           openWeights: true,
           cost: { input: 0, output: 0 },
-          kinds: embedding ? ["embedding"] : ["chat"],
+          kinds: [...(embedding ? (["embedding"] as const) : (["chat"] as const)), ...(caps.includes("image") ? (["image-gen"] as const) : [])],
           source: "live" as const,
+          local: {
+            runtime: this.key,
+            sizeBytes: m.size,
+            quantization: m.details?.quantization_level,
+            parameterSize: m.details?.parameter_size,
+            trainedContext: caps.context,
+            kv: caps.kv,
+          } satisfies LocalModelFacts,
         } satisfies ModelInfo;
       }),
     );
   }
 
-  private capsCache = new Map<string, Promise<string[] & { context?: number }>>();
+  private capsCache = new Map<string, Promise<Caps>>();
 
-  private capabilitiesOf(model: string, signal?: AbortSignal): Promise<string[] & { context?: number }> {
+  private capabilitiesOf(model: string, signal?: AbortSignal): Promise<Caps> {
     let p = this.capsCache.get(model);
     if (!p) {
       p = this.showCapabilities(model, signal);
@@ -153,14 +191,22 @@ export class OllamaProvider implements Provider {
     return p;
   }
 
-  private async showCapabilities(model: string, signal?: AbortSignal): Promise<string[] & { context?: number }> {
+  private async showCapabilities(model: string, signal?: AbortSignal): Promise<Caps> {
     try {
       const res = await fetch(this.url("/api/show"), { method: "POST", body: JSON.stringify({ model }), signal });
       if (!res.ok) return [];
       const j = (await res.json()) as { capabilities?: string[]; model_info?: Record<string, unknown> };
-      const caps: string[] & { context?: number } = [...(j.capabilities ?? [])];
-      const ctxKey = Object.keys(j.model_info ?? {}).find((k) => k.endsWith(".context_length"));
-      if (ctxKey) caps.context = Number(j.model_info![ctxKey]);
+      const caps: Caps = [...(j.capabilities ?? [])];
+      // GGUF metadata keys are prefixed by the architecture, e.g. qwen3.context_length.
+      const info = j.model_info ?? {};
+      const arch = String(info["general.architecture"] ?? "");
+      const num = (k: string) => (typeof info[`${arch}.${k}`] === "number" ? (info[`${arch}.${k}`] as number) : undefined);
+      caps.context = num("context_length");
+      const layers = num("block_count");
+      const heads = num("attention.head_count");
+      const kvHeads = num("attention.head_count_kv") ?? heads;
+      const headDim = num("attention.key_length") ?? (num("embedding_length") && heads ? num("embedding_length")! / heads : undefined);
+      if (layers && kvHeads && headDim) caps.kv = { layers, kvHeads, headDim };
       return caps;
     } catch {
       return [];

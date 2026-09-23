@@ -38,7 +38,11 @@ CREATE TABLE IF NOT EXISTS runs (
   ah_version TEXT,
   bench_run_id TEXT,
   bench_task_id TEXT,
-  bench_trial INTEGER
+  bench_trial INTEGER,
+  context_window INTEGER,
+  gpu_util_avg REAL,
+  gpu_mem_peak INTEGER,
+  energy_j REAL
 );
 CREATE INDEX IF NOT EXISTS runs_started ON runs(started_at);
 CREATE INDEX IF NOT EXISTS runs_bench ON runs(bench_run_id);
@@ -59,6 +63,16 @@ CREATE TABLE IF NOT EXISTS turns (
   reasoning_tokens INTEGER,
   cost_usd REAL,
   tool_calls INTEGER,
+  prefill_tps REAL,
+  decode_tps REAL,
+  runtime_prompt_ms REAL,
+  runtime_cached_tokens INTEGER,
+  load_ms REAL,
+  gpu_util_avg REAL,
+  gpu_util_max REAL,
+  gpu_mem_peak INTEGER,
+  power_avg_w REAL,
+  energy_j REAL,
   PRIMARY KEY (run_id, turn, attempt)
 );
 CREATE TABLE IF NOT EXISTS tool_calls (
@@ -154,9 +168,12 @@ export class TelemetryStore {
         const u = e.usage;
         this.db.run(
           `UPDATE turns SET latency_ms = ?, ttft_ms = ?, tokens_per_sec = ?, stop_reason = ?, input_tokens = ?, output_tokens = ?,
-           cache_read_tokens = ?, cache_write_tokens = ?, reasoning_tokens = ?, cost_usd = ?, tool_calls = ?
+           cache_read_tokens = ?, cache_write_tokens = ?, reasoning_tokens = ?, cost_usd = ?, tool_calls = ?,
+           prefill_tps = ?, decode_tps = ?, runtime_prompt_ms = ?, runtime_cached_tokens = ?, load_ms = ?
            WHERE run_id = ? AND turn = ? AND attempt = ?`,
-          [e.latencyMs, e.ttftMs, e.outputTokensPerSec, e.stopReason, u.inputTokens, u.outputTokens, u.cacheReadTokens, u.cacheWriteTokens, u.reasoningTokens, e.costUsd, e.toolCalls, e.runId, e.turn, attempt],
+          [e.latencyMs, e.ttftMs, e.outputTokensPerSec, e.stopReason, u.inputTokens, u.outputTokens, u.cacheReadTokens, u.cacheWriteTokens, u.reasoningTokens, e.costUsd, e.toolCalls,
+           e.timings?.prefillTokensPerSec ?? null, e.timings?.decodeTokensPerSec ?? null, e.timings?.promptMs ?? null, e.timings?.cachedTokens ?? null, e.timings?.loadMs ?? null,
+           e.runId, e.turn, attempt],
         );
         break;
       }
@@ -182,6 +199,21 @@ export class TelemetryStore {
       }
     }
   };
+
+  recordHardware(runId: string, turn: number | null, s: { gpuUtilAvg?: number; gpuUtilMax?: number; gpuMemPeakBytes?: number; powerAvgW?: number; energyJ?: number }): void {
+    if (turn === null) {
+      this.db.run("UPDATE runs SET gpu_util_avg = ?, gpu_mem_peak = ?, energy_j = ? WHERE run_id = ?", [s.gpuUtilAvg ?? null, s.gpuMemPeakBytes ?? null, s.energyJ ?? null, runId]);
+      return;
+    }
+    this.db.run(
+      "UPDATE turns SET gpu_util_avg = ?, gpu_util_max = ?, gpu_mem_peak = ?, power_avg_w = ?, energy_j = ? WHERE run_id = ? AND turn = ?",
+      [s.gpuUtilAvg ?? null, s.gpuUtilMax ?? null, s.gpuMemPeakBytes ?? null, s.powerAvgW ?? null, s.energyJ ?? null, runId, turn],
+    );
+  }
+
+  setContextWindow(runId: string, window: number): void {
+    this.db.run("UPDATE runs SET context_window = ? WHERE run_id = ?", [window, runId]);
+  }
 
   cacheGet(key: string, maxAgeMs: number): string | null {
     const row = this.db.query("SELECT value, fetched_at FROM kv_cache WHERE key = ?").get(key) as { value: string; fetched_at: number } | null;
