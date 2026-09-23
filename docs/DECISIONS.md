@@ -125,3 +125,9 @@ Observed on qwen3:4b: six consecutive failed `edit_file` calls because `old_stri
 ## D23. Tool subprocess hygiene
 
 Found during the MiMo baseline run: `npx vitest run 2>&1 | tail -30` outlived both the 120 s command timeout and the 900 s trial limit, because killing `sh` left `npm exec` → `node` → vitest workers holding the pipe open. The same process listing showed that commands inherited the harness's full environment, including session tokens. Commands now run with credential-like variables removed, and timeouts/aborts kill the entire process tree and stop waiting on the pipes one second later.
+
+## D24. Serve and sample models the way their authors recommend
+
+Models are served with the command from their model card (`llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`, `optiq serve --model mlx-community/...`), and `ah` applies the card's generation settings itself: it resolves the Hub repo from the runtime's model id or cache path, reads `generation_config.json` (following `base_model` from quantised repos, e.g. GGUF → `XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B`: temperature 0.6, top_p 0.95, top_k 20), and sets `chat_template_kwargs.enable_thinking` when the template has that switch (the MiMo card enables thinking). Per-model config overrides both. For runtimes without GGUF metadata (MLX, vLLM), `config.json` supplies the trained context and KV geometry, counting only full-attention layers in hybrid models (MiMo/Qwen3.5: 8 of 32).
+
+Two more robustness features came out of these runs: project facts in the system prompt (the model stopped guessing `deno`/`node` for a Bun project; trial pass rate on the first two tasks went from 3/5 to 6/6), and a repetition guard (one turn otherwise generated for 13 minutes).

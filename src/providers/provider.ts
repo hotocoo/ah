@@ -47,7 +47,7 @@ export class ProviderError extends Error {
     readonly provider: string,
     readonly status?: number,
     readonly retryable = false,
-    readonly code?: "invalid_tool_json" | "context_overflow",
+    readonly code?: "invalid_tool_json" | "context_overflow" | "unavailable",
   ) {
     super(message);
     this.name = "ProviderError";
@@ -72,8 +72,16 @@ export const isRetryableStatus = (status: number): boolean =>
 // fetch without Bun's default 300 s whole-request timeout. Local models can spend
 // longer than that on prefill or a long generation, and queue behind other clients;
 // cancellation is always via AbortSignal instead.
-export const streamFetch = (url: string | URL, init: RequestInit = {}): Promise<Response> =>
-  fetch(url, { ...init, timeout: false } as RequestInit);
+// Connection failures (server restarting, briefly down) become retryable ProviderErrors
+// with code "unavailable" so the loop backs off long enough for a local server to reload.
+export async function streamFetch(url: string | URL, init: RequestInit = {}): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, timeout: false } as RequestInit);
+  } catch (err) {
+    if (init.signal?.aborted) throw err;
+    throw new ProviderError(`cannot reach ${new URL(String(url)).origin}: ${(err as Error).message}`, new URL(String(url)).host, undefined, true, "unavailable");
+  }
+}
 
 // Error-body patterns that mean the request exceeded the model's context window.
 export const CONTEXT_OVERFLOW = /context[_ ]length|maximum context|context window|too many tokens|prompt is too long|exceeds the (maximum|context)|input token count/i;

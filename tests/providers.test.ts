@@ -329,3 +329,10 @@ describe("stream error handling", () => {
     }
   });
 });
+
+describe("unreachable servers", () => {
+  test("connection refused is a retryable 'unavailable' ProviderError", async () => {
+    const p = new OpenAICompatProvider("t", { baseURL: "http://127.0.0.1:1" });
+    await expect(collect(p.stream({ model: "m", system: "", messages: convo, tools: [], maxTokens: 10 }))).rejects.toMatchObject({ retryable: true, code: "unavailable" });
+  });
+});

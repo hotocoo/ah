@@ -305,7 +305,9 @@ export class Agent {
         }
         const retryable = err instanceof ProviderError && err.retryable && err.code !== "invalid_tool_json";
         if (!retryable || attempt > maxRetries) throw err;
-        const delayMs = Math.min(30_000, 500 * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
+        // An unreachable server is usually restarting or reloading a model: wait longer.
+        const base = err instanceof ProviderError && err.code === "unavailable" ? 3000 : 500;
+        const delayMs = Math.min(30_000, base * 2 ** (attempt - 1)) + Math.floor(Math.random() * 250);
         this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: (err as Error).message.slice(0, 200), delayMs, t: Date.now() });
         await sleep(delayMs, this.o.signal);
       } finally {

@@ -1,0 +1,1306 @@
+{
+  "benchRunId": "bench_2026-09-23T09-12-19_openai-compatible_Users_acotech_.cache_ah_models--mlx-community--MiMo-V2.6-Disti",
+  "model": "openai-compatible//Users/acotech/.cache/ah/models--mlx-community--MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit/patched-tool-parser",
+  "startedAt": "2026-09-23T09:12:19.337Z",
+  "finishedAt": "2026-09-23T10:08:27.472Z",
+  "trials": 3,
+  "features": {},
+  "hardware": {
+    "t": 1790154739337,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 4474126336,
+    "load1": 12.5244140625,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 17313611776,
+    "gpuInUseBytes": 855654400,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "openai-compatible",
+    "baseURL": "http://127.0.0.1:8092"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "1efa250",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Fix pagination off-by-one",
+      "category": "bugfix",
+      "difficulty": 1,
+      "tags": [
+        "bun"
+      ],
+      "id": "ts-bugfix-pagination",
+      "language": "typescript",
+      "prompt": "Users report that page 1 from `paginate` in src/paginate.ts skips the first items. Pages are 1-based. Fix the bug and add a regression test in src/paginate.test.ts.",
+      "grader": {
+        "cmd": "bun test",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-bugfix-pagination",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-bugfix-pagination/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-bugfix-pagination/hidden"
+    },
+    {
+      "name": "Implement a generic Go stack",
+      "category": "feature",
+      "difficulty": 2,
+      "tags": [
+        "go"
+      ],
+      "id": "go-feature-stack",
+      "language": "go",
+      "prompt": "Implement the generic Stack[T] type in stack.go as documented in the comments (Push, Pop, Peek, Len, IsEmpty). Pop and Peek on an empty stack return the zero value and false. Add tests and run `go test ./...`.",
+      "grader": {
+        "cmd": "go test ./...",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/go-feature-stack",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/go-feature-stack/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/go-feature-stack/hidden"
+    },
+    {
+      "name": "Fix a Python duration parser",
+      "category": "bugfix",
+      "difficulty": 2,
+      "tags": [
+        "python"
+      ],
+      "id": "py-bugfix-duration",
+      "language": "python",
+      "prompt": "`parse_duration` in duration.py should convert strings like '1h30m', '45s', '2h', '1h2m3s' into total seconds, but mixed units give wrong results. Fix it and verify with pytest.",
+      "grader": {
+        "cmd": "python3 -m pytest -q",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/py-bugfix-duration",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/py-bugfix-duration/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/py-bugfix-duration/hidden"
+    },
+    {
+      "name": "Fix a Rust crate that does not compile and has a logic bug",
+      "category": "bugfix",
+      "difficulty": 3,
+      "tags": [
+        "rust"
+      ],
+      "id": "rust-fix-compile-and-logic",
+      "language": "rust",
+      "prompt": "This Rust crate does not compile, and once it does, `cargo test` has a failing test. Make it compile and fix the logic so all tests pass. Do not change the tests.",
+      "grader": {
+        "cmd": "cargo test --quiet 2>&1",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/rust-fix-compile-and-logic",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/rust-fix-compile-and-logic/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/rust-fix-compile-and-logic/hidden"
+    },
+    {
+      "name": "Debug a failing test whose cause is in another module",
+      "category": "debugging",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "debugging",
+        "multi-file"
+      ],
+      "id": "ts-debug-cross-file",
+      "language": "typescript",
+      "prompt": "`bun test` fails in tests/checkout.test.ts. Find the root cause and fix it. Do not modify the tests.",
+      "grader": {
+        "cmd": "bun test && git diff --quiet -- tests",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-debug-cross-file",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-debug-cross-file/fixture"
+    },
+    {
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "spec"
+      ],
+      "id": "ts-feature-lru",
+      "language": "typescript",
+      "prompt": "Implement the LRU cache described in SPEC.md. Write your own tests in src/lru.test.ts and make sure they pass.",
+      "grader": {
+        "cmd": "bun test",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-feature-lru",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-feature-lru/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-feature-lru/hidden"
+    },
+    {
+      "name": "Rename a function across a codebase",
+      "category": "refactor",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "multi-file"
+      ],
+      "id": "ts-multifile-rename",
+      "language": "typescript",
+      "prompt": "Rename the function `getUserName` to `getDisplayName` everywhere (definition, all call sites, imports, tests). Keep behaviour identical and make sure `bun test` passes.",
+      "grader": {
+        "cmd": "bun test && ! grep -rn getUserName src tests",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 25,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-multifile-rename",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-multifile-rename/fixture"
+    },
+    {
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "tags": [
+        "bun",
+        "mutation-testing"
+      ],
+      "id": "ts-write-tests",
+      "language": "typescript",
+      "prompt": "Write a thorough test suite for `slugify` (src/slugify.ts) in src/slugify.test.ts. It must pass against the current implementation and should catch regressions: accents, case, punctuation runs, leading/trailing separators, digits, empty input.",
+      "grader": {
+        "cmd": "bash grade.sh",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudvwtfa_fg5rr3",
+      "turns": 12,
+      "toolCalls": 14,
+      "toolErrors": 4,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 42301,
+        "outputTokens": 1258,
+        "cacheReadTokens": 27555,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 73
+      },
+      "costUsd": 0,
+      "wallMs": 41384.135792,
+      "ttftMs": 2995.5122499999998,
+      "graderMs": 8.793417000000773,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 8 pass\n 0 fail\n 14 expect() calls\nRan 8 tests across 2 files. [2.00ms]",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 39 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 64.08096791920269,
+      "gpuUtilAvg": 72.83333333333333,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudvxph1_p95u73",
+      "turns": 10,
+      "toolCalls": 10,
+      "toolErrors": 2,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 31434,
+        "outputTokens": 1305,
+        "cacheReadTokens": 22545,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 77
+      },
+      "costUsd": 0,
+      "wallMs": 34999.199625,
+      "ttftMs": 2943.7885410000017,
+      "graderMs": 9.291084000011324,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 9 pass\n 0 fail\n 16 expect() calls\nRan 9 tests across 2 files. [3.00ms]",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 41 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 56.88914689437295,
+      "gpuUtilAvg": 67.51428571428572,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudvygku_a28uu6",
+      "turns": 6,
+      "toolCalls": 7,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 18663,
+        "outputTokens": 1060,
+        "cacheReadTokens": 12525,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 140
+      },
+      "costUsd": 0,
+      "wallMs": 26819.414749999996,
+      "ttftMs": 2936.5858330000046,
+      "graderMs": 21.5211249999993,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 9 pass\n 0 fail\n 11 expect() calls\nRan 9 tests across 2 files. [5.00ms]",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 41 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 55.97398976995775,
+      "gpuUtilAvg": 68.22222222222223,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudvz1e3_tgc93s",
+      "turns": 15,
+      "toolCalls": 22,
+      "toolErrors": 5,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 87337,
+        "outputTokens": 5113,
+        "cacheReadTokens": 34762,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 1472
+      },
+      "costUsd": 0,
+      "wallMs": 155118.47795800003,
+      "ttftMs": 2895.943041999999,
+      "graderMs": 243.86899999994785,
+      "graderTail": "--- FAIL: TestStackInt (0.00s)\n    stack_test.go:44: stack should be empty after popping all items\nFAIL\nFAIL\texample.com/stack\t0.013s\nFAIL",
+      "changedFiles": [
+        "stack.go",
+        "stack_test.go"
+      ],
+      "diffStat": "2 files changed, 139 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 55.84250194962586,
+      "gpuUtilAvg": 72.2258064516129,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudw2de0_ddgpgu",
+      "turns": 15,
+      "toolCalls": 19,
+      "toolErrors": 6,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 78343,
+        "outputTokens": 4259,
+        "cacheReadTokens": 34762,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 139
+      },
+      "costUsd": 0,
+      "wallMs": 128431.43624999997,
+      "ttftMs": 2925.9985840000445,
+      "graderMs": 37.96908299997449,
+      "graderTail": "FAIL\texample.com/stack [setup failed]\nFAIL\n\n# example.com/stack\nstack_test.go:124:6: expected '(', found TestMixedValues",
+      "changedFiles": [
+        "stack.go",
+        "stack_test.go"
+      ],
+      "diffStat": "2 files changed, 188 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 60.443907133187814,
+      "gpuUtilAvg": 72.2109375,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudw54li_fcadd9",
+      "turns": 15,
+      "toolCalls": 18,
+      "toolErrors": 6,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 70055,
+        "outputTokens": 3006,
+        "cacheReadTokens": 34762,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 88
+      },
+      "costUsd": 0,
+      "wallMs": 96580.00337500003,
+      "ttftMs": 2900.599125000008,
+      "graderMs": 165.39762500004144,
+      "graderTail": "FAIL\texample.com/stack [build failed]\nFAIL\n\n# example.com/stack [example.com/stack.test]\n./stack_test.go:50:8: no new variables on left side of :=\n./stack_test.go:153:40: invalid slice indices: 0 < 3",
+      "changedFiles": [
+        "stack.go",
+        "stack_test.go"
+      ],
+      "diffStat": "2 files changed, 215 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 67.26895264416493,
+      "gpuUtilAvg": 73.31958762886597,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudw77ef_k2ywlu",
+      "turns": 7,
+      "toolCalls": 6,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 19762,
+        "outputTokens": 601,
+        "cacheReadTokens": 15006,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 14
+      },
+      "costUsd": 0,
+      "wallMs": 18005.920125000004,
+      "ttftMs": 2971.1828339999774,
+      "graderMs": 157.31904199998826,
+      "graderTail": ".......                                                                  [100%]\n7 passed in 0.01s",
+      "changedFiles": [
+        "duration.py"
+      ],
+      "diffStat": "3 files changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 55.31219817607072,
+      "gpuUtilAvg": 91.05555555555556,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudw7ljx_iemg6l",
+      "turns": 8,
+      "toolCalls": 9,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 24363,
+        "outputTokens": 1086,
+        "cacheReadTokens": 17507,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 229
+      },
+      "costUsd": 0,
+      "wallMs": 28954.891167000053,
+      "ttftMs": 3063.332291999948,
+      "graderMs": 153.99416599993128,
+      "graderTail": ".......                                                                  [100%]\n7 passed in 0.01s",
+      "changedFiles": [
+        "duration.py"
+      ],
+      "diffStat": "3 files changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 56.07829533587299,
+      "gpuUtilAvg": 73.55172413793103,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudw8847_uqwwxv",
+      "turns": 10,
+      "toolCalls": 11,
+      "toolErrors": 2,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 30583,
+        "outputTokens": 883,
+        "cacheReadTokens": 22509,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 117
+      },
+      "costUsd": 0,
+      "wallMs": 26765.762457999983,
+      "ttftMs": 2932.667250000057,
+      "graderMs": 182.03787500003818,
+      "graderTail": ".........                                                                [100%]\n9 passed in 0.01s",
+      "changedFiles": [
+        "duration.py",
+        "test_duration.py"
+      ],
+      "diffStat": "4 files changed, 10 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 64.3425817763417,
+      "gpuUtilAvg": 70.96296296296296,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudw8t13_4s54ar",
+      "turns": 8,
+      "toolCalls": 8,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 26901,
+        "outputTokens": 2823,
+        "cacheReadTokens": 17395,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 2213
+      },
+      "costUsd": 0,
+      "wallMs": 64589.204958000104,
+      "ttftMs": 2947.464042000007,
+      "graderMs": 247.90037500008475,
+      "graderTail": ".\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "644 files changed, 32 insertions(+), 2 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": 55.740583181411395,
+      "gpuUtilAvg": 62.04615384615385,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudwa7fu_4nbe0v",
+      "turns": 11,
+      "toolCalls": 11,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 41026,
+        "outputTokens": 1887,
+        "cacheReadTokens": 24850,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 770
+      },
+      "costUsd": 0,
+      "wallMs": 54784.42562500003,
+      "ttftMs": 2955.803083000006,
+      "graderMs": 139.73641599994153,
+      "graderTail": ".\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "644 files changed, 32 insertions(+), 2 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": 60.968759408158704,
+      "gpuUtilAvg": 70.10909090909091,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudwbe9d_e2e6xj",
+      "turns": 20,
+      "toolCalls": 22,
+      "toolErrors": 4,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 97826,
+        "outputTokens": 4645,
+        "cacheReadTokens": 47215,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 1984
+      },
+      "costUsd": 0,
+      "wallMs": 147349.742875,
+      "ttftMs": 2952.5770000000484,
+      "graderMs": 222.40170800010674,
+      "graderTail": "assertion `left == right` failed\n  left: [(\"dog\", 1), (\"end\", 1)]\n right: [(\"the\", 3), (\"cat\", 2)]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::counts_and_orders\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `--lib`",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "331 files changed, 30 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 64.03343891218366,
+      "gpuUtilAvg": 75.68027210884354,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudwekef_12bam7",
+      "turns": 12,
+      "toolCalls": 18,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 55136,
+        "outputTokens": 10971,
+        "cacheReadTokens": 27368,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 8564
+      },
+      "costUsd": 0,
+      "wallMs": 236174.49337499996,
+      "ttftMs": 3031.3565409999574,
+      "graderMs": 41.06037500011735,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 1 pass\n 0 fail\n 2 expect() calls\nRan 1 test across 1 file. [5.00ms]",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 56.443873857712354,
+      "gpuUtilAvg": 67.08474576271186,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudwjms7_33un3z",
+      "turns": 7,
+      "toolCalls": 12,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 23990,
+        "outputTokens": 1723,
+        "cacheReadTokens": 14928,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 1088
+      },
+      "costUsd": 0,
+      "wallMs": 42301.72512500011,
+      "ttftMs": 2913.785750000039,
+      "graderMs": 19.224958000006154,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 1 pass\n 0 fail\n 2 expect() calls\nRan 1 test across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 68.39825556955698,
+      "gpuUtilAvg": 65.27906976744185,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudwkjiq_vinzmw",
+      "turns": 6,
+      "toolCalls": 10,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 20316,
+        "outputTokens": 1597,
+        "cacheReadTokens": 12440,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 886
+      },
+      "costUsd": 0,
+      "wallMs": 38639.377082999796,
+      "ttftMs": 2886.9602500000037,
+      "graderMs": 18.359584000194445,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 1 pass\n 0 fail\n 2 expect() calls\nRan 1 test across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": 58.52183961065883,
+      "gpuUtilAvg": 63.35897435897436,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudwldf4_z25j2q",
+      "turns": 20,
+      "toolCalls": 23,
+      "toolErrors": 6,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 192594,
+        "outputTokens": 9788,
+        "cacheReadTokens": 46037,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 2064
+      },
+      "costUsd": 0,
+      "wallMs": 355398.87508300017,
+      "ttftMs": 2826.7014999999665,
+      "graderMs": 25.93237499985844,
+      "graderTail": "          ^\nTypeError: null is not an object (evaluating 'prev.next = next')\n      at remove (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/1/src/lru.ts:141:5)\n      at evict (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/1/src/lru.ts:120:10)\n      at set (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/1/src/lru.ts:76:12)\n      at <anonymous> (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/1/src/lru.test.ts:219:13)\n(fail) LRUCache O(1) behaviour > many operations stay fast [0.68ms]\n\n 5 pass\n 22 fail\n 28 expect() calls\nRan 27 tests across 2 files. [9.00ms]",
+      "changedFiles": [
+        "dbg.ts",
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "3 files changed, 389 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 56.56225629059474,
+      "gpuUtilAvg": 83.94647887323944,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudwszrm_usz3mi",
+      "turns": 20,
+      "toolCalls": 23,
+      "toolErrors": 7,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 255459,
+        "outputTokens": 8714,
+        "cacheReadTokens": 46037,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 1388
+      },
+      "costUsd": 0,
+      "wallMs": 411465.21758299996,
+      "ttftMs": 3127.87179200002,
+      "graderMs": 18.314499999862164,
+      "graderTail": "  ]\n\n- Expected  - 2\n+ Received  + 1\n\n      at <anonymous> (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/2/src/lru.test.ts:233:26)\n(fail) LRUCache edge cases > works with non-string keys [0.06ms]\n\n 7 pass\n 22 fail\n 48 expect() calls\nRan 29 tests across 2 files. [10.00ms]",
+      "changedFiles": [
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "3 files changed, 362 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 73.66786027570068,
+      "gpuUtilAvg": 83.47931873479318,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudx1tcl_mzsidr",
+      "turns": 20,
+      "toolCalls": 23,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 202362,
+        "outputTokens": 10210,
+        "cacheReadTokens": 46037,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 2228
+      },
+      "costUsd": 0,
+      "wallMs": 365680.5028749998,
+      "ttftMs": 2810.1058340000454,
+      "graderMs": 18.152708999812603,
+      "graderTail": "                                                                          ^\nerror: undefined\n  expected: undefined\n    actual:   1\n      at expect (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/3/src/lru.test.ts:9:71)\n      at <anonymous> (/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-feature-lru/3/src/lru.test.ts:203:5)\n(fail) LRUCache > reorders after a miss, not just a hit [0.08ms]\n\n 1 pass\n 21 fail\n 9 expect() calls\nRan 22 tests across 2 files. [6.00ms]",
+      "changedFiles": [
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "2 files changed, 329 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 64.10407132336921,
+      "gpuUtilAvg": 72.61643835616438,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudx9nm1_xyrd34",
+      "turns": 5,
+      "toolCalls": 12,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 16590,
+        "outputTokens": 660,
+        "cacheReadTokens": 10000,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 5
+      },
+      "costUsd": 0,
+      "wallMs": 19965.532457999885,
+      "ttftMs": 3287.7667499999516,
+      "graderMs": 12.989791000261903,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 10 insertions(+), 10 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": 84.24539428600545,
+      "gpuUtilAvg": 70.2,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudxa34f_6irvqr",
+      "turns": 5,
+      "toolCalls": 11,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 16390,
+        "outputTokens": 629,
+        "cacheReadTokens": 10000,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 5
+      },
+      "costUsd": 0,
+      "wallMs": 19133.603458000347,
+      "ttftMs": 3264.3398750000633,
+      "graderMs": 17.38912499975413,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 10 insertions(+), 10 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": 78.1559567614353,
+      "gpuUtilAvg": 68.45,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "outcome": "completed",
+      "runId": "run_mudxahzw_yfq2b5",
+      "turns": 5,
+      "toolCalls": 11,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 16607,
+        "outputTokens": 691,
+        "cacheReadTokens": 10000,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 5
+      },
+      "costUsd": 0,
+      "wallMs": 20093.85254199989,
+      "ttftMs": 4203.209625000134,
+      "graderMs": 14.697457999922335,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [3.00ms]",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 10 insertions(+), 10 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": 109.31982792600128,
+      "gpuUtilAvg": 63,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 1,
+      "passed": false,
+      "failReason": "timeout",
+      "outcome": "aborted",
+      "runId": "run_mudxaxl9_lscysm",
+      "turns": 3,
+      "toolCalls": 5,
+      "toolErrors": 2,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 5240,
+        "outputTokens": 209,
+        "cacheReadTokens": 2515,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 29
+      },
+      "costUsd": 0,
+      "wallMs": 599982.6374999997,
+      "ttftMs": 2917.168417000212,
+      "graderMs": 10.868790999986231,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\nThe following filters did not match any test files in --cwd=\"/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-write-tests/1\":\n src/slugify.test.ts\n10 files were searched [1.00ms]\n\nnote: Tests need \".test\", \"_test_\", \".spec\" or \"_spec_\" in the filename (ex: \"MyApp.test.ts\")\nnote: To treat the \"src/slugify.test.ts\" filter as a path, run \"bun test ./src/slugify.test.ts\"",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": 59.21567683027402,
+      "gpuUtilAvg": 43.90984974958264,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native",
+      "error": "aborted"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 2,
+      "passed": false,
+      "failReason": "agent_error",
+      "outcome": "error",
+      "runId": "run_mudxnsn9_qpbgml",
+      "turns": 6,
+      "toolCalls": 8,
+      "toolErrors": 3,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 14143,
+        "outputTokens": 318,
+        "cacheReadTokens": 10060,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 104
+      },
+      "costUsd": 0,
+      "wallMs": 429303.1873750002,
+      "ttftMs": 3418.3676249999553,
+      "graderMs": 10.092457999940962,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\nThe following filters did not match any test files in --cwd=\"/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-write-tests/2\":\n src/slugify.test.ts\n10 files were searched [2.00ms]\n\nnote: Tests need \".test\", \"_test_\", \".spec\" or \"_spec_\" in the filename (ex: \"MyApp.test.ts\")\nnote: To treat the \"src/slugify.test.ts\" filter as a path, run \"bun test ./src/slugify.test.ts\"",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": 57.59983656260575,
+      "gpuUtilAvg": 83.81542056074767,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native",
+      "error": "Unable to connect. Is the computer able to access the url?"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 3,
+      "passed": false,
+      "failReason": "agent_error",
+      "outcome": "error",
+      "runId": "run_mudxwzzf_9n4ntf",
+      "turns": 1,
+      "toolCalls": 0,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 0.9819169999100268,
+      "ttftMs": null,
+      "graderMs": 9.987375000026077,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\nThe following filters did not match any test files in --cwd=\"/Users/acotech/workspace/ah/examples/bench/2026-09-23/mlx-mimo-v2.6-distill-qwen-9b-optiq-4bit/work/ts-write-tests/3\":\n src/slugify.test.ts\n10 files were searched [1.00ms]\n\nnote: Tests need \".test\", \"_test_\", \".spec\" or \"_spec_\" in the filename (ex: \"MyApp.test.ts\")\nnote: To treat the \"src/slugify.test.ts\" filter as a path, run \"bun test ./src/slugify.test.ts\"",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native",
+      "error": "Unable to connect. Is the computer able to access the url?"
+    }
+  ]
+}
