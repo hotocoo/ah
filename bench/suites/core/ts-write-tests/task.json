@@ -1,0 +1,56 @@
+{
+  "id": "ts-write-tests",
+  "name": "Write tests that catch real bugs",
+  "category": "test-writing",
+  "difficulty": 4,
+  "language": "typescript",
+  "prompt": "Write a thorough test suite for `slugify` (src/slugify.ts) in src/slugify.test.ts. It must pass against the current implementation and should catch regressions: accents, case, punctuation runs, leading/trailing separators, digits, empty input.",
+  "grader": {
+    "cmd": "bash grade.sh",
+    "timeoutMs": 120000
+  },
+  "limits": {
+    "maxTurns": 15,
+    "timeoutMs": 600000
+  },
+  "tags": [
+    "bun",
+    "mutation-testing"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/slugify.ts"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "write_file",
+          "input": {
+            "path": "src/slugify.test.ts",
+            "content": "import { expect, test } from \"bun:test\";\nimport { slugify } from \"./slugify.ts\";\ntest(\"accents\", () => expect(slugify(\"Cr\u00e8me Br\u00fbl\u00e9e\")).toBe(\"creme-brulee\"));\ntest(\"case\", () => expect(slugify(\"HELLO\")).toBe(\"hello\"));\ntest(\"punctuation runs\", () => expect(slugify(\"a -- b!!c\")).toBe(\"a-b-c\"));\ntest(\"trim separators\", () => expect(slugify(\"  -hi-  \")).toBe(\"hi\"));\ntest(\"digits\", () => expect(slugify(\"Top 10 Tips\")).toBe(\"top-10-tips\"));\ntest(\"empty\", () => expect(slugify(\"\")).toBe(\"\"));\n"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "bun test"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Added tests covering accents, case, runs, trimming, digits and empty input."
+    }
+  ]
+}

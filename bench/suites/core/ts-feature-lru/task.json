@@ -1,0 +1,63 @@
+{
+  "id": "ts-feature-lru",
+  "name": "Implement an LRU cache from a spec",
+  "category": "feature",
+  "difficulty": 3,
+  "language": "typescript",
+  "prompt": "Implement the LRU cache described in SPEC.md. Write your own tests in src/lru.test.ts and make sure they pass.",
+  "grader": {
+    "cmd": "bun test",
+    "timeoutMs": 60000
+  },
+  "limits": {
+    "maxTurns": 20,
+    "timeoutMs": 900000
+  },
+  "tags": [
+    "bun",
+    "spec"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "SPEC.md"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "write_file",
+          "input": {
+            "path": "src/lru.ts",
+            "content": "export class LRUCache<K, V> {\n  private map = new Map<K, V>();\n  constructor(\n    private capacity: number,\n    private onEvict?: (key: K, value: V) => void,\n  ) {\n    if (!(capacity >= 1)) throw new RangeError(\"capacity must be >= 1\");\n  }\n  get size(): number {\n    return this.map.size;\n  }\n  has(key: K): boolean {\n    return this.map.has(key);\n  }\n  get(key: K): V | undefined {\n    if (!this.map.has(key)) return undefined;\n    const v = this.map.get(key)!;\n    this.map.delete(key);\n    this.map.set(key, v);\n    return v;\n  }\n  set(key: K, value: V): void {\n    if (this.map.has(key)) this.map.delete(key);\n    this.map.set(key, value);\n    while (this.map.size > this.capacity) {\n      const [k, v] = this.map.entries().next().value as [K, V];\n      this.map.delete(k);\n      this.onEvict?.(k, v);\n    }\n  }\n  delete(key: K): boolean {\n    return this.map.delete(key);\n  }\n  keys(): K[] {\n    return [...this.map.keys()];\n  }\n}\n"
+          }
+        },
+        {
+          "name": "write_file",
+          "input": {
+            "path": "src/lru.test.ts",
+            "content": "import { expect, test } from \"bun:test\";\nimport { LRUCache } from \"./lru.ts\";\ntest(\"basic\", () => { const c = new LRUCache<string, number>(1); c.set(\"a\", 1); c.set(\"b\", 2); expect(c.keys()).toEqual([\"b\"]); });\n"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "bun test"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Implemented LRUCache on an insertion-ordered Map; tests pass."
+    }
+  ]
+}

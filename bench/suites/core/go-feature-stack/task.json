@@ -1,0 +1,62 @@
+{
+  "id": "go-feature-stack",
+  "name": "Implement a generic Go stack",
+  "category": "feature",
+  "difficulty": 2,
+  "language": "go",
+  "prompt": "Implement the generic Stack[T] type in stack.go as documented in the comments (Push, Pop, Peek, Len, IsEmpty). Pop and Peek on an empty stack return the zero value and false. Add tests and run `go test ./...`.",
+  "grader": {
+    "cmd": "go test ./...",
+    "timeoutMs": 120000
+  },
+  "limits": {
+    "maxTurns": 15,
+    "timeoutMs": 600000
+  },
+  "tags": [
+    "go"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "stack.go"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "write_file",
+          "input": {
+            "path": "stack.go",
+            "content": "package stack\n\n// Stack is a LIFO stack of T.\ntype Stack[T any] struct {\n\titems []T\n}\n\nfunc (s *Stack[T]) Push(v T) { s.items = append(s.items, v) }\n\nfunc (s *Stack[T]) Pop() (T, bool) {\n\tvar zero T\n\tif len(s.items) == 0 {\n\t\treturn zero, false\n\t}\n\tv := s.items[len(s.items)-1]\n\ts.items = s.items[:len(s.items)-1]\n\treturn v, true\n}\n\nfunc (s *Stack[T]) Peek() (T, bool) {\n\tvar zero T\n\tif len(s.items) == 0 {\n\t\treturn zero, false\n\t}\n\treturn s.items[len(s.items)-1], true\n}\n\nfunc (s *Stack[T]) Len() int { return len(s.items) }\n\nfunc (s *Stack[T]) IsEmpty() bool { return len(s.items) == 0 }\n"
+          }
+        },
+        {
+          "name": "write_file",
+          "input": {
+            "path": "stack_test.go",
+            "content": "package stack\n\nimport \"testing\"\n\nfunc TestPush(t *testing.T) {\n\tvar s Stack[int]\n\ts.Push(3)\n\tif v, ok := s.Pop(); !ok || v != 3 {\n\t\tt.Fatal(v)\n\t}\n}\n"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "go test ./..."
+          }
+        }
+      ]
+    },
+    {
+      "text": "Implemented slice-backed Stack[T]; tests pass."
+    }
+  ]
+}

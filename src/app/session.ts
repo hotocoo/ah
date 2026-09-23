@@ -65,7 +65,17 @@ export function autoSelectModel(env: Environment): string | null {
   return pick ? `${pick.provider}/${pick.id}` : null;
 }
 
+// Harness features that can be switched off, for ablation benchmarks
+// (e.g. "ah" vs a baseline loop without local-model adaptations).
+export interface SessionFeatures {
+  contextSizing?: boolean; // explicit, memory-aware context window + compaction (default on)
+  textToolParsing?: boolean; // recover tool calls written as text (default on)
+  compactTools?: boolean; // compact tool profile for small windows (default on)
+  toolProtocol?: "auto" | "native" | "text";
+}
+
 export interface SessionOptions {
+  features?: SessionFeatures;
   model?: string;
   root: string;
   mode?: AgentOptions["mode"];
@@ -126,10 +136,12 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   // Compact profile when the window is small relative to the prompt + tool definitions.
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
-  const compactTools = context.window < overheadTokens * env.cfg.compactToolsRatio;
+  const f = o.features ?? {};
+  const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;
   // Runtime-reported tool support decides the protocol; unknown means try native (the
   // text parser still recovers calls written as text).
-  const toolProtocol: "native" | "text" = env.cfg.toolProtocol !== "auto" ? env.cfg.toolProtocol : info && info.toolCall === false ? "text" : "native";
+  const protocolSetting = f.toolProtocol ?? env.cfg.toolProtocol;
+  const toolProtocol: "native" | "text" = protocolSetting !== "auto" ? protocolSetting : info && info.toolCall === false ? "text" : "native";
   const toolContext = {
     root: o.root,
     bashTimeoutMs: env.cfg.bashTimeoutMs,
@@ -153,7 +165,9 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     maxTokens: Math.min(env.cfg.maxTokens, info?.maxOutput ?? Number.POSITIVE_INFINITY, facts ? Math.floor(context.window / 4) : Number.POSITIVE_INFINITY),
     maxOutputTokens: info?.maxOutput,
     reasoning: env.cfg.reasoning,
-    contextWindow: context.window,
+    // Without context sizing the runtime default applies and no compaction happens.
+    contextWindow: f.contextSizing === false ? undefined : context.window,
+    parseTextToolCalls: f.textToolParsing !== false,
     contextBudgetRatio: env.cfg.contextBudgetRatio,
     pricing: facts ? { input: 0, output: 0 } : info?.cost,
     budgetUsd: o.budgetUsd,

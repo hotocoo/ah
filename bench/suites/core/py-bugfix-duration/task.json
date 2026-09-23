@@ -1,0 +1,56 @@
+{
+  "id": "py-bugfix-duration",
+  "name": "Fix a Python duration parser",
+  "category": "bugfix",
+  "difficulty": 2,
+  "language": "python",
+  "prompt": "`parse_duration` in duration.py should convert strings like '1h30m', '45s', '2h', '1h2m3s' into total seconds, but mixed units give wrong results. Fix it and verify with pytest.",
+  "grader": {
+    "cmd": "python3 -m pytest -q",
+    "timeoutMs": 60000
+  },
+  "limits": {
+    "maxTurns": 15,
+    "timeoutMs": 600000
+  },
+  "tags": [
+    "python"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "duration.py"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "duration.py",
+            "old_string": "total = int(value) * UNITS[unit]",
+            "new_string": "total += int(value) * UNITS[unit]"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "python3 -m pytest -q"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Accumulated instead of overwriting per unit; tests pass."
+    }
+  ]
+}

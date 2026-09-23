@@ -1,0 +1,68 @@
+{
+  "id": "ts-bugfix-pagination",
+  "name": "Fix pagination off-by-one",
+  "category": "bugfix",
+  "difficulty": 1,
+  "language": "typescript",
+  "prompt": "Users report that page 1 from `paginate` in src/paginate.ts skips the first items. Pages are 1-based. Fix the bug and add a regression test in src/paginate.test.ts.",
+  "grader": {
+    "cmd": "bun test",
+    "timeoutMs": 60000
+  },
+  "limits": {
+    "maxTurns": 15,
+    "timeoutMs": 600000
+  },
+  "tags": [
+    "bun"
+  ],
+  "mockScript": [
+    {
+      "text": "Reading.",
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/paginate.ts"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "src/paginate.ts",
+            "old_string": "const start = page * size;",
+            "new_string": "const start = (page - 1) * size;"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "write_file",
+          "input": {
+            "path": "src/paginate.test.ts",
+            "content": "import { expect, test } from \"bun:test\";\nimport { paginate } from \"./paginate.ts\";\ntest(\"page 1 is first page\", () => expect(paginate([1, 2, 3], 1, 2).items).toEqual([1, 2]));\n"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "bun test"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Fixed start index for 1-based pages; added regression test; tests pass."
+    }
+  ]
+}

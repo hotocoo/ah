@@ -1,0 +1,74 @@
+{
+  "id": "ts-debug-cross-file",
+  "name": "Debug a failing test whose cause is in another module",
+  "category": "debugging",
+  "difficulty": 3,
+  "language": "typescript",
+  "prompt": "`bun test` fails in tests/checkout.test.ts. Find the root cause and fix it. Do not modify the tests.",
+  "grader": {
+    "cmd": "bun test && git diff --quiet -- tests",
+    "timeoutMs": 60000
+  },
+  "limits": {
+    "maxTurns": 20,
+    "timeoutMs": 900000
+  },
+  "tags": [
+    "bun",
+    "debugging",
+    "multi-file"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "bun test 2>&1 | tail -15"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/cart.ts"
+          }
+        },
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/tax.ts"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "src/tax.ts",
+            "old_string": "return Math.floor(subtotal * rate);",
+            "new_string": "return Math.round(subtotal * rate);"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "bun test"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Root cause: taxFor floored instead of rounding half-up; fixed in src/tax.ts."
+    }
+  ]
+}

@@ -1,0 +1,64 @@
+{
+  "id": "rust-fix-compile-and-logic",
+  "name": "Fix a Rust crate that does not compile and has a logic bug",
+  "category": "bugfix",
+  "difficulty": 3,
+  "language": "rust",
+  "prompt": "This Rust crate does not compile, and once it does, `cargo test` has a failing test. Make it compile and fix the logic so all tests pass. Do not change the tests.",
+  "grader": {
+    "cmd": "cargo test --quiet 2>&1",
+    "timeoutMs": 300000
+  },
+  "limits": {
+    "maxTurns": 20,
+    "timeoutMs": 900000
+  },
+  "tags": [
+    "rust"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/lib.rs"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "multi_edit",
+          "input": {
+            "path": "src/lib.rs",
+            "edits": [
+              {
+                "old_string": "let word: String = raw.chars().filter(|c| !c.is_ascii_punctuation()).collect().to_lowercase();",
+                "new_string": "let word: String = raw.chars().filter(|c| !c.is_ascii_punctuation()).collect::<String>().to_lowercase();"
+              },
+              {
+                "old_string": "v.sort_by(|a, b| a.1.cmp(&b.1).then(a.0.cmp(&b.0)));",
+                "new_string": "v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "cargo test --quiet 2>&1 | tail -5"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Added collect::<String>() turbofish and sorted by count descending; tests pass."
+    }
+  ]
+}

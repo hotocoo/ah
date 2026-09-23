@@ -1,0 +1,112 @@
+{
+  "id": "ts-multifile-rename",
+  "name": "Rename a function across a codebase",
+  "category": "refactor",
+  "difficulty": 3,
+  "language": "typescript",
+  "prompt": "Rename the function `getUserName` to `getDisplayName` everywhere (definition, all call sites, imports, tests). Keep behaviour identical and make sure `bun test` passes.",
+  "grader": {
+    "cmd": "bun test && ! grep -rn getUserName src tests",
+    "timeoutMs": 60000
+  },
+  "limits": {
+    "maxTurns": 25,
+    "timeoutMs": 900000
+  },
+  "tags": [
+    "bun",
+    "multi-file"
+  ],
+  "mockScript": [
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "grep -rln getUserName src tests"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/user.ts"
+          }
+        },
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/greet.ts"
+          }
+        },
+        {
+          "name": "read_file",
+          "input": {
+            "path": "src/report.ts"
+          }
+        },
+        {
+          "name": "read_file",
+          "input": {
+            "path": "tests/user.test.ts"
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "src/user.ts",
+            "old_string": "export function getUserName(",
+            "new_string": "export function getDisplayName("
+          }
+        },
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "src/greet.ts",
+            "old_string": "getUserName",
+            "new_string": "getDisplayName",
+            "replace_all": true
+          }
+        },
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "src/report.ts",
+            "old_string": "getUserName",
+            "new_string": "getDisplayName",
+            "replace_all": true
+          }
+        },
+        {
+          "name": "edit_file",
+          "input": {
+            "path": "tests/user.test.ts",
+            "old_string": "getUserName",
+            "new_string": "getDisplayName",
+            "replace_all": true
+          }
+        }
+      ]
+    },
+    {
+      "toolCalls": [
+        {
+          "name": "bash",
+          "input": {
+            "command": "bun test && grep -rn getUserName src tests || echo no-matches"
+          }
+        }
+      ]
+    },
+    {
+      "text": "Renamed getUserName to getDisplayName in 4 files; tests pass."
+    }
+  ]
+}
