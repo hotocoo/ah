@@ -1,0 +1,85 @@
+import type { ToolSpec } from "../core/types.ts";
+import { editFileTool, listDirTool, multiEditTool, readFileTool, writeFileTool } from "./fs.ts";
+import { generate3dTool, generateImageTool, gitTool, repoMapTool, todoTool, webFetchTool } from "./misc.ts";
+import { validate } from "./schema.ts";
+import { globTool, grepTool } from "./search.ts";
+import { bashTool, isDangerousCommand, runTestsTool } from "./shell.ts";
+import { ToolError, type Tool, type ToolContext, type ToolOutput } from "./types.ts";
+
+export const ALL_TOOLS: Tool[] = [
+  readFileTool,
+  writeFileTool,
+  editFileTool,
+  multiEditTool,
+  listDirTool,
+  globTool,
+  grepTool,
+  repoMapTool,
+  bashTool,
+  runTestsTool,
+  gitTool,
+  todoTool,
+  webFetchTool,
+  generateImageTool,
+  generate3dTool,
+];
+
+export type PermissionMode = "ask" | "auto" | "read-only";
+
+export interface ToolCallOutcome extends ToolOutput {
+  durationMs: number;
+  denied?: boolean;
+}
+
+export class ToolRegistry {
+  private tools = new Map<string, Tool>();
+
+  constructor(tools: Tool[] = ALL_TOOLS) {
+    for (const t of tools) this.tools.set(t.spec.name, t);
+  }
+
+  specs(mode: PermissionMode = "auto"): ToolSpec[] {
+    return [...this.tools.values()].filter((t) => mode !== "read-only" || t.readOnly).map((t) => t.spec);
+  }
+
+  get(name: string): Tool | undefined {
+    return this.tools.get(name);
+  }
+
+  names(): string[] {
+    return [...this.tools.keys()];
+  }
+
+  // Needs approval when: mode is ask and tool writes, or the command is dangerous in any mode.
+  needsApproval(tool: Tool, input: Record<string, unknown>, mode: PermissionMode): boolean {
+    if (tool.spec.name === "bash" && typeof input.command === "string" && isDangerousCommand(input.command)) return true;
+    return mode === "ask" && !tool.readOnly;
+  }
+
+  async execute(
+    name: string,
+    input: Record<string, unknown>,
+    ctx: ToolContext,
+    mode: PermissionMode,
+    approve?: (tool: string, input: Record<string, unknown>, summary: string) => Promise<boolean>,
+  ): Promise<ToolCallOutcome> {
+    const start = performance.now();
+    const done = (o: ToolOutput & { denied?: boolean }): ToolCallOutcome => ({ ...o, durationMs: performance.now() - start });
+    const tool = this.tools.get(name);
+    if (!tool) return done({ content: `unknown tool: ${name}. Available: ${this.names().join(", ")}`, isError: true });
+    if (mode === "read-only" && !tool.readOnly) return done({ content: `${name} is disabled in read-only mode`, isError: true, denied: true });
+    const errors = validate(tool.spec.inputSchema, input);
+    if (errors.length) return done({ content: `invalid input for ${name}:\n${errors.join("\n")}`, isError: true });
+    if (this.needsApproval(tool, input, mode)) {
+      const summary = tool.summarize?.(input) ?? name;
+      const ok = approve ? await approve(name, input, summary) : false;
+      if (!ok) return done({ content: `user denied: ${summary}`, isError: true, denied: true });
+    }
+    try {
+      return done(await tool.run(input, ctx));
+    } catch (err) {
+      const msg = err instanceof ToolError ? err.message : `${(err as Error).name}: ${(err as Error).message}`;
+      return done({ content: msg, isError: true });
+    }
+  }
+}

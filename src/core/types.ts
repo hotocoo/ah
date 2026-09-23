@@ -65,6 +65,8 @@ export interface ToolSpec {
 
 export type StopReason = "end_turn" | "tool_use" | "max_tokens" | "refusal" | "error" | "other";
 
+// Normalised across providers: inputTokens INCLUDES cacheRead/cacheWrite tokens,
+// outputTokens INCLUDES reasoningTokens.
 export interface Usage {
   inputTokens: number;
   outputTokens: number;

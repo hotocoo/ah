@@ -164,7 +164,8 @@ export class AnthropicProvider implements Provider {
       const final = await stream.finalMessage();
       const u = final.usage;
       const usage: Usage = {
-        inputTokens: u.input_tokens ?? 0,
+        // Normalised: inputTokens includes cached tokens (Anthropic reports them separately).
+        inputTokens: (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0),
         outputTokens: u.output_tokens ?? 0,
         cacheReadTokens: u.cache_read_input_tokens ?? 0,
         cacheWriteTokens: u.cache_creation_input_tokens ?? 0,
