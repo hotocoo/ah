@@ -1,0 +1,60 @@
+{
+  "model": "openai-compatible//Users/acotech/.cache/ah/models--mlx-community--MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit/patched-tool-parser",
+  "benchRunId": "bench_2026-09-23T10-19-48_openai-compatible_Users_acotech_.cache_ah_models--mlx-community--MiMo-V2.6-Disti",
+  "k": 3,
+  "tasks": [
+    {
+      "taskId": "ts-write-tests",
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 458387.65422233334,
+      "p95WallMs": 598523.712125,
+      "meanTurns": 14.666666666666666,
+      "meanToolErrors": 3.6666666666666665,
+      "meanTokens": 112041,
+      "decodeTps": 47.193775843583325,
+      "failReasons": {
+        "timeout": 1,
+        "max_turns": 2
+      }
+    }
+  ],
+  "overall": {
+    "trials": 3,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.5615060804490177
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "totalWallMs": 1375221.519084,
+    "p50WallMs": 587642.849375,
+    "p95WallMs": 598523.712125,
+    "meanTtftMs": 3406.5676390000067,
+    "meanPrefillTps": null,
+    "meanDecodeTps": 47.193775843583325,
+    "inputTokens": 300626,
+    "outputTokens": 35497,
+    "costUsd": 0,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.22448979591836735
+  }
+}

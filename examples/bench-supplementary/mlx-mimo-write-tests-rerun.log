@@ -1,0 +1,7 @@
+bench openai-compatible//Users/acotech/.cache/ah/models--mlx-community--MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit/patched-tool-parser · 1 tasks × 3 trials · {} · /Users/acotech/workspace/ah/examples/bench-supplementary/mlx-mimo-write-tests-rerun
+  FAIL ts-write-tests #1 599.7s · 14 turns · 15 tools (1 err) · timeout
+  FAIL ts-write-tests #2 187.8s · 15 turns · 17 tools (6 err) · max_turns
+  FAIL ts-write-tests #3 587.6s · 15 turns · 17 tools (4 err) · max_turns
+
+result 0/3 trials · pass@1 0% · pass^3 0% · 0/1 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench-supplementary/mlx-mimo-write-tests-rerun/report.md

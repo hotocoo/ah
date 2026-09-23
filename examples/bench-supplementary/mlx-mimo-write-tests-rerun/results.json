@@ -1,0 +1,189 @@
+{
+  "benchRunId": "bench_2026-09-23T10-19-48_openai-compatible_Users_acotech_.cache_ah_models--mlx-community--MiMo-V2.6-Disti",
+  "model": "openai-compatible//Users/acotech/.cache/ah/models--mlx-community--MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit/patched-tool-parser",
+  "startedAt": "2026-09-23T10:19:48.601Z",
+  "finishedAt": "2026-09-23T10:42:44.505Z",
+  "trials": 3,
+  "features": {},
+  "hardware": {
+    "t": 1790158788601,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 94879744,
+    "load1": 13.3544921875,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 22518366208,
+    "gpuInUseBytes": 863830016,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "openai-compatible",
+    "baseURL": "http://127.0.0.1:8092"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "c754e6b",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "tags": [
+        "bun",
+        "mutation-testing"
+      ],
+      "id": "ts-write-tests",
+      "language": "typescript",
+      "prompt": "Write a thorough test suite for `slugify` (src/slugify.ts) in src/slugify.test.ts. It must pass against the current implementation and should catch regressions: accents, case, punctuation runs, leading/trailing separators, digits, empty input.",
+      "grader": {
+        "cmd": "bash grade.sh",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "ts-write-tests",
+      "trial": 1,
+      "passed": false,
+      "failReason": "timeout",
+      "outcome": "aborted",
+      "runId": "run_mudyblu1_aqi6oq",
+      "turns": 14,
+      "toolCalls": 15,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 98257,
+        "outputTokens": 7337,
+        "cacheReadTokens": 66142,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 318
+      },
+      "costUsd": 0,
+      "wallMs": 599732.696875,
+      "ttftMs": 3115.874666999999,
+      "graderMs": 21.414749999996275,
+      "graderTail": "error: expect(received).toBe(expected)\n\nExpected: \"foobar\"\nReceived: \"foo-bar\"\n\n      at <anonymous> (/Users/acotech/workspace/ah/examples/bench-supplementary/mlx-mimo-write-tests-rerun/work/ts-write-tests/1/src/slugify.test.ts:396:39)\n(fail) slugify > edge cases > handles non-breaking spaces and other Unicode spaces [0.04ms]\n\n 37 pass\n 8 fail\n 271 expect() calls\nRan 45 tests across 1 file. [6.00ms]",
+      "changedFiles": [
+        "src/slugify.test.ts"
+      ],
+      "diffStat": "1 file changed, 418 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 55.880860600222064,
+      "gpuUtilAvg": 59.70283806343907,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native",
+      "error": "aborted"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudyogqg_3f3vir",
+      "turns": 15,
+      "toolCalls": 17,
+      "toolErrors": 6,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 80882,
+        "outputTokens": 5290,
+        "cacheReadTokens": 34930,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 1438
+      },
+      "costUsd": 0,
+      "wallMs": 187787.416417,
+      "ttftMs": 3578.082374999998,
+      "graderMs": 26.532875000033528,
+      "graderTail": "error: expect(received).toBe(expected)\n\nExpected: \"omega\"\nReceived: \"mega\"\n\n      at <anonymous> (/Users/acotech/workspace/ah/examples/bench-supplementary/mlx-mimo-write-tests-rerun/work/ts-write-tests/2/src/slugify.test.ts:114:30)\n(fail) slugify > removes non-ASCII characters that survive decomposition [0.06ms]\n\n 13 pass\n 2 fail\n 119 expect() calls\nRan 15 tests across 1 file. [4.00ms]",
+      "changedFiles": [
+        "src/slugify.test.ts"
+      ],
+      "diffStat": "1 file changed, 176 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 41.90148185355743,
+      "gpuUtilAvg": 85.73404255319149,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "outcome": "max_turns",
+      "runId": "run_mudyshrd_gkis8y",
+      "turns": 15,
+      "toolCalls": 17,
+      "toolErrors": 4,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 121487,
+        "outputTokens": 22870,
+        "cacheReadTokens": 34930,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 2712
+      },
+      "costUsd": 0,
+      "wallMs": 587642.849375,
+      "ttftMs": 3525.7458750000224,
+      "graderMs": 10.608791999984533,
+      "graderTail": "error: expect(received).toBe(expected)\n\nExpected: \"a-s\"\nReceived: \"as\"\n\n      at <anonymous> (/Users/acotech/workspace/ah/examples/bench-supplementary/mlx-mimo-write-tests-rerun/work/ts-write-tests/3/src/slugify.test.ts:270:34)\n(fail) slugify > unicode letters > keeps letters that do not decompose [0.03ms]\n\n 33 pass\n 4 fail\n 155 expect() calls\nRan 37 tests across 1 file. [3.00ms]",
+      "changedFiles": [
+        "src/slugify.test.ts"
+      ],
+      "diffStat": "2 files changed, 310 insertions(+)",
+      "prefillTps": null,
+      "decodeTps": 43.798985076970474,
+      "gpuUtilAvg": 71.40885860306643,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card mlx-community/MiMo-V2.6-Distill-Qwen-9B-OptiQ-4bit"
+      },
+      "toolProtocol": "native"
+    }
+  ]
+}
