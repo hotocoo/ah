@@ -79,7 +79,7 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
     onEvent: terminalRenderer({ verbose: Boolean(v.verbose), json: Boolean(v.json) }),
     signal: ac.signal,
   });
-  if (!v.json) process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason})\n`));
+  if (!v.json) process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason}) · tools ${s.toolProtocol}${s.compactTools ? " compact" : ""}\n`));
   let code = 0;
   if (!interactive) {
     const task = positionals.join(" ").trim();

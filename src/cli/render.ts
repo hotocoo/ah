@@ -60,6 +60,9 @@ export function terminalRenderer(opts: { verbose?: boolean; json?: boolean } = {
       case "compaction":
         err(yellow(`  ⇣ compacted context ${e.beforeTokens} → ${e.afterTokens} tokens (${e.strategy})`));
         break;
+      case "tool_calls_recovered":
+        err(dim(`  ↺ recovered ${e.count} tool call(s) from text (${e.formats.join(", ")})`));
+        break;
       case "context_truncated":
         err(yellow(`  ⚠ runtime saw ${e.reportedTokens} of ~${e.estimatedTokens} tokens (window ${e.window}); compacting`));
         break;

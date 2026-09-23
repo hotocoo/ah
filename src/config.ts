@@ -36,6 +36,8 @@ export interface AhConfig {
   // Use the compact tool profile when the window is smaller than this many times the
   // size of the full system prompt + tool definitions.
   compactToolsRatio: number;
+  // "auto": native tool calls when the runtime reports tool support, else text protocol.
+  toolProtocol: "auto" | "native" | "text";
   hardwareSampling: { enabled: boolean; intervalMs: number };
 }
 
@@ -61,6 +63,7 @@ export const defaultConfig = (): AhConfig => ({
   contextBudgetRatio: 0.8,
   memory: { fraction: 0.75, minContext: 16_384, kvBytesPerElement: 2 },
   compactToolsRatio: 6,
+  toolProtocol: (process.env.AH_TOOL_PROTOCOL as "auto" | "native" | "text" | undefined) ?? "auto",
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
 });
 

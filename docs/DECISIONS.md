@@ -20,9 +20,9 @@ Each entry: the decision, the alternatives considered, and why.
 
 ## D4. Anthropic request shape
 
-- Adaptive thinking (`thinking: {type: "adaptive"}`) plus `output_config.effort` on current models; legacy `budget_tokens` only for models that still need it (Haiku 4.5 and older), clamped to `[1024, max_tokens - 1024]`.
+- Thinking mode and effort levels come from the Models API (`capabilities.thinking.types.{adaptive,enabled}`, `capabilities.effort.*`), cached per model, never from model-name patterns. Adaptive thinking plus `output_config.effort` when supported; `budget_tokens` (clamped to `[1024, max_tokens - 1024]`) only for models whose capabilities list budget thinking without adaptive.
 - `eager_input_streaming: true` on every client tool (streamed requests), so large `write_file` bodies stream instead of arriving in one burst. Consequence: the SDK's tolerant parser can produce truncated inputs, so every tool input is schema-validated before running (D7), and `max_tokens` turns with tool calls are never executed.
-- Server-side refusal fallbacks (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`) are on by default for Opus 5 / Fable 5.x / Mythos 5.x. Opt out with `serverFallbacks: false`.
+- Server-side refusal fallbacks (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`) are sent by default; if the API rejects them for a model or account, `ah` drops them and remembers. Opt out with `serverFallbacks: false`.
 - Top-level `cache_control: {type: "ephemeral"}` enables automatic prompt caching. The system prompt is byte-stable within a session (sorted tool list, day-granularity date) so the cached prefix keeps hitting.
 - No assistant prefill and no forced `tool_choice` (both rejected by current models).
 

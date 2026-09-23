@@ -82,6 +82,7 @@ export interface SessionOptions {
 export interface Session {
   agent: Agent;
   compactTools: boolean;
+  toolProtocol: "native" | "text";
   modelRef: string;
   info?: ModelInfo;
   context: ContextDecision;
@@ -126,6 +127,9 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
   const compactTools = context.window < overheadTokens * env.cfg.compactToolsRatio;
+  // Runtime-reported tool support decides the protocol; unknown means try native (the
+  // text parser still recovers calls written as text).
+  const toolProtocol: "native" | "text" = env.cfg.toolProtocol !== "auto" ? env.cfg.toolProtocol : info && info.toolCall === false ? "text" : "native";
   const toolContext = {
     root: o.root,
     bashTimeoutMs: env.cfg.bashTimeoutMs,
@@ -139,6 +143,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     model,
     system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.specs(o.mode ?? env.cfg.permissionMode, toolContext, compactTools).map((t) => t.name) }),
     compactTools,
+    toolProtocol,
     tools,
     toolContext,
     mode: o.mode ?? env.cfg.permissionMode,
@@ -159,7 +164,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     },
     signal: o.signal,
   });
-  return { agent, modelRef, info, context, compactTools };
+  return { agent, modelRef, info, context, compactTools, toolProtocol };
 }
 
 export const dataPath = (env: Environment, ...parts: string[]) => join(env.cfg.dataDir, ...parts);

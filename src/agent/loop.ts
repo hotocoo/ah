@@ -3,6 +3,7 @@ import { ProviderError, type Provider } from "../providers/provider.ts";
 import { addCost, costOf, type Pricing } from "../telemetry/pricing.ts";
 import type { ToolRegistry, PermissionMode } from "../tools/index.ts";
 import type { ApprovalFn, ToolContext } from "../tools/types.ts";
+import { recoverToolCalls, textProtocolInstructions, toTextProtocol } from "./toolcall-parser.ts";
 import { COMPACTION_PROMPT, elideOldToolResults, estimateTokens, renderTranscript, safeCutIndex, stripThinking } from "./context.ts";
 import type { AgentEvent, AgentEventHandler, RunOutcome, RunSummary } from "./events.ts";
 
@@ -21,6 +22,11 @@ export interface AgentOptions {
   contextWindow?: number;
   maxOutputTokens?: number; // model's hard output cap, from the models registry
   compactTools?: boolean; // offer only core tools (small context windows)
+  // "native": structured tool calls; "text": tools described in the prompt and parsed
+  // from text, for models/runtimes without native tool calling.
+  toolProtocol?: "native" | "text";
+  // Recover tool calls written as text when a native call was expected (default on).
+  parseTextToolCalls?: boolean;
   contextBudgetRatio?: number;
   pricing?: Pricing;
   budgetUsd?: number;
@@ -186,11 +192,13 @@ export class Agent {
       const t0 = performance.now();
       let ttft: number | null = null;
       try {
+        const specs = this.o.tools.specs(this.o.mode, this.o.toolContext, this.o.compactTools);
+        const textMode = this.o.toolProtocol === "text";
         const stream = this.o.provider.stream({
           model: this.o.model,
-          system: this.o.system,
-          messages: this.messages,
-          tools: this.o.tools.specs(this.o.mode, this.o.toolContext, this.o.compactTools),
+          system: textMode ? `${this.o.system}\n\n${textProtocolInstructions(specs)}` : this.o.system,
+          messages: textMode ? toTextProtocol(this.messages) : this.messages,
+          tools: textMode ? [] : specs,
           maxTokens,
           reasoning: this.o.reasoning,
           temperature: this.o.temperature,
@@ -209,6 +217,13 @@ export class Agent {
           else if (ev.type === "done") done = ev;
         }
         if (!done) throw new Error("provider stream ended without a done event");
+        if (textMode || this.o.parseTextToolCalls !== false) {
+          const recovered = recoverToolCalls(done.message, specs.map((s) => s.name), `txt_${this.runId.slice(-6)}_${this.turn}_${attempt}`);
+          if (recovered) {
+            done = { ...done, message: recovered.message, stopReason: done.stopReason === "max_tokens" ? "max_tokens" : "tool_use" };
+            this.emit({ type: "tool_calls_recovered", runId: this.runId, turn: this.turn, count: toolCallsOf(recovered.message).length, formats: recovered.formats, t: Date.now() });
+          }
+        }
         const latencyMs = performance.now() - t0;
         const cost = costOf(done.usage, this.o.pricing);
         this.usage = addUsage(this.usage, done.usage);
