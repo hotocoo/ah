@@ -1,0 +1,28 @@
+bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 8 tasks × 3 trials · {} · /Users/acotech/workspace/ah/examples/bench/2026-09-23/llamacpp-mimo-v2.6-distill-qwen-9b-q8_0
+  PASS ts-bugfix-pagination #1 22.3s · 6 turns · 8 tools (1 err)
+  PASS ts-bugfix-pagination #2 24.1s · 9 turns · 9 tools (2 err)
+  PASS ts-bugfix-pagination #3 20.9s · 6 turns · 8 tools (1 err)
+  FAIL go-feature-stack #1 70.7s · 15 turns · 17 tools (6 err) · max_turns
+  PASS go-feature-stack #2 79.2s · 15 turns · 19 tools (5 err)
+  PASS go-feature-stack #3 48.2s · 9 turns · 10 tools (1 err)
+  PASS py-bugfix-duration #1 19.4s · 9 turns · 10 tools (3 err)
+  PASS py-bugfix-duration #2 16.7s · 7 turns · 8 tools (1 err)
+  PASS py-bugfix-duration #3 22.4s · 10 turns · 10 tools (2 err)
+  PASS rust-fix-compile-and-logic #1 101.2s · 10 turns · 11 tools (2 err)
+  PASS rust-fix-compile-and-logic #2 89.8s · 12 turns · 14 tools (3 err)
+  PASS rust-fix-compile-and-logic #3 51.3s · 12 turns · 11 tools (3 err)
+  PASS ts-debug-cross-file #1 39.6s · 8 turns · 13 tools
+  PASS ts-debug-cross-file #2 34.6s · 8 turns · 11 tools (1 err)
+  PASS ts-debug-cross-file #3 28.5s · 11 turns · 15 tools (2 err)
+  FAIL ts-feature-lru #1 465.7s · 20 turns · 27 tools (8 err) · max_turns
+  FAIL ts-feature-lru #2 620.1s · 20 turns · 22 tools (6 err) · max_turns
+  FAIL ts-feature-lru #3 379.2s · 20 turns · 36 tools (12 err) · max_turns
+  PASS ts-multifile-rename #1 17.0s · 5 turns · 10 tools
+  PASS ts-multifile-rename #2 17.0s · 5 turns · 11 tools
+  PASS ts-multifile-rename #3 18.4s · 5 turns · 15 tools
+  PASS ts-write-tests #1 87.1s · 15 turns · 17 tools (4 err)
+  PASS ts-write-tests #2 90.1s · 12 turns · 19 tools (5 err)
+  PASS ts-write-tests #3 65.8s · 11 turns · 14 tools (4 err)
+
+result 20/24 trials · pass@1 83% · pass^3 75% · 7/8 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/2026-09-23/llamacpp-mimo-v2.6-distill-qwen-9b-q8_0/report.md
