@@ -79,7 +79,11 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
     onEvent: terminalRenderer({ verbose: Boolean(v.verbose), json: Boolean(v.json) }),
     signal: ac.signal,
   });
-  if (!v.json) process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason}) · tools ${s.toolProtocol}${s.compactTools ? " compact" : ""}\n`));
+  if (!v.json) {
+    const g = s.generation;
+    const samp = [g.temperature !== undefined ? `temp ${g.temperature}` : "", g.sampling?.topP !== undefined ? `top_p ${g.sampling.topP}` : "", g.sampling?.topK !== undefined ? `top_k ${g.sampling.topK}` : "", g.templateKwargs ? `template ${JSON.stringify(g.templateKwargs)}` : ""].filter(Boolean).join(" ");
+    process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason}) · tools ${s.toolProtocol}${s.compactTools ? " compact" : ""}\nsampling: ${samp || "runtime defaults"} (${g.source})\n`));
+  }
   let code = 0;
   if (!interactive) {
     const task = positionals.join(" ").trim();

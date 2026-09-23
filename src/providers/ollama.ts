@@ -72,6 +72,9 @@ export class OllamaProvider implements Provider {
         num_predict: req.maxTokens,
         ...(req.contextWindow ? { num_ctx: req.contextWindow } : {}),
         ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+        ...(req.topP !== undefined ? { top_p: req.topP } : {}),
+        ...(req.topK !== undefined ? { top_k: req.topK } : {}),
+        ...(req.minP !== undefined ? { min_p: req.minP } : {}),
       },
     };
     if (req.responseSchema) body.format = req.responseSchema;

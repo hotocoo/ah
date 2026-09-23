@@ -4,6 +4,7 @@ import { buildSystemPrompt } from "../agent/prompt.ts";
 import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
+import { hubRepoFrom, modelCardDefaults } from "../models/hf.ts";
 import { buildMedia } from "../media/services.ts";
 import { OllamaProvider } from "../providers/ollama.ts";
 import { ProviderRegistry } from "../providers/registry.ts";
@@ -110,6 +111,36 @@ export async function resolveModelContext(env: Environment, modelRef: string): P
   return { facts, context: computed };
 }
 
+export interface GenerationSettings {
+  temperature?: number;
+  sampling?: { topP?: number; topK?: number; minP?: number };
+  templateKwargs?: Record<string, unknown>;
+  source: string; // where the values came from, for display
+}
+
+// Sampling and chat-template settings: per-model config > the model card on Hugging Face
+// (generation_config.json, following base_model for quantised repos) > runtime defaults.
+export async function generationSettings(env: Environment, modelRef: string): Promise<GenerationSettings> {
+  const { provider, model } = parseModelRef(modelRef);
+  const o = env.cfg.models[modelRef] ?? {};
+  const rt = env.registry.runtimes.get(provider);
+  let card: Awaited<ReturnType<typeof modelCardDefaults>> = null;
+  // Ollama applies its own Modelfile parameters server-side; other local runtimes need them sent.
+  if (rt && rt.kind !== "ollama" && o.useModelCard !== false) {
+    const repo = hubRepoFrom(model) ?? hubRepoFrom(typeof rt.meta.modelPath === "string" ? rt.meta.modelPath : undefined);
+    if (repo) card = await modelCardDefaults(repo, { store: env.telemetry.store });
+  }
+  const toggle = Boolean(card?.templateThinkingToggle || rt?.meta.templateThinkingToggle);
+  const pick = <T,>(a: T | undefined, b: T | undefined) => (a !== undefined ? a : b);
+  const sampling = { topP: pick(o.topP, card?.sampling.topP), topK: pick(o.topK, card?.sampling.topK), minP: pick(o.minP, card?.sampling.minP) };
+  return {
+    temperature: pick(o.temperature, card?.sampling.temperature),
+    sampling: Object.values(sampling).some((v) => v !== undefined) ? sampling : undefined,
+    templateKwargs: o.templateKwargs ?? (toggle ? { enable_thinking: env.cfg.reasoning !== "off" } : undefined),
+    source: env.cfg.models[modelRef] ? "config" : card ? `model card ${card.repo}` : "runtime defaults",
+  };
+}
+
 export interface SessionOptions {
   features?: SessionFeatures;
   model?: string;
@@ -128,6 +159,7 @@ export interface SessionOptions {
 export interface Session {
   agent: Agent;
   compactTools: boolean;
+  generation: GenerationSettings;
   toolProtocol: "native" | "text";
   modelRef: string;
   info?: ModelInfo;
@@ -144,6 +176,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const p = env.registry.get(provider);
   const info = env.catalog.lookup(modelRef);
   const { facts, context } = await resolveModelContext(env, modelRef);
+  const gen = await generationSettings(env, modelRef);
   const tools = new ToolRegistry();
   // Compact profile when the window is small relative to the prompt + tool definitions.
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() });
@@ -177,6 +210,9 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     maxTokens: Math.min(env.cfg.maxTokens, info?.maxOutput ?? Number.POSITIVE_INFINITY, facts ? Math.floor(context.window / 4) : Number.POSITIVE_INFINITY),
     maxOutputTokens: info?.maxOutput,
     reasoning: env.cfg.reasoning,
+    temperature: gen.temperature,
+    sampling: gen.sampling,
+    templateKwargs: gen.templateKwargs,
     // Without context sizing the runtime default applies and no compaction happens.
     contextWindow: f.contextSizing === false ? undefined : context.window,
     parseTextToolCalls: f.textToolParsing !== false,
@@ -190,7 +226,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     },
     signal: o.signal,
   });
-  return { agent, modelRef, info, context, compactTools, toolProtocol };
+  return { agent, modelRef, info, context, compactTools, toolProtocol, generation: gen };
 }
 
 export const dataPath = (env: Environment, ...parts: string[]) => join(env.cfg.dataDir, ...parts);

@@ -63,6 +63,7 @@ export const PROBES: { kind: RuntimeKind; probe: Probe }[] = [
           modalities: p.modalities,
           chatTemplateCaps: p.chat_template_caps,
           hasToolTemplate: Boolean(p.chat_template_tool_use) || /tool/.test(String(p.chat_template ?? "")),
+          templateThinkingToggle: /enable_thinking/.test(String(p.chat_template ?? "")),
           modelPath: p.model_path,
         },
       };

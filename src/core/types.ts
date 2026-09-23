@@ -98,6 +98,12 @@ export interface ChatRequest {
   tools: ToolSpec[];
   maxTokens: number;
   temperature?: number;
+  // Sampling beyond temperature (applied where the runtime supports it).
+  topP?: number;
+  topK?: number;
+  minP?: number;
+  // Variables for the model's chat template (e.g. {enable_thinking: true}).
+  templateKwargs?: Record<string, unknown>;
   reasoning?: "off" | "low" | "medium" | "high" | "max";
   // Context window the harness budgets for. Local runtimes that size the KV cache per
   // request (Ollama num_ctx) receive it explicitly so prompts are never silently truncated.

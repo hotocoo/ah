@@ -27,6 +27,9 @@ export interface AhConfig {
   reasoning: "off" | "low" | "medium" | "high" | "max";
   permissionMode: "ask" | "auto" | "read-only";
   providers: Record<string, ProviderConfig>;
+  // Per-model overrides keyed by "provider/model". Unset fields fall back to the model
+  // card on Hugging Face (generation_config.json), then to the runtime's defaults.
+  models: Record<string, { temperature?: number; topP?: number; topK?: number; minP?: number; templateKwargs?: Record<string, unknown>; useModelCard?: boolean }>;
   telemetry: { enabled: boolean; otlpEndpoint?: string; otlpHeaders?: Record<string, string> };
   dataDir: string;
   bashTimeoutMs: number;
@@ -56,6 +59,7 @@ export const defaultConfig = (): AhConfig => ({
   reasoning: "high",
   permissionMode: "ask",
   providers: {},
+  models: {},
   telemetry: {
     enabled: process.env.AH_TELEMETRY !== "0",
     otlpEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
@@ -89,6 +93,7 @@ export function loadConfig(cwd = process.cwd()): AhConfig {
     ...user,
     ...project,
     providers: { ...base.providers, ...user.providers, ...project.providers },
+    models: { ...base.models, ...user.models, ...project.models },
     telemetry: { ...base.telemetry, ...user.telemetry, ...project.telemetry },
     runtimes: { ...base.runtimes, ...user.runtimes, ...project.runtimes },
     image: { ...base.image, ...user.image, ...project.image },

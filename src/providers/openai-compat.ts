@@ -190,6 +190,11 @@ export class OpenAICompatProvider implements Provider {
         function: { name: t.name, description: t.description, parameters: t.inputSchema },
       }));
     if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.topP !== undefined) body.top_p = req.topP;
+    // top_k / min_p are non-OpenAI extensions accepted by llama.cpp, vLLM, SGLang, mlx_lm.
+    if (req.topK !== undefined) body.top_k = req.topK;
+    if (req.minP !== undefined) body.min_p = req.minP;
+    if (req.templateKwargs) body.chat_template_kwargs = req.templateKwargs;
     const effort = req.reasoning && req.reasoning !== "off" ? nearestEffort(req.reasoning, wire.supportedEfforts) : undefined;
     if (effort && wire.reasoningParam === "reasoning_effort") body.reasoning_effort = effort;
     if (effort && wire.reasoningParam === "reasoning") body.reasoning = { effort };
