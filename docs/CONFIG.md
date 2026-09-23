@@ -4,7 +4,7 @@ Optional. Precedence: built-in defaults < `~/.ah/config.json` < `<workspace>/.ah
 
 ```jsonc
 {
-  "defaultModel": "ollama/qwen3:4b",        // AH_MODEL; unset = auto-select a local model
+  "defaultModel": "llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF",        // AH_MODEL; unset = auto-select a local model
   "imageModel": "comfyui/sd_xl_base_1.0.safetensors", // AH_IMAGE_MODEL; unset = first local backend
   "model3d": "llamacpp/my-model",            // AH_3D_MODEL; unset = the session's model
   "runtimes": { "endpoints": ["http://gpu-box:11434"], "scan": true },  // AH_SCAN=0 disables port scan

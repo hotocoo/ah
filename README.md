@@ -27,28 +27,32 @@ bun run build            # single binary: dist/ah
 ```bash
 ah doctor                                   # runtimes, models, hardware found on this machine
 ah run "the tests in src/ fail, fix them"   # one task in the current directory (asks before writes)
-ah run --yes -m ollama/qwen3:4b "add a --json flag to the CLI and a test for it"
+ah run --yes -m llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF "add a --json flag to the CLI and a test for it"
 ah chat                                     # interactive session
 ah models coder --local --tools             # search the catalog
-ah bench run --model ollama/qwen3:4b --trials 3
-ah bench throughput --model ollama/qwen3:4b
+ah bench run --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF --trials 3
+ah bench throughput --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF
 ah telemetry                                # latency / TTFT / tok/s / cache / tool health
 ah image "isometric server rack" -o rack.png
 ah 3d "a wooden desk with a lamp" -o desk.glb
 ah serve                                    # local web app
 ```
 
-Example `ah run` output on a llama.cpp model:
+Example `ah run` on MiMo-V2.6-Distill-Qwen-9B (Q8_0 GGUF, served with `llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`):
 
 ```
 context window 262144 (fixed by the runtime at load time) · tools native
-● llamacpp/Qwen3.8-27B...Q6_K  run_mudmccd2_a6v25w
-  ⏵ read math.ts            ✓ read_file 1ms
-  ⏵ edit math.ts            ✓ edit_file 1ms · math.ts
-  ⏵ run tests bun test      ✓ run_tests 9ms
-The `add` function in `math.ts` was subtracting instead of adding. I changed it to `return a + b;` and the test now passes.
-■ completed · 3 turns · 5 tools (1 err) · 33.5s · in 8396 out 282
+sampling: temp 0.6 top_p 0.95 top_k 20 template {"enable_thinking":true} (model card XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B)
+  ⏵ read math.test.ts       ✓ read_file 1ms
+  ⏵ read math.ts            ✓ read_file 0ms
+  turn 3: 1.1s ttft 377ms · in 2744 out 41 · prefill 598.6 tok/s decode 46.8 tok/s
+  ⏵ edit math.ts            ✓ edit_file 0ms · math.ts
+  ⏵ run tests               ✓ run_tests 9ms
+Fixed. The bug was in `math.ts`: `add` subtracted instead of adding.
+■ completed · 5 turns · 5 tools (0 err) · 9.0s · in 13408 out 232
 ```
+
+Sampling comes from the model's own `generation_config.json` on Hugging Face (followed from the GGUF repo to its `base_model`), and `enable_thinking` is set because the chat template supports it.
 
 ## Benchmark results
 

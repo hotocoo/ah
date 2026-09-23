@@ -29,7 +29,7 @@ Unavailable values are stored as NULL, never guessed.
 
 ```bash
 ah telemetry                     # totals, outcomes, distributions (latency, TTFT, tok/s, context)
-ah telemetry --since 24h --model qwen3:4b
+ah telemetry --since 24h --model ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF
 ah telemetry runs | tools | models
 ah telemetry run <run_id>        # turns, tool calls, events as JSON
 ah telemetry sql "SELECT model, AVG(decode_tps) FROM turns JOIN runs USING(run_id) GROUP BY model"

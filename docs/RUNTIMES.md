@@ -19,7 +19,7 @@ Each candidate is fingerprinted by API signature:
 | LM Studio | `GET /api/v0/models` with per-model `state` | loaded/max context, type |
 | anything OpenAI-compatible (mlx_lm.server, vLLM, SGLang, vllm-mlx, LocalAI, ...) | `GET /v1/models` | model ids |
 
-Provider keys are the runtime kind (`ollama`, `llamacpp`, ...), suffixed with the port when there are several (`ollama-12434`). Models are referenced as `provider/model`, e.g. `ollama/qwen3:4b`.
+Provider keys are the runtime kind (`ollama`, `llamacpp`, ...), suffixed with the port when there are several (`ollama-12434`). Models are referenced as `provider/model`, e.g. `llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`.
 
 ## Choosing a model
 

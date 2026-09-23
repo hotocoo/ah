@@ -26,6 +26,7 @@ export interface PromptEnv {
   model: string;
   toolNames: string[];
   date?: string;
+  project?: string; // rendered project facts (languages, test command, toolchains)
 }
 
 // The system prompt is kept byte-stable within a session (no timestamps below day
@@ -52,11 +53,12 @@ export function buildSystemPrompt(env: PromptEnv): string {
 When the task is complete, reply with a short summary: what changed (files), how you verified it, and anything left undone or risky. Do not end with a question unless you are blocked on information only the user has.
 
 # Environment
-- Workspace root: ${env.root}
+- Workspace root: ${env.root} (tool paths are relative to it; use "." for the root)
 - Platform: ${platform()} ${release()}
 - Git branch: ${branch ?? "(not a git repo)"}
 - Date: ${env.date ?? new Date().toISOString().slice(0, 10)}
 - Model: ${env.model}
 - Tools: ${[...env.toolNames].sort().join(", ")}
+${env.project ? `\n# Project\n${env.project}\n` : ""}
 ${instructions ? `\n# Project instructions\nThe repository provides these instructions. Follow them; they override the defaults above where they conflict.\n\n${instructions}\n` : ""}`;
 }

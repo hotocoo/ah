@@ -6,10 +6,10 @@
 
 ```bash
 ah bench list
-ah bench run --model ollama/qwen3:4b --trials 3            # all tasks
+ah bench run --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF --trials 3            # all tasks
 ah bench run --model llamacpp/<model> --task ts-feature-lru --trials 5
 ah bench run --model mock/scripted --trials 1              # reference solutions (plumbing check)
-ah bench run --model ollama/qwen3:4b --baseline            # ah's local adaptations switched off
+ah bench run --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF --baseline            # ah's local adaptations switched off
 ah bench compare base/results.json cand/results.json       # per-task deltas, Wilson significance
 ```
 
@@ -52,7 +52,7 @@ Per task and overall: pass count, **pass@1** and **pass@k** (unbiased estimator,
 ## Throughput
 
 ```bash
-ah bench throughput --model ollama/qwen3:4b --sizes 512,2048,8192 --gen 128 --trials 3
+ah bench throughput --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF --sizes 512,2048,8192 --gen 128 --trials 3
 ```
 
 For each prompt size: TTFT p50/p95, prefill tok/s and decode tok/s (mean ± sd). Runtime-reported timings are used when available (llama.cpp `timings`, Ollama durations), otherwise tokens over measured time. A random nonce at the start of every prompt defeats KV-cache reuse. The benchmark reuses the agent's context decision so Ollama does not reload the model between modes.

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { Agent, type AgentOptions } from "../agent/loop.ts";
 import { buildSystemPrompt } from "../agent/prompt.ts";
+import { projectFacts, renderProjectFacts } from "../agent/project.ts";
 import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
@@ -187,7 +188,8 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const gen = await generationSettings(env, modelRef);
   const tools = new ToolRegistry();
   // Compact profile when the window is small relative to the prompt + tool definitions.
-  const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() });
+  const project = renderProjectFacts(projectFacts(o.root));
+  const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
   const f = o.features ?? {};
   const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;
@@ -206,7 +208,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const agent = new Agent({
     provider: p,
     model,
-    system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.specs(o.mode ?? env.cfg.permissionMode, toolContext, compactTools).map((t) => t.name) }),
+    system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.specs(o.mode ?? env.cfg.permissionMode, toolContext, compactTools).map((t) => t.name), project }),
     compactTools,
     toolProtocol,
     tools,

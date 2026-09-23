@@ -89,7 +89,8 @@ export function detectTestCommand(root: string): string | null {
       const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { scripts?: Record<string, string> };
       const runner = has("bun.lock") || has("bun.lockb") ? "bun" : has("pnpm-lock.yaml") ? "pnpm" : has("yarn.lock") ? "yarn" : "npm";
       if (pkg.scripts?.test) return runner === "bun" ? "bun run test" : `${runner} test`;
-      if (runner === "bun") return "bun test";
+      // No test script: Bun's built-in runner works on any JS/TS project when installed.
+      if (runner === "bun" || Bun.which("bun")) return "bun test";
     } catch {
       /* fall through */
     }

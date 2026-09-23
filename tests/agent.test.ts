@@ -233,3 +233,22 @@ describe("server-dropped tool calls", () => {
     expect(events.some((e) => e.type === "retry" && e.reason.includes("text tool protocol"))).toBe(true);
   });
 });
+
+describe("project facts", () => {
+  test("detects languages, manifests, test command and installed toolchains", async () => {
+    const { projectFacts, renderProjectFacts } = await import("../src/agent/project.ts");
+    const root = mkdtempSync(join(tmpdir(), "ah-proj-"));
+    roots.push(root);
+    writeFileSync(join(root, "package.json"), JSON.stringify({ type: "module", scripts: { test: "bun test" } }));
+    writeFileSync(join(root, "bun.lock"), "");
+    writeFileSync(join(root, "a.ts"), "export {}");
+    const f = projectFacts(root);
+    expect(f.languages[0]).toEqual({ name: "TypeScript", files: 1 });
+    expect(f.manifests).toEqual(["package.json", "bun.lock"]);
+    expect(f.testCommand).toBe("bun run test");
+    expect(f.toolchains.some((t) => t.bin === "bun")).toBe(true);
+    const text = renderProjectFacts(f);
+    expect(text).toContain("Test command: `bun run test`");
+    expect(text).toContain("do not search the filesystem");
+  });
+});
