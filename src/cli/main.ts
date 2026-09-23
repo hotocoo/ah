@@ -161,10 +161,10 @@ async function cmdModels(argv: string[]): Promise<number> {
     output: v.output as never,
     toolCall: v.tools ? true : undefined,
     minContext: v["min-context"] ? Number(v["min-context"]) : undefined,
+    providers: v.local ? [...env.registry.runtimes.keys()] : undefined,
     sort: (v.sort as never) ?? "name",
     limit: Number(v.limit ?? 50),
   });
-  if (v.local) ms = ms.filter((m) => env.registry.runtimes.has(m.provider));
   if (v.json) {
     process.stdout.write(`${JSON.stringify(ms, null, 2)}\n`);
     return 0;

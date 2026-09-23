@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="ah-token" content="__AH_TOKEN__" />
+    <title>ah · Aletheia Harness</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2322a06b'/%3E%3Ctext x='16' y='22' font-family='monospace' font-weight='700' font-size='15' text-anchor='middle' fill='white'%3Eah%3C/text%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <div class="brand"><span class="mark">ah</span><span class="sub">Aletheia Harness</span></div>
+      <nav aria-label="Sections">
+        <button data-tab="overview" class="active">Overview</button>
+        <button data-tab="chat">Agent</button>
+        <button data-tab="runs">Runs</button>
+        <button data-tab="bench">Benchmarks</button>
+        <button data-tab="models">Models</button>
+        <button data-tab="media">Image &amp; 3D</button>
+        <button data-tab="system">System</button>
+      </nav>
+      <div id="hw-pill" class="pill" title="Live hardware">…</div>
+    </header>
+    <main>
+      <section id="tab-overview" class="tab active" aria-labelledby="h-overview">
+        <h1 id="h-overview" class="sr">Overview</h1>
+        <div class="kpis" id="kpis"></div>
+        <div class="grid2">
+          <div class="card"><h2>Runs over time</h2><div id="chart-runs" class="chart"></div></div>
+          <div class="card"><h2>Latency distribution</h2><div id="latency" class="dist"></div></div>
+        </div>
+        <div class="grid2">
+          <div class="card"><h2>By model</h2><div id="by-model" class="table-wrap"></div></div>
+          <div class="card"><h2>Tool health</h2><div id="by-tool" class="table-wrap"></div></div>
+        </div>
+      </section>
+
+      <section id="tab-chat" class="tab" aria-labelledby="h-chat">
+        <h1 id="h-chat" class="sr">Agent</h1>
+        <div class="chat">
+          <div class="chat-head">
+            <label>Model <select id="chat-model"></select></label>
+            <span id="chat-meta" class="muted"></span>
+            <button id="chat-new" class="ghost">New session</button>
+          </div>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
+          <form id="chat-form" class="chat-form">
+            <label for="chat-input" class="sr">Task</label>
+            <textarea id="chat-input" rows="3" placeholder="Describe a coding task for the current workspace…"></textarea>
+            <button type="submit" class="primary">Run</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="tab-runs" class="tab" aria-labelledby="h-runs">
+        <h1 id="h-runs" class="sr">Runs</h1>
+        <div class="split">
+          <div class="card"><h2>Recent runs</h2><div id="runs" class="table-wrap"></div></div>
+          <div class="card"><h2>Run detail</h2><div id="run-detail" class="muted">Select a run.</div></div>
+        </div>
+      </section>
+
+      <section id="tab-bench" class="tab" aria-labelledby="h-bench">
+        <h1 id="h-bench" class="sr">Benchmarks</h1>
+        <div class="split">
+          <div class="card"><h2>Benchmark runs</h2><div id="bench-list" class="table-wrap"></div></div>
+          <div class="card"><h2>Result</h2><div id="bench-detail" class="muted">Select a benchmark run.</div></div>
+        </div>
+      </section>
+
+      <section id="tab-models" class="tab" aria-labelledby="h-models">
+        <h1 id="h-models" class="sr">Models</h1>
+        <div class="card">
+          <div class="filters">
+            <label>Search <input id="m-q" placeholder="qwen, coder, flux…" /></label>
+            <label>Kind
+              <select id="m-kind"><option value="">any</option><option>chat</option><option>image-gen</option><option>3d-gen</option><option>embedding</option><option>tts</option></select>
+            </label>
+            <label><input type="checkbox" id="m-local" checked /> local only</label>
+            <label><input type="checkbox" id="m-tools" /> tool calling</label>
+          </div>
+          <div id="models" class="table-wrap"></div>
+        </div>
+      </section>
+
+      <section id="tab-media" class="tab" aria-labelledby="h-media">
+        <h1 id="h-media" class="sr">Image and 3D</h1>
+        <div class="grid2">
+          <div class="card">
+            <h2>Image generation</h2>
+            <form id="img-form" class="stack">
+              <label for="img-prompt">Prompt</label>
+              <textarea id="img-prompt" rows="3">isometric pixel-art server rack, glowing status lights</textarea>
+              <button class="primary" type="submit">Generate</button>
+            </form>
+            <div id="img-out" class="media-out"></div>
+          </div>
+          <div class="card">
+            <h2>3D modelling</h2>
+            <form id="m3d-form" class="stack">
+              <label for="m3d-prompt">Describe the object</label>
+              <textarea id="m3d-prompt" rows="3">a wooden desk with a lamp and a monitor</textarea>
+              <button class="primary" type="submit">Model it</button>
+            </form>
+            <div id="m3d-out" class="media-out"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-system" class="tab" aria-labelledby="h-system">
+        <h1 id="h-system" class="sr">System</h1>
+        <div class="grid2">
+          <div class="card"><h2>Runtimes</h2><div id="runtimes"></div></div>
+          <div class="card"><h2>Hardware</h2><div id="hardware"></div></div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

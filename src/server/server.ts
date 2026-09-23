@@ -1,4 +1,213 @@
-export async function cmdServe(_argv: string[]): Promise<number> {
-  process.stderr.write("not implemented yet\n");
-  return 2;
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { join, resolve } from "node:path";
+import { parseArgs } from "node:util";
+import type { AgentEvent } from "../agent/events.ts";
+import { autoSelectModel, buildEnvironment, createSession, type Environment, type Session } from "../app/session.ts";
+import { parseModelRef } from "../config.ts";
+import { resolveImageBackend } from "../media/image.ts";
+import { compileScene, designScene } from "../media/model3d.ts";
+import { sampleHardware } from "../runtimes/hardware.ts";
+import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../telemetry/metrics.ts";
+import { dim, green } from "../cli/render.ts";
+
+const UI_DIR = resolve(import.meta.dir, "ui");
+const EXAMPLES_DIR = resolve(import.meta.dir, "../../examples/bench");
+
+interface ChatSession {
+  session: Session;
+  busy: boolean;
+}
+
+// Every API call must carry the per-process token, and the Host header must be local:
+// this blocks cross-site requests and DNS rebinding from driving a tool-running agent.
+export function authorized(req: Request, token: string, port: number): boolean {
+  const host = req.headers.get("host") ?? "";
+  if (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`) return false;
+  const origin = req.headers.get("origin");
+  if (origin && origin !== `http://127.0.0.1:${port}` && origin !== `http://localhost:${port}`) return false;
+  return req.headers.get("x-ah-token") === token;
+}
+
+const json = (data: unknown, status = 200) => Response.json(data, { status, headers: { "cache-control": "no-store" } });
+
+function listBenchRuns(env: Environment) {
+  const fromDb = (env.telemetry.store?.db.query("SELECT bench_run_id id, started_at, model, trials, report FROM bench_runs ORDER BY started_at DESC").all() ?? []) as {
+    id: string;
+    started_at: number;
+    model: string;
+    trials: number;
+    report: string;
+  }[];
+  const examples: typeof fromDb = [];
+  if (existsSync(EXAMPLES_DIR))
+    for (const day of readdirSync(EXAMPLES_DIR))
+      for (const d of existsSync(join(EXAMPLES_DIR, day)) && statSync(join(EXAMPLES_DIR, day)).isDirectory() ? readdirSync(join(EXAMPLES_DIR, day)) : []) {
+        const p = join(EXAMPLES_DIR, day, d, "results.json");
+        if (!existsSync(p)) continue;
+        const r = JSON.parse(readFileSync(p, "utf8")) as { benchRunId: string; startedAt: string; model: string; trials: number };
+        examples.push({ id: r.benchRunId, started_at: Date.parse(r.startedAt), model: r.model, trials: r.trials, report: p });
+      }
+  const seen = new Set<string>();
+  return [...examples, ...fromDb].filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+}
+
+export async function startServer(opts: { port: number; root: string; env?: Environment; token?: string }) {
+  const env = opts.env ?? (await buildEnvironment({ cwd: opts.root }));
+  const token = opts.token ?? randomBytes(24).toString("hex");
+  const chats = new Map<string, ChatSession>();
+  const db = () => {
+    if (!env.telemetry.store) throw new Error("telemetry disabled");
+    return env.telemetry.store.db;
+  };
+  const indexHtml = () => readFileSync(join(UI_DIR, "index.html"), "utf8").replace("__AH_TOKEN__", token);
+
+  const server = Bun.serve({
+    hostname: "127.0.0.1",
+    port: opts.port,
+    idleTimeout: 0,
+    async fetch(req) {
+      const url = new URL(req.url);
+      const p = url.pathname;
+      if (!p.startsWith("/api/")) {
+        if (p === "/" || p === "/index.html") return new Response(indexHtml(), { headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'" } });
+        const file = resolve(UI_DIR, `.${p}`);
+        if (file.startsWith(UI_DIR) && existsSync(file) && statSync(file).isFile()) return new Response(Bun.file(file));
+        return new Response("not found", { status: 404 });
+      }
+      if (!authorized(req, token, server.port!)) return json({ error: "unauthorized" }, 401);
+      const q = url.searchParams;
+      const sinceMs = q.get("since") ? Number(q.get("since")) : undefined;
+      const filter = { sinceMs, model: q.get("model") ?? undefined, provider: q.get("provider") ?? undefined, benchRunId: q.get("bench") ?? undefined };
+      try {
+        switch (p) {
+          case "/api/doctor":
+            return json({
+              root: opts.root,
+              hardware: await sampleHardware(),
+              runtimes: [...env.registry.runtimes.entries()].map(([key, r]) => ({ key, ...r, meta: { nCtx: r.meta.nCtx, hasToolTemplate: r.meta.hasToolTemplate } })),
+              providers: env.registry.list().map((x) => ({ key: x.key, kind: x.kind, capabilities: x.capabilities })),
+              defaultModel: env.cfg.defaultModel ?? autoSelectModel(env),
+              catalogSize: env.catalog.all().length,
+              catalogErrors: env.catalog.errors,
+            });
+          case "/api/hardware":
+            return json(await sampleHardware());
+          case "/api/models":
+            return json(
+              env.catalog
+                .search({
+                  text: q.get("q") || undefined,
+                  kind: (q.get("kind") || undefined) as never,
+                  toolCall: q.get("tools") ? true : undefined,
+                  providers: q.get("local") ? [...env.registry.runtimes.keys()] : undefined,
+                  sort: (q.get("sort") as never) ?? "name",
+                  limit: Number(q.get("limit") ?? 200),
+                })
+                .map((m) => ({ ...m, local: env.registry.runtimes.has(m.provider) })),
+            );
+          case "/api/telemetry/summary":
+            return json(summary(db(), filter));
+          case "/api/telemetry/runs":
+            return json(recentRuns(db(), Number(q.get("limit") ?? 100), filter));
+          case "/api/telemetry/models":
+            return json(byModel(db(), filter));
+          case "/api/telemetry/tools":
+            return json(byTool(db(), filter));
+          case "/api/telemetry/timeseries":
+            return json(timeseries(db(), Number(q.get("bucket") ?? 3_600_000), filter));
+          case "/api/bench":
+            return json(listBenchRuns(env));
+          case "/api/chat":
+            return chat(req);
+          case "/api/image":
+            return image(req);
+          case "/api/3d":
+            return model3d(req);
+        }
+        if (p.startsWith("/api/telemetry/run/")) return json(runDetail(db(), decodeURIComponent(p.slice("/api/telemetry/run/".length))));
+        if (p.startsWith("/api/bench/")) {
+          const id = decodeURIComponent(p.slice("/api/bench/".length));
+          const run = listBenchRuns(env).find((r) => r.id === id);
+          if (!run) return json({ error: "not found" }, 404);
+          const results = JSON.parse(readFileSync(run.report, "utf8"));
+          const summaryPath = run.report.replace(/results\.json$/, "summary.json");
+          return json({ results, summary: existsSync(summaryPath) ? JSON.parse(readFileSync(summaryPath, "utf8")) : null });
+        }
+        return json({ error: "not found" }, 404);
+      } catch (err) {
+        return json({ error: (err as Error).message }, 500);
+      }
+    },
+  });
+
+  // Streams agent events as Server-Sent Events. One run at a time per chat session.
+  async function chat(req: Request): Promise<Response> {
+    if (req.method !== "POST") return json({ error: "POST required" }, 405);
+    const body = (await req.json()) as { prompt?: string; model?: string; sessionId?: string };
+    if (!body.prompt?.trim()) return json({ error: "prompt required" }, 400);
+    let id = body.sessionId && chats.has(body.sessionId) ? body.sessionId : undefined;
+    let chatSession = id ? chats.get(id)! : undefined;
+    if (chatSession?.busy) return json({ error: "session busy" }, 409);
+    const encoder = new TextEncoder();
+    let controller!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
+    const send = (e: AgentEvent | { type: "session"; sessionId: string; model: string; contextWindow: number }) => {
+      try {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
+      } catch {
+        /* client went away */
+      }
+    };
+    const ac = new AbortController();
+    req.signal.addEventListener("abort", () => ac.abort());
+    let listener: ((e: AgentEvent) => void) | null = send;
+    if (!chatSession) {
+      const s = await createSession(env, { model: body.model, root: opts.root, mode: "auto", onEvent: (e) => listener?.(e), signal: ac.signal });
+      id = s.agent.sessionId;
+      chatSession = { session: s, busy: false };
+      chats.set(id, chatSession);
+    }
+    const cs = chatSession;
+    cs.busy = true;
+    send({ type: "session", sessionId: id!, model: cs.session.modelRef, contextWindow: cs.session.context.window });
+    void cs.session.agent.run(body.prompt).finally(() => {
+      cs.busy = false;
+      listener = null;
+      controller.close();
+    });
+    return new Response(stream, { headers: { "content-type": "text/event-stream", "cache-control": "no-store" } });
+  }
+
+  async function image(req: Request): Promise<Response> {
+    const body = (await req.json()) as { prompt?: string; model?: string; size?: string };
+    const backend = resolveImageBackend(env.registry, body.model ?? env.cfg.imageModel);
+    if (!backend) return json({ error: "no image backend discovered (start ComfyUI or an sdapi server)" }, 400);
+    const [w, h] = (body.size ?? `${env.cfg.image.width}x${env.cfg.image.height}`).split("x").map(Number);
+    const t0 = performance.now();
+    const imgs = await backend.generate(body.prompt ?? "", { ...env.cfg.image, width: w!, height: h! });
+    return json({ backend: backend.ref, ms: performance.now() - t0, images: imgs });
+  }
+
+  async function model3d(req: Request): Promise<Response> {
+    const body = (await req.json()) as { prompt?: string; model?: string };
+    const ref = body.model ?? env.cfg.model3d ?? env.cfg.defaultModel ?? autoSelectModel(env);
+    if (!ref) return json({ error: "no chat model available" }, 400);
+    const { provider, model } = parseModelRef(ref);
+    const t0 = performance.now();
+    const scene = await designScene(env.registry.get(provider), model, body.prompt ?? "");
+    const g = compileScene(scene, "glb");
+    return json({ model: ref, ms: performance.now() - t0, glb: g.data.toString("base64"), preview: g.preview, scene, triangles: g.triangles });
+  }
+
+  return { server, token, env };
+}
+
+export async function cmdServe(argv: string[]): Promise<number> {
+  const { values: v } = parseArgs({ args: argv, strict: false, options: { port: { type: "string", short: "p" }, cwd: { type: "string", short: "C" } } });
+  const root = resolve((v.cwd as string | undefined) ?? process.cwd());
+  const { server } = await startServer({ port: Number(v.port ?? 0), root });
+  process.stdout.write(`${green("ah serve")} http://127.0.0.1:${server.port}/  ${dim(`workspace ${root} · bound to loopback · API requires the page token`)}\n`);
+  await new Promise(() => {});
+  return 0;
 }

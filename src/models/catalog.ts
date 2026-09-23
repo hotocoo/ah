@@ -144,6 +144,7 @@ export interface ModelQuery {
   minContext?: number;
   maxInputCost?: number;
   onlyConfigured?: boolean;
+  providers?: string[]; // restrict to these provider keys (e.g. local runtimes)
   sort?: "name" | "cost" | "context" | "release";
   limit?: number;
 }
@@ -162,7 +163,8 @@ export function searchModels(models: ModelInfo[], q: ModelQuery, configured?: Se
       (q.openWeights === undefined || Boolean(m.openWeights) === q.openWeights) &&
       (!q.minContext || (m.contextWindow ?? 0) >= q.minContext) &&
       (q.maxInputCost === undefined || (m.cost?.input !== undefined && m.cost.input <= q.maxInputCost)) &&
-      (!q.onlyConfigured || configured?.has(m.provider)),
+      (!q.onlyConfigured || configured?.has(m.provider)) &&
+      (!q.providers || q.providers.includes(m.provider)),
   );
   const sorters: Record<string, (a: ModelInfo, b: ModelInfo) => number> = {
     name: (a, b) => refOf(a).localeCompare(refOf(b)),
@@ -223,12 +225,18 @@ export class ModelCatalog {
           .list()
           .filter((p) => p.listModels)
           .map(async (p) => {
+            // Live listings are always fetched fresh (installed models change often);
+            // the cache is only a fallback when a runtime does not answer.
             const key = `live:${p.key}`;
-            const hit = !opts.refresh ? this.o.store?.cacheGet(key, 3_600_000) : null;
-            if (hit) return JSON.parse(hit) as ModelInfo[];
-            const ms = await p.listModels!(AbortSignal.timeout(10_000));
-            this.o.store?.cacheSet(key, JSON.stringify(ms));
-            return ms;
+            try {
+              const ms = await p.listModels!(AbortSignal.timeout(10_000));
+              this.o.store?.cacheSet(key, JSON.stringify(ms));
+              return ms;
+            } catch (err) {
+              const stale = this.o.store?.cacheGet(key, Number.POSITIVE_INFINITY);
+              if (stale) return JSON.parse(stale) as ModelInfo[];
+              throw err;
+            }
           }),
       );
       results.forEach((r) => (r.status === "fulfilled" ? live.push(r.value) : this.errors.push(`live: ${(r.reason as Error).message}`)));
