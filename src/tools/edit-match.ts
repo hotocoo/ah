@@ -50,7 +50,7 @@ export function nearestLines(text: string, oldStr: string): string[] {
   return scored.map((x) => `${x.i + 1}: ${JSON.stringify(x.l)}`);
 }
 
-export function applyEditTolerant(text: string, oldStr: string, newStr: string, replaceAll: boolean): EditResult {
+export function applyEditTolerant(text: string, oldStr: string, newStr: string, replaceAll: boolean, exactOnly = false): EditResult {
   if (oldStr === "") throw new ToolError("old_string must not be empty");
   if (oldStr === newStr) throw new ToolError("old_string and new_string are identical");
   const crlf = text.includes("\r\n");
@@ -64,6 +64,7 @@ export function applyEditTolerant(text: string, oldStr: string, newStr: string, 
     return { text: restore(replaceAll ? src.split(oldN).join(newN) : src.replace(oldN, () => newN)), strategy: "exact" };
   if (count > 1) throw new ToolError(`old_string matches ${count} times; add surrounding context or set replace_all`);
 
+  if (exactOnly) throw new ToolError("old_string not found; re-read the file and copy the exact text including whitespace");
   // Fallback: line-by-line match ignoring leading/trailing whitespace.
   const fileLines = src.split("\n");
   const oldLines = oldN.replace(/\n$/, "").split("\n");

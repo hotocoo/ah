@@ -47,7 +47,7 @@ Per task and overall: pass count, **pass@1** and **pass@k** (unbiased estimator,
 
 ### Ablation
 
-`--baseline` turns off: explicit memory-aware context sizing (runtime default context, no compaction), text tool-call recovery, the compact tool profile, and forces native tool calls. Individual switches: `--no-context-sizing`, `--no-text-tools`, `--no-compact`, `--protocol native|text`. Run the same model with and without to measure what the harness itself contributes.
+`--baseline` turns off every local-model adaptation: explicit memory-aware context sizing (runtime default context, no compaction), text tool-call recovery, the compact tool profile, project facts in the prompt (languages, test command, installed toolchains), indentation-tolerant edits, and recoveries (repetition guard, empty-turn nudges, dropped-tool-call fallback); tool calls are native only. What remains is a plain tool loop with the same tools and prompt. Individual switches: `--no-context-sizing`, `--no-text-tools`, `--no-compact`, `--protocol native|text`. Run the same model with and without to measure what the harness itself contributes.
 
 ## Throughput
 

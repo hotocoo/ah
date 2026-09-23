@@ -106,7 +106,7 @@ export const editFileTool: Tool = {
     const abs = confine(ctx.root, input.path);
     if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
     if (!ctx.readFiles.has(abs)) throw new ToolError(`read ${input.path} before editing it`);
-    const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true);
+    const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits);
     writeFileSync(abs, r.text);
     const note = r.strategy === "whitespace" ? " (old_string matched ignoring indentation; new_string re-indented to the file)" : "";
     return { content: `edited ${rel(ctx.root, abs)}${note}`, changedFiles: [rel(ctx.root, abs)] };
@@ -144,7 +144,7 @@ export const multiEditTool: Tool = {
     let text = readFileSync(abs, "utf8");
     edits.forEach((e, i) => {
       try {
-        text = applyEdit(text, e.old_string, e.new_string, e.replace_all === true);
+        text = applyEditTolerant(text, e.old_string, e.new_string, e.replace_all === true, ctx.exactEdits).text;
       } catch (err) {
         throw new ToolError(`edit ${i + 1}: ${(err as Error).message}`);
       }

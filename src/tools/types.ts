@@ -29,6 +29,7 @@ export interface ToolContext {
   todos: TodoItem[];
   readFiles: Set<string>; // absolute paths read this session (edit-before-read guard)
   media: MediaServices;
+  exactEdits?: boolean; // disable indentation-tolerant matching (ablation)
   env?: Record<string, string>;
   // Optional container runner: when set, shell commands execute through it (bench docker sandbox).
   shellPrefix?: string[];

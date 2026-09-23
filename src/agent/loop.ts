@@ -30,6 +30,8 @@ export interface AgentOptions {
   toolProtocol?: "native" | "text";
   // Recover tool calls written as text when a native call was expected (default on).
   parseTextToolCalls?: boolean;
+  // Loop guard, empty-turn nudges and dropped-tool-call fallback (default on).
+  recoveries?: boolean;
   contextBudgetRatio?: number;
   pricing?: Pricing;
   budgetUsd?: number;
@@ -162,7 +164,7 @@ export class Agent {
         this.messages.push(res.message);
         // A turn with neither an answer nor a tool call (e.g. a reasoning model that spent
         // the turn thinking) is not a finished task: nudge the model to continue.
-        if (!calls.length && !textOf(res.message).trim() && res.stopReason !== "max_tokens" && nudges < 2) {
+        if (!calls.length && !textOf(res.message).trim() && res.stopReason !== "max_tokens" && nudges < 2 && this.o.recoveries !== false) {
           nudges++;
           this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: nudges, reason: "turn ended without an answer or tool call", delayMs: 0, t: Date.now() });
           this.messages.push({ role: "user", content: [{ type: "text", text: "You ended your turn without a tool call or a reply. Continue the task: use the tools to make the change and verify it, then reply with a short summary." }] });
@@ -212,7 +214,7 @@ export class Agent {
       const req = new AbortController();
       const onAbort = () => req.abort();
       this.o.signal?.addEventListener("abort", onAbort);
-      const guard = new RepetitionGuard();
+      const guard = this.o.recoveries === false ? null : new RepetitionGuard();
       let looped = false;
       try {
         const specs = this.o.tools.specs(this.o.mode, this.o.toolContext, this.o.compactTools);
@@ -239,7 +241,7 @@ export class Agent {
           }
           if (ev.type === "text_delta") this.emit({ type: "text_delta", runId: this.runId, turn: this.turn, text: ev.text });
           else if (ev.type === "thinking_delta") this.emit({ type: "thinking_delta", runId: this.runId, turn: this.turn, text: ev.text });
-          if ((ev.type === "text_delta" || ev.type === "thinking_delta" || ev.type === "tool_call_delta") && guard.push(ev.type === "tool_call_delta" ? ev.partialJson : ev.text)) {
+          if ((ev.type === "text_delta" || ev.type === "thinking_delta" || ev.type === "tool_call_delta") && guard?.push(ev.type === "tool_call_delta" ? ev.partialJson : ev.text)) {
             looped = true;
             req.abort();
             break;
@@ -251,7 +253,7 @@ export class Agent {
         // The server said it produced tool calls but delivered none (its tool-call parser
         // failed on this model's format). Switch this session to the text protocol, where
         // ah parses calls itself, and retry the turn.
-        if (!textMode && done.stopReason === "tool_use" && !toolCallsOf(done.message).length && !textOf(done.message).trim()) {
+        if (this.o.recoveries !== false && !textMode && done.stopReason === "tool_use" && !toolCallsOf(done.message).length && !textOf(done.message).trim()) {
           this.textProtocolFallback = true;
           this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: "server reported tool calls but sent none; switching to text tool protocol", delayMs: 0, t: Date.now() });
           continue;

@@ -74,6 +74,9 @@ export interface SessionFeatures {
   contextSizing?: boolean; // explicit, memory-aware context window + compaction (default on)
   textToolParsing?: boolean; // recover tool calls written as text (default on)
   compactTools?: boolean; // compact tool profile for small windows (default on)
+  projectFacts?: boolean; // languages/test command/toolchains in the system prompt (default on)
+  tolerantEdits?: boolean; // indentation-tolerant edit matching (default on)
+  recoveries?: boolean; // loop guard, empty-turn nudges, dropped-tool-call fallback (default on)
   toolProtocol?: "auto" | "native" | "text";
 }
 
@@ -188,10 +191,10 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const gen = await generationSettings(env, modelRef);
   const tools = new ToolRegistry();
   // Compact profile when the window is small relative to the prompt + tool definitions.
-  const project = renderProjectFacts(projectFacts(o.root));
+  const f = o.features ?? {};
+  const project = f.projectFacts === false ? undefined : renderProjectFacts(projectFacts(o.root));
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
-  const f = o.features ?? {};
   const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;
   // Runtime-reported tool support decides the protocol; unknown means try native (the
   // text parser still recovers calls written as text).
@@ -202,6 +205,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     bashTimeoutMs: env.cfg.bashTimeoutMs,
     todos: [],
     readFiles: new Set<string>(),
+    exactEdits: f.tolerantEdits === false,
     media: o.media ?? buildMedia(env.cfg, env.registry, { provider, model, contextWindow: context.window }),
     ...o.toolContextExtras,
   };
@@ -226,6 +230,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     // Without context sizing the runtime default applies and no compaction happens.
     contextWindow: f.contextSizing === false ? undefined : context.window,
     parseTextToolCalls: f.textToolParsing !== false,
+    recoveries: f.recoveries !== false,
     contextBudgetRatio: env.cfg.contextBudgetRatio,
     pricing: facts ? { input: 0, output: 0 } : info?.cost,
     budgetUsd: o.budgetUsd,
