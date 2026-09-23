@@ -23,7 +23,8 @@ export interface OpenAICompatOptions {
   // Wire-format divergences between compatible servers. These start from defaults and
   // are corrected automatically when a server rejects a parameter (see adaptWire).
   wire?: Partial<WireFormat>;
-  onWireChange?: (w: WireFormat) => void;
+  loadWire?: (model: string) => WireFormat | undefined;
+  onWireChange?: (w: WireFormat, model: string) => void;
   // Facts about the served model learned during runtime discovery.
   modelMeta?: { contextWindow?: number; toolCall?: boolean; vision?: boolean };
 }
@@ -131,13 +132,22 @@ const mapFinish = (r: string | null | undefined): StopReason => {
 export class OpenAICompatProvider implements Provider {
   readonly kind = "openai-compatible";
   readonly capabilities: ProviderCapabilities;
-  wire: WireFormat;
+  private wires = new Map<string, WireFormat>();
+
+  // Current wire format for a model (learned adaptations, else defaults).
+  wireOf(model: string): WireFormat {
+    let w = this.wires.get(model);
+    if (!w) {
+      w = { ...DEFAULT_WIRE, ...this.opts.wire, ...this.opts.loadWire?.(model) };
+      this.wires.set(model, w);
+    }
+    return w;
+  }
 
   constructor(
     readonly key: string,
     private opts: OpenAICompatOptions,
   ) {
-    this.wire = { ...DEFAULT_WIRE, ...opts.wire };
     this.capabilities = {
       chat: true,
       streaming: true,
@@ -162,22 +172,23 @@ export class OpenAICompatProvider implements Provider {
   }
 
   buildBody(req: ChatRequest): Record<string, unknown> {
+    const wire = this.wireOf(req.model);
     const body: Record<string, unknown> = {
       model: req.model,
       messages: toOpenAIMessages(req.system, req.messages),
       stream: true,
-      [this.wire.maxTokensParam]: req.maxTokens,
+      [wire.maxTokensParam]: req.maxTokens,
     };
-    if (this.wire.streamUsage) body.stream_options = { include_usage: true };
+    if (wire.streamUsage) body.stream_options = { include_usage: true };
     if (req.tools.length)
       body.tools = req.tools.map((t) => ({
         type: "function",
         function: { name: t.name, description: t.description, parameters: t.inputSchema },
       }));
     if (req.temperature !== undefined) body.temperature = req.temperature;
-    const effort = req.reasoning && req.reasoning !== "off" ? nearestEffort(req.reasoning, this.wire.supportedEfforts) : undefined;
-    if (effort && this.wire.reasoningParam === "reasoning_effort") body.reasoning_effort = effort;
-    if (effort && this.wire.reasoningParam === "reasoning") body.reasoning = { effort };
+    const effort = req.reasoning && req.reasoning !== "off" ? nearestEffort(req.reasoning, wire.supportedEfforts) : undefined;
+    if (effort && wire.reasoningParam === "reasoning_effort") body.reasoning_effort = effort;
+    if (effort && wire.reasoningParam === "reasoning") body.reasoning = { effort };
     return body;
   }
 
@@ -194,14 +205,14 @@ export class OpenAICompatProvider implements Provider {
       // 400s, and 500s raised by chat templates, can name a parameter we control.
       if ((res.status !== 400 && res.status !== 500) || attempt >= 3) return ensureOk(res, this.key);
       const body = await res.text();
-      const next = adaptWire(this.wire, body);
+      const next = adaptWire(this.wireOf(req.model), body);
       if (!next) {
         // A template exception is deterministic: retrying the same request cannot succeed.
         if (/jinja|template/i.test(body)) throw new ProviderError(`${this.key} HTTP ${res.status}: ${body.slice(0, 500)}`, this.key, res.status, false);
         return ensureOk(new Response(body, { status: res.status }), this.key);
       }
-      this.wire = next;
-      this.opts.onWireChange?.(next);
+      this.wires.set(req.model, next);
+      this.opts.onWireChange?.(next, req.model);
     }
   }
 

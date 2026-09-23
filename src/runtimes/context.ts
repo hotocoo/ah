@@ -44,6 +44,7 @@ export function resolveContextWindow(i: ContextInputs): ContextDecision {
     }
   }
   if (window === undefined) return { window: i.minContext, reason: "no metadata; using the minimum agent context" };
-  // Round down to a multiple of 1024 so runtimes allocate aligned KV blocks.
-  return { window: Math.max(1024, Math.floor(window / 1024) * 1024), reason, kvBytesPerToken: perToken, maxByMemory };
+  // Round down to a power of two: stable across small memory fluctuations (a changed
+  // num_ctx forces Ollama to reload the model) and aligned for KV allocation.
+  return { window: Math.max(1024, 2 ** Math.floor(Math.log2(window))), reason, kvBytesPerToken: perToken, maxByMemory };
 }

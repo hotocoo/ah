@@ -20,6 +20,7 @@ export interface AgentOptions {
   temperature?: number;
   contextWindow?: number;
   maxOutputTokens?: number; // model's hard output cap, from the models registry
+  compactTools?: boolean; // offer only core tools (small context windows)
   contextBudgetRatio?: number;
   pricing?: Pricing;
   budgetUsd?: number;
@@ -189,7 +190,7 @@ export class Agent {
           model: this.o.model,
           system: this.o.system,
           messages: this.messages,
-          tools: this.o.tools.specs(this.o.mode),
+          tools: this.o.tools.specs(this.o.mode, this.o.toolContext, this.o.compactTools),
           maxTokens,
           reasoning: this.o.reasoning,
           temperature: this.o.temperature,

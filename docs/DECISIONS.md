@@ -26,17 +26,9 @@ Each entry: the decision, the alternatives considered, and why.
 - Top-level `cache_control: {type: "ephemeral"}` enables automatic prompt caching. The system prompt is byte-stable within a session (sorted tool list, day-granularity date) so the cached prefix keeps hitting.
 - No assistant prefill and no forced `tool_choice` (both rejected by current models).
 
-## D5. OpenAI-compatible divergences are explicit options, not guesses
+## D5. OpenAI-compatible divergences are learned, not tabulated
 
-Servers that claim compatibility disagree on parameters. The adapter exposes:
-
-| Option | Values | Default | Why |
-|---|---|---|---|
-| `maxTokensParam` | `max_tokens` / `max_completion_tokens` | `max_tokens` | Only OpenAI requires `max_completion_tokens`; llama.cpp, older vLLM, LM Studio reject it. |
-| `reasoningParam` | `openai` / `openrouter` / `none` | `none` | OpenAI uses `reasoning_effort`; OpenRouter uses `reasoning: {effort}`; most servers reject both. |
-| `streamUsage` | boolean | `false` | `stream_options.include_usage` is needed for token counts on OpenAI-style servers but rejected by some. |
-
-Presets in `src/providers/registry.ts` set these per vendor.
+Servers that claim compatibility disagree on parameters (`max_tokens` vs `max_completion_tokens`, `reasoning_effort` vs `reasoning: {effort}`, `stream_options`, accepted effort values). There is no per-vendor table. The adapter starts from one default wire format and, when a server rejects a request with a 400 (or a 500 raised by a chat template) that names one of these parameters, corrects the format, retries (max 3), and persists the learned format per `provider:model` in SQLite. Example observed live: a Qwen3.8 GGUF chat template raised `Unexpected reasoning effort high. Supported types are xhigh (default), medium, and low`; `ah` learned `[xhigh, medium, low]` and maps requests to the nearest value. Template exceptions are marked non-retryable (retrying the same request cannot succeed).
 
 ## D6. Normalised usage semantics
 
@@ -70,13 +62,13 @@ The loop emits a typed `AgentEvent` stream (`src/agent/events.ts`) with TTFT mea
 
 The OTel JS SDK is ~20 packages. The OTLP/HTTP JSON trace schema is small and stable, so `ah` builds `resourceSpans` directly with GenAI semantic-convention attributes (`gen_ai.system`, `gen_ai.request.model`, `gen_ai.usage.*`, `gen_ai.tool.name`). Metrics are derived from SQLite; OTLP metrics export is roadmap.
 
-## D12. Model discovery merges three sources
+## D12. Model discovery merges live sources only
 
-`models.dev/api.json` (pricing, limits, modalities for hundreds of providers), each provider's live listing (`/v1/models`, `/api/tags`, Gemini `models.list`), and OpenRouter's catalog. Cached in SQLite with a 24h TTL. The catalog feeds context window, output cap and pricing into the agent.
+`models.dev/api.json` (pricing, limits, modalities), OpenRouter's catalog, and each discovered runtime's own listing (`/api/tags` + `/api/show`, `/v1/models`, `/props`, LM Studio `/api/v0/models`). Cached in SQLite (24h; runtime listings 1h). There is **no built-in model table**: offline with an empty cache, `ah` knows exactly the models its local runtimes report. Model kinds come from declared output modalities or runtime capabilities, never from name patterns. For local runtimes, runtime-reported metadata (context, capabilities, KV geometry) beats catalog fuzzy matches.
 
 ## D13. "Modeling" means 3D model generation
 
-The request says "built in image gen modeling must included". Read as: image generation **and** 3D modelling are built in. Image generation uses provider APIs (OpenAI, Gemini/Imagen, xAI, Together, fal, Stability) plus a keyless mock. 3D uses a keyless **procedural** backend (the language model writes a scene description, `ah` compiles it to GLB/glTF/OBJ/STL and renders a PNG preview) plus hosted text-to-3D APIs (fal, Meshy, Tripo) when keys are present.
+The request says "built in image gen modeling must included". Read as: image generation **and** 3D modelling are built in. Both are local-first: image backends are discovered (ComfyUI, stable-diffusion.cpp / A1111 `sdapi`, Ollama image models when a real request succeeds) with cloud image APIs as optional extras. 3D uses a keyless **procedural** backend (the language model writes a structured scene, `ah` compiles it to GLB/glTF/OBJ/STL and renders a PNG preview) and a text -> image -> image-to-3D pipeline for user-configured local servers (Hunyuan3D, TRELLIS).
 
 ## D14. Benchmarks grade with shell commands in a sandboxed copy
 
@@ -85,3 +77,26 @@ A task is a fixture + prompt + grader command (exit 0 = pass). Each trial copies
 ## D15. Repository visibility: private
 
 The GitHub repository is created private. Private to public is reversible; public to private is not (content may already be cached or indexed).
+
+## D16. Local-first
+
+`ah` (Aletheia Harness) targets models served on the user's machine first: Ollama, llama.cpp `llama-server`, MLX servers, LM Studio, vLLM/SGLang, ComfyUI. Cloud providers are optional extras. Every design choice below follows from what local runtimes actually do (see `RESEARCH-LOCAL.md`).
+
+## D17. What "no hardcoding" covers
+
+- **Removed:** model lists, prices, default model ids, provider/vendor presets (base URLs, ports, env var names, wire flags), model-name regexes for capabilities, provider alias maps.
+- **Replaced by:** runtime discovery (listening ports + API fingerprints), models.dev provider metadata (`api`, `env`, `npm` -> adapter), Anthropic Models API capabilities (`thinking.types`, `effort`), runtime capabilities (Ollama `/api/show`, llama.cpp `/props`), learned wire formats, user config.
+- **Kept on purpose:** the handful of wire protocols `ah` speaks (Anthropic Messages, OpenAI Chat Completions, Gemini, Ollama native) and the API signatures used to fingerprint runtimes; safety rules (dangerous shell patterns, SSRF ranges); repository conventions (ignored dirs, instruction file names). These are protocol implementations and policy, not model or vendor data.
+- **Tunables with defaults** (memory fraction, minimum agent context, compact-tools ratio, turn limits) live in config and are documented, not scattered in code.
+
+## D18. Runtime discovery over presets
+
+Candidates: config endpoints, localhost URLs in `*_HOST`/`*_BASE_URL`/`*_ENDPOINT` env vars, and every locally listening TCP port (`lsof`, or `ss` on Linux). Each candidate gets a liveness check then all fingerprint probes in parallel; the most specific match wins (Ollama `/api/version` > llama.cpp `/props` > ComfyUI `/system_stats` > `sdapi` > LM Studio > generic `/v1/models`). Identical listeners (same kind, version and models) are deduplicated. Measured: ~1.2 s on a machine with 30 listening ports.
+
+## D19. Context window sizing for local models
+
+Order: runtime-fixed context (llama.cpp `n_ctx`, LM Studio loaded context, **Ollama model already resident per `/api/ps`**) > user config capped by the trained maximum (`<arch>.context_length`) > trained maximum; then capped by memory: `(total * fraction - weights - other GPU allocations) / kv_bytes_per_token`, where `kv_bytes_per_token = 2 * layers * kv_heads * head_dim * bytes_per_element` from GGUF metadata. Rounded down to a power of two and persisted per model, because Ollama reloads the model whenever `num_ctx` changes. `num_ctx` is always sent explicitly (Ollama otherwise truncates silently). A truncation detector compares the runtime's reported prompt tokens with `ah`'s estimate and forces compaction.
+
+## D20. Tool surface follows context and backends
+
+Tools declare `available(ctx)` (media tools need a backend, `git_status` needs a repo) and `optional`. Unavailable tools are never offered; when the window is small relative to prompt + tool definitions (`compactToolsRatio`), optional tools are dropped. Observed motivation: a 0.6B model called `generate_3d` with no backend configured.

@@ -40,6 +40,11 @@ export interface Tool {
   run(input: Record<string, unknown>, ctx: ToolContext): Promise<ToolOutput>;
   // One-line human summary for approval prompts and telemetry.
   summarize?(input: Record<string, unknown>): string;
+  // Whether the tool can work in this context (backend configured, repo present...).
+  // Unavailable tools are not offered to the model at all.
+  available?(ctx: ToolContext): boolean;
+  // Omitted from the compact tool profile used for small context windows.
+  optional?: boolean;
 }
 
 export class ToolError extends Error {}

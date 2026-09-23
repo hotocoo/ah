@@ -33,6 +33,9 @@ export interface AhConfig {
   contextBudgetRatio: number; // compact when context exceeds this share of the window
   // Memory planning for local models (tunables, not model data).
   memory: { fraction: number; minContext: number; kvBytesPerElement: number };
+  // Use the compact tool profile when the window is smaller than this many times the
+  // size of the full system prompt + tool definitions.
+  compactToolsRatio: number;
   hardwareSampling: { enabled: boolean; intervalMs: number };
 }
 
@@ -57,6 +60,7 @@ export const defaultConfig = (): AhConfig => ({
   bashTimeoutMs: 120_000,
   contextBudgetRatio: 0.8,
   memory: { fraction: 0.75, minContext: 16_384, kvBytesPerElement: 2 },
+  compactToolsRatio: 6,
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
 });
 

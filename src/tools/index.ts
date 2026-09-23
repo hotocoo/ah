@@ -38,8 +38,14 @@ export class ToolRegistry {
     for (const t of tools) this.tools.set(t.spec.name, t);
   }
 
-  specs(mode: PermissionMode = "auto"): ToolSpec[] {
-    return [...this.tools.values()].filter((t) => mode !== "read-only" || t.readOnly).map((t) => t.spec);
+  // Tools offered to the model: permitted by the mode, available in this context, and
+  // (in the compact profile) not optional.
+  specs(mode: PermissionMode = "auto", ctx?: ToolContext, compact = false): ToolSpec[] {
+    return [...this.tools.values()]
+      .filter((t) => mode !== "read-only" || t.readOnly)
+      .filter((t) => !ctx || !t.available || t.available(ctx))
+      .filter((t) => !compact || !t.optional)
+      .map((t) => t.spec);
   }
 
   get(name: string): Tool | undefined {
@@ -68,6 +74,7 @@ export class ToolRegistry {
     const tool = this.tools.get(name);
     if (!tool) return done({ content: `unknown tool: ${name}. Available: ${this.names().join(", ")}`, isError: true });
     if (mode === "read-only" && !tool.readOnly) return done({ content: `${name} is disabled in read-only mode`, isError: true, denied: true });
+    if (tool.available && !tool.available(ctx)) return done({ content: `${name} is not available here (no backend or precondition)`, isError: true });
     const errors = validate(tool.spec.inputSchema, input);
     if (errors.length) return done({ content: `invalid input for ${name}:\n${errors.join("\n")}`, isError: true });
     if (this.needsApproval(tool, input, mode)) {

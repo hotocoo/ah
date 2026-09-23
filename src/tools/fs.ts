@@ -117,6 +117,7 @@ export const editFileTool: Tool = {
 
 export const multiEditTool: Tool = {
   readOnly: false,
+  optional: true,
   spec: {
     name: "multi_edit",
     description: "Apply several exact-string edits to one file atomically, in order. Fails without writing if any edit fails.",

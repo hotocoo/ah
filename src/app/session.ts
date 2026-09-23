@@ -4,6 +4,7 @@ import { buildSystemPrompt } from "../agent/prompt.ts";
 import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
+import { OllamaProvider } from "../providers/ollama.ts";
 import { ProviderRegistry } from "../providers/registry.ts";
 import { resolveContextWindow, type ContextDecision } from "../runtimes/context.ts";
 import { discoverRuntimes, type RuntimeInfo } from "../runtimes/discover.ts";
@@ -80,6 +81,7 @@ export interface SessionOptions {
 
 export interface Session {
   agent: Agent;
+  compactTools: boolean;
   modelRef: string;
   info?: ModelInfo;
   context: ContextDecision;
@@ -94,9 +96,18 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const { provider, model } = parseModelRef(modelRef);
   const p = env.registry.get(provider);
   const info = env.catalog.lookup(modelRef);
-  const facts = localFacts(env, provider, model);
+  let facts = localFacts(env, provider, model);
+  // A resident Ollama model keeps its current context; asking for another size reloads it.
+  if (facts && p instanceof OllamaProvider) {
+    const resident = await p.residentContext(model);
+    if (resident) facts = { ...facts, fixedContext: resident };
+  }
   const hw = facts ? await sampleHardware() : undefined;
-  const context: ContextDecision = facts
+  const persistedKey = `ctx:${modelRef}`;
+  const persisted = facts && !facts.fixedContext ? Number(env.telemetry.store?.cacheGet(persistedKey, Number.POSITIVE_INFINITY) ?? 0) : 0;
+  const context: ContextDecision = persisted
+    ? { window: persisted, reason: "previously chosen for this model (stable num_ctx avoids reloads)" }
+    : facts
     ? resolveContextWindow({
         facts,
         catalogContext: info?.contextWindow,
@@ -109,7 +120,12 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
         kvBytesPerElement: env.cfg.memory.kvBytesPerElement,
       })
     : { window: info?.contextWindow ?? env.cfg.memory.minContext, reason: info?.contextWindow ? "catalog" : "unknown; minimum agent context" };
+  if (facts && !facts.fixedContext && !persisted) env.telemetry.store?.cacheSet(persistedKey, String(context.window));
   const tools = new ToolRegistry();
+  // Compact profile when the window is small relative to the prompt + tool definitions.
+  const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() });
+  const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
+  const compactTools = context.window < overheadTokens * env.cfg.compactToolsRatio;
   const toolContext = {
     root: o.root,
     bashTimeoutMs: env.cfg.bashTimeoutMs,
@@ -121,7 +137,8 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const agent = new Agent({
     provider: p,
     model,
-    system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names() }),
+    system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.specs(o.mode ?? env.cfg.permissionMode, toolContext, compactTools).map((t) => t.name) }),
+    compactTools,
     tools,
     toolContext,
     mode: o.mode ?? env.cfg.permissionMode,
@@ -142,7 +159,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     },
     signal: o.signal,
   });
-  return { agent, modelRef, info, context };
+  return { agent, modelRef, info, context, compactTools };
 }
 
 export const dataPath = (env: Environment, ...parts: string[]) => join(env.cfg.dataDir, ...parts);

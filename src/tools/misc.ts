@@ -1,11 +1,12 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, extname } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, extname, join } from "node:path";
 import { walkFiles } from "./search.ts";
 import { exec } from "./shell.ts";
 import { confine, rel, str, ToolError, truncate, type TodoItem, type Tool } from "./types.ts";
 
 export const todoTool: Tool = {
   readOnly: true,
+  optional: true,
   spec: {
     name: "todo_write",
     description:
@@ -60,6 +61,7 @@ export function isPrivateHost(host: string): boolean {
 
 export const webFetchTool: Tool = {
   readOnly: true,
+  optional: true,
   spec: {
     name: "web_fetch",
     description: "Fetch a public http(s) URL (docs, API references, issues) and return its text content (HTML converted to text).",
@@ -111,6 +113,7 @@ export function repoMap(root: string, base: string, maxFiles = 300): string {
 
 export const repoMapTool: Tool = {
   readOnly: true,
+  optional: true,
   spec: {
     name: "repo_map",
     description: "Outline source files under a path: each file with line count and its top-level declarations (functions, classes, types) with line numbers. Use first to orient in an unfamiliar codebase.",
@@ -130,6 +133,7 @@ export const gitTool: Tool = {
     inputSchema: { type: "object", properties: { stat_only: { type: "boolean" } } },
   },
   summarize: () => "git status/diff",
+  available: (ctx) => existsSync(join(ctx.root, ".git")),
   async run(input, ctx) {
     const status = await exec("git status --short", ctx, 30_000);
     if (status.code !== 0) throw new ToolError(status.stderr.trim() || "not a git repository");
@@ -155,6 +159,7 @@ export const generateImageTool: Tool = {
     },
   },
   summarize: (i) => `image -> ${i.path}`,
+  available: (ctx) => Boolean(ctx.media.generateImage),
   async run(input, ctx) {
     if (!ctx.media.generateImage) throw new ToolError("no image generation backend configured");
     const abs = confine(ctx.root, input.path);
@@ -186,6 +191,7 @@ export const generate3dTool: Tool = {
     },
   },
   summarize: (i) => `3d -> ${i.path}`,
+  available: (ctx) => Boolean(ctx.media.generate3d),
   async run(input, ctx) {
     if (!ctx.media.generate3d) throw new ToolError("no 3D generation backend configured");
     const abs = confine(ctx.root, input.path);

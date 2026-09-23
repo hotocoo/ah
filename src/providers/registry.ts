@@ -20,11 +20,15 @@ interface ProviderContext {
   store?: TelemetryStore | null;
 }
 
+// Wire formats are learned per provider and model: a chat template's accepted effort
+// values belong to that model, not to the server.
 function wireFor(key: string, ctx: ProviderContext) {
-  const saved = ctx.store?.cacheGet(`wire:${key}`, Number.POSITIVE_INFINITY);
   return {
-    wire: saved ? (JSON.parse(saved) as WireFormat) : undefined,
-    onWireChange: (w: WireFormat) => ctx.store?.cacheSet(`wire:${key}`, JSON.stringify(w)),
+    loadWire: (model: string) => {
+      const saved = ctx.store?.cacheGet(`wire:${key}:${model}`, Number.POSITIVE_INFINITY);
+      return saved ? (JSON.parse(saved) as WireFormat) : undefined;
+    },
+    onWireChange: (w: WireFormat, model: string) => ctx.store?.cacheSet(`wire:${key}:${model}`, JSON.stringify(w)),
   };
 }
 

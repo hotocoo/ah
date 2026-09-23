@@ -213,6 +213,20 @@ export class OllamaProvider implements Provider {
     }
   }
 
+  // Context length of the model if it is currently loaded (GET /api/ps). Reusing it
+  // avoids a reload: Ollama reloads whenever num_ctx changes.
+  async residentContext(model: string, signal?: AbortSignal): Promise<number | undefined> {
+    try {
+      const res = await fetch(this.url("/api/ps"), { signal: signal ?? AbortSignal.timeout(2000) });
+      if (!res.ok) return undefined;
+      const j = (await res.json()) as { models?: { name: string; model?: string; context_length?: number }[] };
+      const m = j.models?.find((x) => x.name === model || x.model === model);
+      return m?.context_length;
+    } catch {
+      return undefined;
+    }
+  }
+
   async embed(req: EmbedRequest): Promise<number[][]> {
     const res = await ensureOk(
       await fetch(this.url("/api/embed"), { method: "POST", body: JSON.stringify({ model: req.model, input: req.input }), signal: req.signal }),
