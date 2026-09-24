@@ -14,6 +14,10 @@ export interface TrialResult {
   trial: number;
   passed: boolean;
   failReason: "grader" | "timeout" | "agent_error" | "max_turns" | "max_tokens" | "refusal" | "budget" | null;
+  // Partial credit: fraction of hidden checks passed, when the grader prints "AH_SCORE <passed> <total>".
+  score: number | null;
+  // The harness's own verdict (evidence ledger), to measure how often it agrees with the grader.
+  verdict?: string;
   outcome: string;
   runId: string;
   turns: number;
@@ -125,6 +129,7 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
   if (task.hiddenDir) cpSync(task.hiddenDir, dir, { recursive: true, force: true });
   const g = await sh(task.grader.cmd, dir, task.grader.timeoutMs);
   const passed = g.code === 0 && !g.timedOut;
+  const score = parseScore(`${g.stdout}\n${g.stderr}`);
 
   const row = o.env.telemetry.store?.db
     // Runtime-reported rates when available, otherwise ah's own measurement.
@@ -149,6 +154,8 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
     trial,
     passed,
     failReason,
+    score: passed ? 1 : score,
+    verdict: summary.verdict,
     outcome: summary.outcome,
     runId: summary.runId,
     turns: summary.turns,
@@ -172,6 +179,14 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
     toolProtocol: s.toolProtocol,
     ...(summary.error ? { error: summary.error } : {}),
   };
+}
+
+// Last "AH_SCORE <passed> <total>" line in grader output.
+export function parseScore(out: string): number | null {
+  const all = [...out.matchAll(/AH_SCORE\s+(\d+)\s+(\d+)/g)];
+  const m = all.at(-1);
+  if (!m || Number(m[2]) === 0) return null;
+  return Math.min(1, Number(m[1]) / Number(m[2]));
 }
 
 export async function runBench(o: BenchRunOptions): Promise<BenchRun> {
@@ -235,6 +250,7 @@ function emptyResult(taskId: string, trial: number, error: string): TrialResult 
     trial,
     passed: false,
     failReason: "agent_error",
+    score: null,
     outcome: "error",
     runId: "",
     turns: 0,

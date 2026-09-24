@@ -111,6 +111,7 @@ export class Agent {
     this.ledger = new EvidenceLedger(this.o.testCommand ?? null);
     const content: ContentBlock[] = typeof prompt === "string" ? [{ type: "text", text: prompt }] : prompt;
     const promptText = textOf({ role: "user", content });
+    this.task = promptText;
     this.emit({ type: "run_start", runId: this.runId, sessionId: this.sessionId, model: this.o.model, provider: this.o.provider.key, prompt: promptText, t: Date.now() });
     // Recalled memory rides on the user message, not the system prompt, so the cached
     // system prefix stays byte-stable (D4).
@@ -409,6 +410,7 @@ export class Agent {
   }
 
   private ledger = new EvidenceLedger();
+  private task = "";
 
   private recall(prompt: string): { block: ContentBlock | null; ids: number[] } {
     const m = this.o.memory;
@@ -451,7 +453,11 @@ export class Agent {
       this.emit({ type: "compaction", runId: this.runId, turn: this.turn, beforeTokens: before, afterTokens: afterElide, strategy: "elide", t: Date.now() });
       return;
     }
-    const cut = safeCutIndex(this.messages, force ? 2 : 6);
+    const keep = force ? 2 : 6;
+    let cut = safeCutIndex(this.messages, keep);
+    // One long task has a single plain user message (its prompt), so there is no user
+    // boundary to cut at: cut before an assistant turn instead (tool pairs stay intact).
+    if (cut <= 0) for (let i = this.messages.length - keep; i >= 2 && cut <= 0; i--) if (this.messages[i]?.role === "assistant") cut = i;
     if (cut <= 0) return;
     const head = this.messages.slice(0, cut);
     const tail = this.messages.slice(cut);
@@ -472,8 +478,9 @@ export class Agent {
       }
     }
     this.messages = stripThinking([
-      { role: "user", content: [{ type: "text", text: `[Earlier conversation compacted]\n${summary}` }] },
-      { role: "assistant", content: [{ type: "text", text: "Understood. Continuing from these notes." }] },
+      // The task verbatim, harness-observed facts, then the model's own summary (D30).
+      { role: "user", content: [{ type: "text", text: `[Earlier conversation compacted]\n<task>\n${this.task}\n</task>\n\n<evidence source="harness">\n${this.ledger.snapshot()}\n</evidence>\n\n<notes source="model">\n${summary}\n</notes>` }] },
+      ...(tail[0]?.role === "assistant" ? [] : [{ role: "assistant" as const, content: [{ type: "text" as const, text: "Understood. Continuing from these notes." }] }]),
       ...tail,
     ]);
     // A compaction summary is a faithful record of the session so far: keep it as an episode.

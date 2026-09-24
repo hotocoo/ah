@@ -1,6 +1,17 @@
 # Evidence-gated cognition: the Aletheia loop
 
-`ah` is named for *aletheia*, unconcealment: what is actually the case, as opposed to what is said. This document describes the architecture that name now stands for, why it differs from the agent loops in Claude Code, Codex, Hermes Agent and MemGPT-style systems, what is implemented, and what is not.
+**The model is an untrusted witness. The harness is the epistemic authority for completion, memory and working context.**
+
+Every agent harness in use today (Claude Code, Codex, Hermes Agent, Letta/MemGPT) lets the model be both the actor and the only narrator of what happened. The Aletheia loop splits those roles: the model acts; the harness, which sees every tool call and its real result, keeps the account of what is true and decides from it when a run is done, what may be remembered and what the model is told about its own past. Four authority points:
+
+| question the agent needs answered | who answers in other harnesses | who answers here |
+|---|---|---|
+| Am I done? | the model stops calling tools | the evidence ledger: changed files need a passing check; the verdict is computed, not reported |
+| What should I remember? | the model writes memory (or a timer does) | only failures that verified evidence resolved become lessons; model notes are low-trust claims |
+| Which memories can I rely on? | whatever was stored | trust moves with the outcomes of the runs that recalled each memory |
+| What happened earlier in this task? | a model-written compaction summary | the task verbatim, then harness evidence (last check, still-failing actions, changed files, fixes), then the model's notes, labelled as such |
+
+`ah` is named for *aletheia*, unconcealment: what is actually the case, as opposed to what is said. The rest of this document explains why this matters, how each point works, what is measured, and what is not done.
 
 ## The problem: every current loop trusts the actor's account
 
@@ -76,6 +87,10 @@ Nothing the model says becomes a lesson. A lesson reads like: `` `$ bun run test
 Recall ranks by relevance times trust (`bm25 × trust`). Each memory recalled into a run moves with the run's verdict: toward 1 on `verified` (`trust += (1 - trust) × 0.2`), toward 0 on `failed` (`trust × 0.8`), unchanged on `unverified`. Below a trust floor (0.15) a memory stops being recalled. A poisoned note that keeps preceding failed runs decays out; a lesson that keeps preceding verified runs rises above newer, unproven notes. This is the memory analogue of a reward prediction error, applied per entry, driven only by harness evidence.
 
 Recalled memories ride on the user message, not the system prompt, so the cached prompt prefix stays byte-stable (D4).
+
+### 5. Working context rebuilt from evidence (long horizon)
+
+Long tasks outgrow the context window. Other harnesses replace old history with a summary the model writes about itself, so every compaction is another round of self-report, and after a few rounds the agent works from its own paraphrase of its past. Here a compaction rebuilds the head of the context from three labelled parts, in this order: `<task>` (the original request, verbatim, so it cannot drift), `<evidence source="harness">` (last check and its result, counts, files changed since the last passing check, actions still failing with their first error line, recent fixes), and `<notes source="model">` (the model's summary). A single long task has only one plain user message, so compaction may cut before an assistant turn, keeping tool calls and results paired; before this change a long single task could only elide tool output and never summarise.
 
 ## How this compares
 

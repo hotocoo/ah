@@ -45,7 +45,7 @@ const firstLine = (s: string) =>
   s
     .split("\n")
     .map((l) => l.trim())
-    .find((l) => l && !l.startsWith("$ ") && !/^exit code/i.test(l))
+    .find((l) => l && !l.startsWith("$ ") && !/^exit code/i.test(l) && !/^\[(stdout|stderr)\]$/.test(l))
     ?.slice(0, 200) ?? "";
 
 export class EvidenceLedger {
@@ -107,6 +107,18 @@ export class EvidenceLedger {
   unverified(): { files: string[]; lastFailed: boolean } | null {
     if (!this.dirty.size) return null;
     return { files: [...this.dirty].sort(), lastFailed: this.lastCheck ? !this.lastCheck.passed : false };
+  }
+
+  // Harness-known state for a rebuilt context: what is true regardless of what the model
+  // remembers. Compaction puts this above the model-written summary (D30).
+  snapshot(): string {
+    const lines: string[] = [];
+    lines.push(this.lastCheck ? `- Last check (turn ${this.lastCheck.turn}): \`${this.lastCheck.summary}\` ${this.lastCheck.passed ? "PASSED" : "FAILED"}` : "- No check has run yet.");
+    lines.push(`- Checks so far: ${this.checksPassed} passed, ${this.checksFailed} failed. Failed actions: ${this.surprises}.`);
+    if (this.dirty.size) lines.push(`- Changed since the last passing check: ${[...this.dirty].sort().join(", ")}`);
+    for (const a of this.open.values()) lines.push(`- Still failing: \`${a.summary}\` since turn ${a.turn}${a.error ? `: ${a.error}` : ""}`);
+    for (const l of this.resolved.slice(-3)) lines.push(`- Fixed earlier: ${l.text}`);
+    return lines.join("\n");
   }
 
   verdict(completed: boolean): Verdict {

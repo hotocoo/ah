@@ -7,6 +7,7 @@ import { EvidenceLedger, type Observation } from "../src/agent/evidence.ts";
 import { Agent } from "../src/agent/loop.ts";
 import { MemoryStore } from "../src/memory/store.ts";
 import { MockProvider, type MockTurn } from "../src/providers/mock.ts";
+import { ProviderError, type Provider } from "../src/providers/provider.ts";
 import { syntaxNote } from "../src/tools/fs.ts";
 import { ToolRegistry } from "../src/tools/index.ts";
 
@@ -113,4 +114,47 @@ describe("evidence gate and memory", () => {
     mem.reinforce([hit[0]!.id], "failed");
     expect(mem.search("build missing", [root])[0]!.trust).toBeLessThan(before);
   });
+});
+
+test("forced compaction keeps harness evidence above the model's summary", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ah-evidence-"));
+  roots.push(root);
+  writeFileSync(join(root, "a.ts"), "export const a = 1;\n");
+  const mock = new MockProvider({
+    script: [
+      { toolCalls: [{ name: "read_file", input: { path: "a.ts" } }] },
+      { toolCalls: [{ name: "bash", input: { command: "bun build nope.ts --outdir out" } }] },
+      { toolCalls: [{ name: "edit_file", input: { path: "a.ts", old_string: "1", new_string: "2" } }] },
+      { toolCalls: [{ name: "list_dir", input: {} }] },
+      { toolCalls: [{ name: "list_dir", input: {} }] },
+      { toolCalls: [{ name: "list_dir", input: {} }] },
+      { text: "I am certain everything works." }, // compaction summary (a claim)
+      { text: "Done." },
+    ],
+  });
+  let calls = 0;
+  // The 7th request overflows the real context once, forcing summarisation.
+  const provider: Provider = Object.assign(Object.create(Object.getPrototypeOf(mock)), mock, {
+    stream(req: Parameters<Provider["stream"]>[0]) {
+      if (++calls === 7) throw new ProviderError("context length exceeded", "mock", 400, false, "context_overflow");
+      return mock.stream(req);
+    },
+  });
+  const agent = new Agent({
+    provider,
+    model: "scripted",
+    system: "sys",
+    tools: new ToolRegistry(),
+    toolContext: { root, bashTimeoutMs: 10_000, todos: [], readFiles: new Set(), media: {} },
+    mode: "auto",
+    maxTurns: 10,
+    maxTokens: 1000,
+    evidenceGate: false,
+  });
+  await agent.run("change a");
+  const first = agent.messages[0]!.content[0] as { text: string };
+  expect(first.text).toContain('<evidence source="harness">');
+  expect(first.text).toContain("Still failing: `$ bun build nope.ts --outdir out`");
+  expect(first.text).toContain("Changed since the last passing check: a.ts");
+  expect(first.text.indexOf("<evidence")).toBeLessThan(first.text.indexOf("<notes source=\"model\">"));
 });

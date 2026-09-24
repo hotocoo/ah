@@ -2,3 +2,21 @@ bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 8 tasks × 3 trials ·
   PASS ts-bugfix-pagination #1 60.8s · 10 turns · 11 tools (3 err)
   PASS ts-bugfix-pagination #2 57.5s · 15 turns · 17 tools (6 err)
   PASS ts-bugfix-pagination #3 41.8s · 10 turns · 11 tools (3 err)
+  FAIL go-feature-stack #1 89.9s · 15 turns · 17 tools (2 err) · max_turns
+  PASS go-feature-stack #2 58.1s · 8 turns · 10 tools (1 err)
+  PASS go-feature-stack #3 49.7s · 8 turns · 9 tools (1 err)
+  PASS py-bugfix-duration #1 15.2s · 9 turns · 10 tools (1 err)
+  PASS py-bugfix-duration #2 18.7s · 8 turns · 9 tools (2 err)
+  PASS py-bugfix-duration #3 15.0s · 7 turns · 7 tools (1 err)
+  PASS rust-fix-compile-and-logic #1 167.5s · 15 turns · 16 tools
+  FAIL rust-fix-compile-and-logic #2 264.1s · 20 turns · 21 tools (4 err) · max_turns
+  PASS rust-fix-compile-and-logic #3 44.7s · 8 turns · 8 tools
+  PASS ts-debug-cross-file #1 99.5s · 8 turns · 13 tools (1 err)
+  PASS ts-debug-cross-file #2 45.3s · 6 turns · 10 tools
+  PASS ts-debug-cross-file #3 37.0s · 9 turns · 13 tools (2 err)
+  FAIL ts-feature-lru #1 282.2s · 20 turns · 21 tools (4 err) · max_turns
+  FAIL ts-feature-lru #2 356.1s · 20 turns · 22 tools (8 err) · max_turns
+  FAIL ts-feature-lru #3 203.1s · 20 turns · 22 tools (6 err) · max_turns
+  PASS ts-multifile-rename #1 18.2s · 6 turns · 15 tools
+  PASS ts-multifile-rename #2 21.7s · 6 turns · 11 tools
+  PASS ts-multifile-rename #3 29.2s · 8 turns · 16 tools

@@ -161,3 +161,9 @@ Two more robustness features came out of these runs: project facts in the system
 - **Chosen:** `screenshot` and `computer` tools backed by what the OS provides, discovered at runtime: macOS `screencapture` + `sips`, CoreGraphics events through `osascript` JXA, System Events for keystrokes; Linux `xdotool` with `grim`/`gnome-screenshot`/`scrot`/`import`. Model text reaches scripts only through argv. Screenshots are scaled to at most 1280 px wide (`AH_SCREENSHOT_WIDTH`) and the model works in screenshot coordinates. `computerUse`: `off` (tools hidden), `ask` (default: every action, screenshots included, needs approval in every permission mode), `auto` (explicit opt-in).
 - **Rejected:** `cliclick`/`pyautogui`/native addons (extra installs); Windows support without a machine to verify it on (reported as unavailable instead).
 - **Why approval by default:** these actions leave the workspace confinement model entirely, and a screenshot can carry anything on screen to the model's provider. The web console streams approvals (`approval_request` over SSE, answered via `POST /api/approve`, "always allow" per session) and a live view of the latest screenshot.
+
+## D30. Compaction rebuilds context from the task and harness evidence
+
+- **Chosen:** summarising compaction produces `<task>` (verbatim) + `<evidence source="harness">` (`EvidenceLedger.snapshot()`) + `<notes source="model">`. When the only plain user message is the task prompt (one long task), the cut falls before an assistant turn instead, so long single tasks can be summarised at all.
+- **Rejected:** model-only summaries (self-report compounding over repeated compactions); keeping the full transcript and relying on elision (overflows on long tasks).
+- **Found by:** writing the test for this change. `safeCutIndex` only cuts at plain user messages, so a single-task run of any length never reached the summarise path.

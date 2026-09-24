@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { compareRuns, markdownReport, summarizeRun } from "../src/bench/report.ts";
-import type { BenchRun, TrialResult } from "../src/bench/runner.ts";
+import { parseScore, type BenchRun, type TrialResult } from "../src/bench/runner.ts";
 import { passAtK, passHatK, percentile, significantChange, stddev, wilson } from "../src/bench/stats.ts";
 import { loadSuite, requiredBinaries } from "../src/bench/task.ts";
 import { syntheticPrompt } from "../src/bench/throughput.ts";
@@ -90,6 +90,7 @@ describe("reports", () => {
     taskId,
     trial: n,
     passed,
+    score: passed ? 1 : 0,
     failReason: passed ? null : "grader",
     outcome: "completed",
     runId: `r${n}`,
@@ -153,4 +154,37 @@ describe("reports", () => {
     expect(c.overall.delta).toBe(1);
     expect(c.overall.verdict).toBe("better");
   });
+});
+
+// Horizon tasks ship a reference solution. Grounding: the untouched fixture must fail its
+// hidden grader and the reference must pass it, or the task measures nothing.
+describe("horizon suite grounding", () => {
+  const HORIZON = resolve(import.meta.dir, "../bench/suites/horizon");
+  for (const t of loadSuite(HORIZON)) {
+    const missing = requiredBinaries(t).filter((b) => !Bun.which(b));
+    test.skipIf(missing.length > 0)(`${t.id}: fixture fails, reference passes`, async () => {
+      const run = async (withReference: boolean) => {
+        const dir = mkdtempSync(join(tmpdir(), "ah-ground-"));
+        try {
+          cpSync(t.fixtureDir, dir, { recursive: true });
+          if (withReference) cpSync(join(t.dir, "reference"), dir, { recursive: true, force: true });
+          if (t.hiddenDir) cpSync(t.hiddenDir, dir, { recursive: true, force: true });
+          return await exec(t.grader.cmd, { root: dir }, t.grader.timeoutMs);
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      };
+      const before = await run(false);
+      expect(before.code).not.toBe(0);
+      const after = await run(true);
+      expect(after.code).toBe(0);
+      expect(parseScore(after.stdout)).toBe(1);
+    }, 120_000);
+  }
+});
+
+test("parseScore reads the last AH_SCORE line", () => {
+  expect(parseScore("AH_SCORE 1 4\nAH_SCORE 3 4")).toBe(0.75);
+  expect(parseScore("no score")).toBeNull();
+  expect(parseScore("AH_SCORE 0 0")).toBeNull();
 });

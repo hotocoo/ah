@@ -38,6 +38,9 @@ export interface BenchSummary {
     meanPassHatK: number | null;
     solvedAny: number; // tasks with >= 1 pass
     solvedAll: number; // tasks with all trials passing
+    meanScore: number | null; // partial credit (AH_SCORE), trials that reported one
+    // How often the harness's own verdict (verified vs not) matched the hidden grader.
+    verdictAgreement: { agree: number; judged: number } | null;
     totalWallMs: number;
     p50WallMs: number | null;
     p95WallMs: number | null;
@@ -109,6 +112,11 @@ export function summarizeRun(run: BenchRun): BenchSummary {
       meanPassHatK: mean(nums(tasks.map((t) => t.passHatK))),
       solvedAny: tasks.filter((t) => t.passes > 0).length,
       solvedAll: tasks.filter((t) => t.n > 0 && t.passes === t.n).length,
+      meanScore: mean(nums(all.map((r) => r.score ?? null))),
+      verdictAgreement: (() => {
+        const judged = all.filter((r) => r.verdict && r.verdict !== "none");
+        return judged.length ? { agree: judged.filter((r) => (r.verdict === "verified") === r.passed).length, judged: judged.length } : null;
+      })(),
       totalWallMs: all.reduce((a, r) => a + r.wallMs + r.graderMs, 0),
       p50WallMs: percentile(all.map((r) => r.wallMs), 0.5),
       p95WallMs: percentile(all.map((r) => r.wallMs), 0.95),
@@ -148,6 +156,8 @@ export function markdownReport(run: BenchRun, s: BenchSummary): string {
   lines.push(`| mean pass@${s.k} | ${pct(o.meanPassAtK)} |`);
   lines.push(`| mean pass^${s.k} (all trials pass) | ${pct(o.meanPassHatK)} |`);
   lines.push(`| tasks solved at least once | ${o.solvedAny}/${s.tasks.length} |`);
+  if (o.meanScore !== null && o.meanScore !== undefined) lines.push(`| mean partial score | ${pct(o.meanScore)} |`);
+  if (o.verdictAgreement) lines.push(`| harness verdict agrees with grader | ${o.verdictAgreement.agree}/${o.verdictAgreement.judged} |`);
   lines.push(`| tasks solved every trial | ${o.solvedAll}/${s.tasks.length} |`);
   lines.push(`| wall time p50 / p95 per trial | ${sec(o.p50WallMs)} / ${sec(o.p95WallMs)} |`);
   lines.push(`| mean TTFT | ${sec(o.meanTtftMs)} |`);
