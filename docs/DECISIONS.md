@@ -173,3 +173,8 @@ Two more robustness features came out of these runs: project facts in the system
 - **Chosen:** after `resetAfterFailures` (default 4) consecutive failed actions, the next turn starts from a rebuilt context (D30: task verbatim, harness evidence, model notes) instead of the growing transcript. The ledger, the workspace and the run continue; only the model's view is reset. Off with `evidence: false` (ablation) or `resetAfterFailures: 0`.
 - **Rejected for now:** rolling the workspace back to the best checkpoint on a stall. It needs snapshots of the real workspace and deletes work, so it belongs behind an explicit opt-in, measured in benchmark sandboxes first.
 - **Why:** in the 2026-09-24 suite run, `ts-feature-lru` failed 3/3 at the turn limit with 4 to 8 failed actions per trial: the model kept editing against its own earlier reasoning. A fresh episode keeps what is true (evidence) and drops the rest.
+
+## D32. Output-cap cutoffs continue the run
+
+- **Found by:** the first horizon trial (`py-optimal-scheduler`, MiMo Q8_0): after 4 turns and 24 minutes a reply hit the output cap while the model was still reasoning, with no tool call, and the loop ended the whole run as `max_tokens`.
+- **Chosen:** a reply cut off at the output cap without a tool call gets a continuation message asking for a short concrete next step (at most twice per run, part of `recoveries`). Truncated tool inputs keep their existing handling (retry with a doubled budget).

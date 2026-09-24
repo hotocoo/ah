@@ -1,0 +1,64 @@
+{
+  "model": "llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF",
+  "benchRunId": "bench_2026-09-24T02-57-14_llamacpp_ggml-org_MiMo-V2.6-Distill-Qwen-9B-GGUF",
+  "k": 3,
+  "tasks": [
+    {
+      "taskId": "ts-feature-lru",
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 321295.8935836667,
+      "p95WallMs": 510755.08969200007,
+      "meanTurns": 20,
+      "meanToolErrors": 7.333333333333333,
+      "meanTokens": 181863,
+      "decodeTps": 45.53356189933379,
+      "failReasons": {
+        "max_turns": 3
+      }
+    }
+  ],
+  "overall": {
+    "trials": 3,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.5615060804490177
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "meanScore": null,
+    "verdictAgreement": {
+      "agree": 3,
+      "judged": 3
+    },
+    "totalWallMs": 1024962.9688769999,
+    "p50WallMs": 262253.783667,
+    "p95WallMs": 510755.08969200007,
+    "meanTtftMs": 1882.8787779999845,
+    "meanPrefillTps": 619.692214410944,
+    "meanDecodeTps": 45.53356189933379,
+    "inputTokens": 522217,
+    "outputTokens": 23372,
+    "costUsd": 0,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.3142857142857143
+  }
+}

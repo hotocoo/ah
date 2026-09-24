@@ -130,6 +130,7 @@ export class Agent {
     let overflowRetried = false;
     let nudges = 0;
     let gated = false;
+    let cutoffs = 0;
 
     try {
       while (true) {
@@ -213,6 +214,14 @@ export class Agent {
             ? `[ah] The last check failed and ${debt.files.join(", ")} changed without a passing check since. Fix the failure and re-run ${how}. If it cannot pass, say exactly why in your final reply.`
             : `[ah] You changed ${debt.files.join(", ")} but no check has passed since. Run ${how} now and fix any failure. If no check applies, say so explicitly in your final reply.`;
           this.messages.push({ role: "user", content: [{ type: "text", text }] });
+          continue;
+        }
+        // A reply cut off at the output cap with no tool call (typically a reasoning model
+        // that thought until the limit) is not an answer: ask for a short next step.
+        if (!calls.length && res.stopReason === "max_tokens" && cutoffs < 2 && this.o.recoveries !== false) {
+          cutoffs++;
+          this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: cutoffs, reason: "reply hit the output limit without a tool call", delayMs: 0, t: Date.now() });
+          this.messages.push({ role: "user", content: [{ type: "text", text: "[ah] Your reply was cut off at the output limit. Think less per turn: take the next concrete step with a tool now (write or run code), then continue." }] });
           continue;
         }
         if (!calls.length) {

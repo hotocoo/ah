@@ -183,3 +183,21 @@ test("a streak of failed actions starts a fresh episode from task and evidence",
   expect(head).toContain("<task>\nbuild the project\n</task>");
   expect(head).toContain("Still failing: `$ bun build missing.ts --outdir out`");
 });
+
+test("a reply cut off at the output limit is continued, not accepted as the end", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ah-evidence-"));
+  roots.push(root);
+  const agent = new Agent({
+    provider: new MockProvider({ script: [{ text: "let me think about this very carefully and", stopReason: "max_tokens" }, { text: "Answer: 42." }] }),
+    model: "scripted",
+    system: "sys",
+    tools: new ToolRegistry(),
+    toolContext: { root, bashTimeoutMs: 10_000, todos: [], readFiles: new Set(), media: {} },
+    mode: "auto",
+    maxTurns: 5,
+    maxTokens: 100,
+  });
+  const r = await agent.run("q");
+  expect(r.outcome).toBe("completed");
+  expect(r.finalText).toBe("Answer: 42.");
+});
