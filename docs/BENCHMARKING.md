@@ -59,7 +59,7 @@ ah bench run --label dsh --agent-cmd 'cd {dir} && dsh --profile headless {prompt
 bash scripts/h2h.sh --trials 3        # ah, Hermes, dsh on the model the local server is serving, then ah bench compare
 ```
 
-`scripts/h2h.sh` reads the served model id from `$BASE_URL/models`, gives Hermes an isolated `HERMES_HOME` pointed at the same server (no user memory, skills or cloud keys), runs dsh's headless profile with the user's settings (its default model must be the served model), and runs the three harnesses one after another. Run it yourself: it starts autonomous agents with shell access.
+`scripts/h2h.sh` takes the model and its server from ah's own discovery (the auto-selected loaded model; override with `MODEL_REF=provider/model`), gives Hermes an isolated `HERMES_HOME` pointed at the same server (no user memory, skills or cloud keys), runs dsh's headless profile with the user's settings (its default model must be the served model), and runs the three harnesses one after another. Run it yourself: it starts autonomous agents with shell access.
 
 ## Throughput
 

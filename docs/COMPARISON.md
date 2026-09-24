@@ -60,7 +60,7 @@ Measured without running Hermes or dsh as agents (static inspection plus tokeniz
 | 4 common MCP servers (42 tools) | 1,348 tokens (deferred, D34) | lazy `tool_search` / `tool_describe` / `tool_call` exists | not measured |
 | per-model cross-session tool-error hints | yes (D37) | no (in-session loop guardrails only) | not found |
 | hidden-grader bench built in | yes; also runs other harnesses (`--agent-cmd`) | `evals/` (69 probe scripts, no hidden-grader coding suite found), `batch_runner.py` | no |
-| skins / wallpaper / accent | 4 skins, custom accent, uploaded wallpaper (D36) | skins (`display.skin`, `~/.hermes/skins/*.yaml`) | skins, wallpaper, pet |
+| themes / wallpaper / accent | light/dark/system, accent presets or custom, uploaded wallpaper, ⌘K palette (D36) | skins (`display.skin`, `~/.hermes/skins/*.yaml`) | skins, wallpaper, pet |
 
 **Pass rates: none yet.** No same-model, same-task results exist for Hermes or dsh. Run `bash scripts/h2h.sh --trials 3` (see BENCHMARKING.md). Until that finishes, this repository claims no superiority over either harness.
 
