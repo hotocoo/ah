@@ -116,7 +116,7 @@ export class EvidenceLedger {
     return "verified";
   }
 
-  // Lessons are admitted only when the run as a whole ended verified (D17).
+  // Lessons are admitted only when the run as a whole ended verified (D25).
   lessons(verdict: Verdict, max = 3): Lesson[] {
     return verdict === "verified" ? this.resolved.slice(-max) : [];
   }

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import type { ImageBlock } from "../core/types.ts";
 import { num, str, ToolError, type Tool, type ToolContext, type ToolOutput } from "./types.ts";
 
-// Desktop control (D19): see the screen and drive mouse and keyboard like a person at
+// Desktop control (D29): see the screen and drive mouse and keyboard like a person at
 // the machine. Backends are discovered from what the OS provides, never assumed:
 //  - macOS: screencapture + sips, CoreGraphics events through osascript (JXA), System
 //    Events for keystrokes. Needs the Screen Recording and Accessibility permissions.

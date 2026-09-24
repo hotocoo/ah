@@ -1,8 +1,9 @@
 import type { Subprocess } from "bun";
 import type { ImageBlock, JsonSchema } from "../core/types.ts";
+import { scrubbedEnv } from "../tools/shell.ts";
 import { truncate, type Tool, type ToolOutput } from "../tools/types.ts";
 
-// Model Context Protocol client, hand-rolled like the OTLP exporter (D11, D16): MCP is
+// Model Context Protocol client, hand-rolled like the OTLP exporter (D11, D27): MCP is
 // JSON-RPC 2.0 over stdio (newline-delimited) or Streamable HTTP, and ah needs only
 // initialize, tools/list and tools/call. Claude Desktop / Claude Code config shape.
 export interface McpServerConfig {
@@ -106,7 +107,9 @@ export class McpClient {
     if (!this.cfg.command) throw new McpError(`${this.name}: "command" or "url" is required`);
     this.proc = Bun.spawn([this.cfg.command, ...(this.cfg.args ?? [])], {
       cwd: this.cfg.cwd,
-      env: { ...process.env, ...this.cfg.env },
+      // Credentials in ah's own environment are not passed on; a server that needs one
+      // names it in its config "env" (explicit opt-in).
+      env: { ...scrubbedEnv(process.env), ...this.cfg.env },
       stdin: "pipe",
       stdout: "pipe",
       stderr: "pipe",

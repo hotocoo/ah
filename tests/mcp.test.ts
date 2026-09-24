@@ -77,6 +77,17 @@ describe("mcp client", () => {
     server.stop(true);
   });
 
+  test("stdio servers do not inherit credentials unless configured", async () => {
+    const d = tmp("ah-mcp-env-");
+    writeFileSync(join(d, "env.js"), SERVER.replace('"echo: " + m.params.arguments.text', "String(process.env.AH_FAKE_API_KEY) + '/' + String(process.env.AH_PASSED)"));
+    process.env.AH_FAKE_API_KEY = "leak";
+    const c = new McpClient("env", { command: process.execPath, args: [join(d, "env.js")], env: { AH_PASSED: "yes" } });
+    await c.connect();
+    expect((await c.callTool("echo", { text: "" })).content).toBe("undefined/yes");
+    c.close();
+    delete process.env.AH_FAKE_API_KEY;
+  });
+
   test("manager reports failures without throwing", async () => {
     const m = new McpManager({ bad: { command: "/nonexistent/binary" }, off: { command: "x", enabled: false } });
     expect(await m.tools()).toEqual([]);

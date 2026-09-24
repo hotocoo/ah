@@ -3,7 +3,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
 // Where a memory came from decides how much it is trusted before any use:
-// - lesson: written by the harness from a failure that later-verified evidence resolved (D17)
+// - lesson: written by the harness from a failure that later-verified evidence resolved (D25, D26)
 // - note: written by the model with memory_save (a claim, not evidence)
 // - episode: a compaction summary (a faithful but unverified record)
 export type MemoryKind = "lesson" | "note" | "episode";

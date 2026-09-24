@@ -6,7 +6,10 @@ Nothing about models or vendors is hardcoded: runtimes are discovered by port sc
 
 - **Runtimes**: Ollama, llama.cpp `llama-server`, LM Studio, ComfyUI, stable-diffusion.cpp / A1111 (`sdapi`), and anything OpenAI-compatible (mlx_lm.server, vLLM, SGLang, vllm-mlx, LocalAI...). Optional cloud: Anthropic (official SDK), Gemini, and every OpenAI-compatible provider listed on models.dev.
 - **Models**: live runtime listings + models.dev + OpenRouter, searchable by kind (chat, image-gen, 3d-gen, embedding, tts), modality, context, tool support, cost.
-- **Agent**: 15 validated, workspace-confined, permission-gated coding tools; retries, compaction, silent-truncation detection, text tool-call recovery (12 formats) and a text tool protocol for models without native tool calling.
+- **Agent**: 19 validated, permission-gated tools; retries, compaction, silent-truncation detection, text tool-call recovery (12 formats) and a text tool protocol for models without native tool calling.
+- **Aletheia loop** ([docs/ARCHITECTURE-NEXT.md](docs/ARCHITECTURE-NEXT.md)): the harness keeps its own evidence ledger of what tool calls did. Runs that changed files must pass a check before finishing, every run gets a verdict (`verified` / `failed` / `unverified`) independent of the model's reply, and persistent memory admits harness-written lessons only from verified runs, with trust that rises and falls with the outcomes of the runs that recall it.
+- **Desktop control**: `screenshot` and `computer` (click, drag, scroll, type, key combos, open apps) on macOS and Linux, approval per action by default, with a live screen view in the web console.
+- **Extensions**: MCP servers (stdio and Streamable HTTP, Claude Desktop config format), plugins, agentskills.io skills; workspace-provided extensions load only for trusted workspaces.
 - **Telemetry**: SQLite + JSONL + OTLP (GenAI semantic conventions); hardware per turn.
 - **Benchmarks**: 8-task suite (TypeScript, Python, Go, Rust; bugfix, feature, refactor, cross-file debugging, compile errors, mutation-graded test writing) with hidden graders; pass@k, pass^k, Wilson intervals; ablation mode; serving throughput benchmark.
 - **Media**: ComfyUI / sdapi / provider image generation; procedural 3D modelling to GLB/glTF/OBJ/STL with rendered previews.
@@ -36,6 +39,11 @@ ah telemetry                                # latency / TTFT / tok/s / cache / t
 ah image "isometric server rack" -o rack.png
 ah 3d "a wooden desk with a lamp" -o desk.glb
 ah serve                                    # local web app
+ah memory search "build error"              # persistent memory (lessons, notes, episodes)
+ah mcp                                      # connect MCP servers from ~/.ah/config.json, list tools
+ah plugins                                  # plugins and skills that load here
+ah trust                                    # allow this workspace's own .mcp.json / plugins / skills
+AH_COMPUTER=auto ah run --yes "open Safari and search for bun release notes"   # desktop control without prompts
 ```
 
 Example `ah run` on MiMo-V2.6-Distill-Qwen-9B (Q8_0 GGUF, served with `llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`):

@@ -1,7 +1,8 @@
 import { str, ToolError, type Tool } from "./types.ts";
 
-// Memory writes go to the ah data directory, not the workspace, so both tools count as
-// read-only for permission purposes (they can run in parallel and in read-only mode).
+// memory_search only reads. memory_save persists model-written text into future prompts
+// (an indirect prompt-injection target), so it follows the write permission mode, and a
+// global note, recalled in every workspace, always needs approval.
 export const memorySearchTool: Tool = {
   readOnly: true,
   optional: true,
@@ -20,7 +21,8 @@ export const memorySearchTool: Tool = {
 };
 
 export const memorySaveTool: Tool = {
-  readOnly: true,
+  readOnly: false,
+  needsApproval: (i) => i.scope === "global",
   optional: true,
   spec: {
     name: "memory_save",

@@ -131,3 +131,33 @@ Found during the MiMo baseline run: `npx vitest run 2>&1 | tail -30` outlived bo
 Models are served with the command from their model card (`llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`, `optiq serve --model mlx-community/...`), and `ah` applies the card's generation settings itself: it resolves the Hub repo from the runtime's model id or cache path, reads `generation_config.json` (following `base_model` from quantised repos, e.g. GGUF → `XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B`: temperature 0.6, top_p 0.95, top_k 20), and sets `chat_template_kwargs.enable_thinking` when the template has that switch (the MiMo card enables thinking). Per-model config overrides both. For runtimes without GGUF metadata (MLX, vLLM), `config.json` supplies the trained context and KV geometry, counting only full-attention layers in hybrid models (MiMo/Qwen3.5: 8 of 32).
 
 Two more robustness features came out of these runs: project facts in the system prompt (the model stopped guessing `deno`/`node` for a Bun project; trial pass rate on the first two tasks went from 3/5 to 6/6), and a repetition guard (one turn otherwise generated for 13 minutes).
+
+## D25. Evidence-gated completion and verdicts (the Aletheia loop)
+
+- **Chosen:** the harness keeps its own ledger of what tool calls actually did (`src/agent/evidence.ts`): files changed since the last passing check, checks passed and failed, and anomalies (failed actions, which are prediction errors against the implicit expectation that an action succeeds). A run that tries to end with changed files and no passing check since is asked once to verify. Every run gets a verdict (`verified`, `failed`, `unverified`, `none`) computed from the ledger, independent of the model's final text. JS/TS writes are syntax-checked in-process and a broken write counts as a failed action.
+- **Rejected:** asking the model to emit an explicit prediction with every tool call (extra schema surface lowers small-model tool accuracy); trusting the model's "tests pass"; running the full test suite automatically after every edit (seconds to minutes per edit, and the right command is not always known).
+- **Why:** completion and memory in current harnesses rest on the model's own account (see ARCHITECTURE-NEXT.md). One nudge costs one turn; the verdict makes unverified work visible either way. Ablation: `SessionFeatures.evidence = false` (included in `--baseline`).
+
+## D26. Memory: harness-written lessons, trust updated by outcomes
+
+- **Chosen:** SQLite FTS5 store in `~/.ah/memory.sqlite`. Three kinds with prior trust: `lesson` 0.8 (harness-written, only from anomalies resolved inside `verified` runs), `note` 0.5 (model or user claim), `episode` 0.3 (compaction summaries). Recall ranks by `bm25 × trust`, top 5, injected into the user message (not the system prompt, D4). Recalled memories move toward 1 after verified runs and toward 0 after failed ones; below 0.15 they are no longer recalled.
+- **Rejected:** embeddings (a second model and a vector index for a store that holds hundreds of short entries; FTS5 is built into `bun:sqlite`); model-curated memory only (the poisoning loop described in arXiv 2608.00017); a separate memory per session.
+- **Why a separate file from telemetry:** memory must work with telemetry disabled. Benchmarks switch memory off so trials stay independent.
+
+## D27. MCP client hand-rolled
+
+- **Chosen:** JSON-RPC 2.0 over stdio (newline-delimited) and Streamable HTTP (JSON or SSE replies, `Mcp-Session-Id`, `MCP-Protocol-Version`). Sends the 2025-11-25 `initialize` handshake and the 2026-07-28 per-request `_meta` protocol version; skips `initialize` when a stateless server answers `-32601`. Tools become `mcp__<server>__<tool>`, read-only only when annotated `readOnlyHint` and not `destructiveHint`, optional (hidden in the compact profile), sorted for a stable prompt.
+- **Rejected:** `@modelcontextprotocol/sdk` (D1: one runtime dependency; `ah` needs three methods).
+- **Why:** users paste existing Claude Desktop / Claude Code `mcpServers` blocks; failures are reported by `ah mcp` and the Extensions page, never fatal.
+
+## D28. Plugins, skills and workspace trust
+
+- **Chosen:** plugins are directories in `~/.ah/plugins` (or a trusted workspace's `.ah/plugins`) with `plugin.json` (or `.claude-plugin/plugin.json` and `.mcp.json`): MCP servers, instructions, a tool module exporting `Tool[]`, a skills folder. Skills follow the agentskills.io layout; only a name/description index enters the prompt and `skill_view` loads a body on demand.
+- **Trust:** a repository can ship `.mcp.json`, `.ah/config.json` servers and plugins that start processes or load code. These load only when the workspace is in `trustedWorkspaces` in the user's `~/.ah/config.json` (`ah trust`, or the button on the Extensions page). The project's own config cannot mark itself trusted.
+- **Rejected:** a marketplace or registry (discovery from disk covers local use; a registry adds a supply-chain surface); per-session approval prompts for each server.
+
+## D29. Desktop control
+
+- **Chosen:** `screenshot` and `computer` tools backed by what the OS provides, discovered at runtime: macOS `screencapture` + `sips`, CoreGraphics events through `osascript` JXA, System Events for keystrokes; Linux `xdotool` with `grim`/`gnome-screenshot`/`scrot`/`import`. Model text reaches scripts only through argv. Screenshots are scaled to at most 1280 px wide (`AH_SCREENSHOT_WIDTH`) and the model works in screenshot coordinates. `computerUse`: `off` (tools hidden), `ask` (default: every action, screenshots included, needs approval in every permission mode), `auto` (explicit opt-in).
+- **Rejected:** `cliclick`/`pyautogui`/native addons (extra installs); Windows support without a machine to verify it on (reported as unavailable instead).
+- **Why approval by default:** these actions leave the workspace confinement model entirely, and a screenshot can carry anything on screen to the model's provider. The web console streams approvals (`approval_request` over SSE, answered via `POST /api/approve`, "always allow" per session) and a live view of the latest screenshot.

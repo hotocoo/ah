@@ -1,10 +1,10 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { AH_HOME } from "../config.ts";
 import type { McpServerConfig } from "../mcp/client.ts";
 import type { Tool } from "../tools/types.ts";
 
-// Extensions, discovered from disk (D18). A plugin is a directory with plugin.json:
+// Extensions, discovered from disk (D28). A plugin is a directory with plugin.json:
 //   { "name", "description", "mcpServers": {...}, "instructions": "text or file.md",
 //     "tools": "tools.ts" (module exporting `tools: Tool[]`), "skills": "skills" }
 // A plugin directory may also carry a Claude Code style .mcp.json and skills/ folder.
@@ -61,9 +61,18 @@ export function userConfig(home = AH_HOME): { mcpServers?: Record<string, McpSer
   return readJson(join(home, "config.json")) ?? {};
 }
 
+// Canonical path, so a symlinked workspace is judged by where it really is.
+const real = (p: string) => {
+  try {
+    return realpathSync(resolve(p));
+  } catch {
+    return resolve(p);
+  }
+};
+
 export function isTrusted(root: string, home = AH_HOME): boolean {
-  const r = resolve(root);
-  return (userConfig(home).trustedWorkspaces ?? []).some((t) => r === resolve(t) || r.startsWith(`${resolve(t)}/`));
+  const r = real(root);
+  return (userConfig(home).trustedWorkspaces ?? []).some((t) => r === real(t) || r.startsWith(`${real(t)}/`));
 }
 
 // Adds (or removes) a workspace in ~/.ah/config.json "trustedWorkspaces".

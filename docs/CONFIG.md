@@ -33,3 +33,23 @@ Optional. Precedence: built-in defaults < `~/.ah/config.json` < `<workspace>/.ah
 Provider `kind`: `ollama`, `llamacpp`, `lmstudio`, `openai-compatible`, `anthropic`, `gemini`, `mock`. Cloud providers with an API key in the environment are added automatically from models.dev; config entries override or disable them.
 
 Repository instructions: `AGENTS.md`, `CLAUDE.md`, `.ah/instructions.md`, `.cursorrules` and `.github/copilot-instructions.md` in the workspace root are included in the system prompt.
+
+## Memory, evidence, desktop control and extensions
+
+```jsonc
+{
+  "recall": { "enabled": true, "limit": 5 },  // ~/.ah/memory.sqlite; AH_MEMORY=0 disables
+  "evidenceGate": true,                        // ask runs that changed files to pass a check before finishing
+  "computerUse": "ask",                        // off | ask | auto (AH_COMPUTER); AH_SCREENSHOT_WIDTH caps screenshot width (1280)
+  // Read from ~/.ah/config.json only:
+  "mcpServers": {
+    "fs": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"] },
+    "remote": { "url": "https://example.com/mcp", "headers": { "authorization": "Bearer ..." } },
+    "github": { "command": "github-mcp", "env": { "GITHUB_TOKEN": "..." } }  // credentials are passed only when named here
+  },
+  "trustedWorkspaces": ["/Users/me/code/myrepo"],  // `ah trust`; lets that repo's .mcp.json, .ah/plugins, .ah/skills load
+  "skillDirs": ["/Users/me/skills"]                // extra agentskills.io folders
+}
+```
+
+Plugins live in `~/.ah/plugins/<name>/plugin.json`: `{ "name", "description", "mcpServers", "instructions": "text or file.md", "tools": "tools.ts", "skills": "skills" }`. A tool module exports `tools: Tool[]` (see `src/tools/types.ts`). Skills are `<dir>/<name>/SKILL.md` with `name` and `description` frontmatter.

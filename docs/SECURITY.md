@@ -29,3 +29,11 @@ Trials run in throwaway copies under the output directory, with `auto` permissio
 ## Telemetry
 
 Local only unless you configure an OTLP endpoint. Prompts (first 4000 characters) and tool inputs (first 8 KB) are stored in the local database; delete `~/.ah/telemetry.sqlite` to clear them, or set `AH_TELEMETRY=0`.
+
+## Desktop control, extensions and memory
+
+- **Desktop control** (`screenshot`, `computer`) leaves workspace confinement entirely. With `computerUse: "ask"` (default) every action, screenshots included, needs approval in every permission mode; `"off"` hides the tools; `"auto"` is an explicit opt-in. Model text reaches `osascript`/`xdotool` only as argv, never spliced into a script. Screenshots can show anything on screen and are sent to the model's provider.
+- **Web console** runs with the configured `permissionMode` (default `ask`): writes, shell commands and desktop actions stream an approval card to the page; "always allow" lasts for that chat session. Approvals need the page token and a random per-request id.
+- **Workspace trust.** A repository's `.mcp.json`, `.ah/config.json` `mcpServers`, `.ah/plugins` and `.ah/skills` can start processes or load code, so they load only for workspaces listed in `trustedWorkspaces` in `~/.ah/config.json` (`ah trust`). Paths are compared after `realpath`. A project cannot trust itself.
+- **MCP servers** get ah's environment with credential-like variables removed (the same scrub as tool commands); a server that needs a key names it in its config `env`.
+- **Memory poisoning.** `memory_save` follows the write permission mode, and a global note (recalled in every workspace) always needs approval. Model notes start at trust 0.5 and are labelled unverified when recalled; notes that keep preceding failed runs decay below the recall floor. Harness lessons are written only from verified runs.

@@ -215,7 +215,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
         approvalSink({ type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 2000) });
       });
     if (!chatSession) {
-      const s = await createSession(env, { model: body.model, root: opts.root, mode: "auto", approve: (t, i, sm) => approveFn(t, i, sm), onEvent: (e) => listener?.(e), signal: ac.signal });
+      const s = await createSession(env, { model: body.model, root: opts.root, mode: env.cfg.permissionMode, approve: (t, i, sm) => approveFn(t, i, sm), onEvent: (e) => listener?.(e), signal: ac.signal });
       id = s.agent.sessionId;
       chatSession = { session: s, busy: false, alwaysAllow: new Set() };
       chats.set(id, chatSession);
@@ -283,6 +283,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       skipped: x.ext.skipped,
       errors: x.ext.errors,
       computer: { mode: env.cfg.computerUse, backend: backend?.name ?? null },
+      permissionMode: env.cfg.permissionMode,
       evidenceGate: env.cfg.evidenceGate,
     });
   }
