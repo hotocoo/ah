@@ -140,7 +140,7 @@ export class TelemetryStore {
 
   // Sink entry point. Streaming deltas are not persisted (volume); everything else is.
   record = (e: AgentEvent): void => {
-    if (e.type === "text_delta" || e.type === "thinking_delta") return;
+    if (e.type === "text_delta" || e.type === "thinking_delta" || e.type === "tool_image") return;
     const seq = (this.seq.get(e.runId) ?? 0) + 1;
     this.seq.set(e.runId, seq);
     const t = "t" in e ? e.t : Date.now();

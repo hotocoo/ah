@@ -31,13 +31,15 @@
         <nav aria-label="Sections">
           <div class="tabs" role="tablist" aria-orientation="vertical">
             <span class="tab-ink" aria-hidden="true"></span>
-            <button role="tab" id="t-chat" data-tab="chat" aria-controls="tab-chat" aria-selected="true"><span class="ix">01</span><span class="lbl">Console</span></button>
-            <button role="tab" id="t-overview" data-tab="overview" aria-controls="tab-overview" aria-selected="false" tabindex="-1"><span class="ix">02</span><span class="lbl">Telemetry</span></button>
-            <button role="tab" id="t-runs" data-tab="runs" aria-controls="tab-runs" aria-selected="false" tabindex="-1"><span class="ix">03</span><span class="lbl">Runs</span></button>
-            <button role="tab" id="t-bench" data-tab="bench" aria-controls="tab-bench" aria-selected="false" tabindex="-1"><span class="ix">04</span><span class="lbl">Benchmarks</span></button>
-            <button role="tab" id="t-models" data-tab="models" aria-controls="tab-models" aria-selected="false" tabindex="-1"><span class="ix">05</span><span class="lbl">Models</span></button>
-            <button role="tab" id="t-media" data-tab="media" aria-controls="tab-media" aria-selected="false" tabindex="-1"><span class="ix">06</span><span class="lbl">Studio</span></button>
-            <button role="tab" id="t-system" data-tab="system" aria-controls="tab-system" aria-selected="false" tabindex="-1"><span class="ix">07</span><span class="lbl">System</span></button>
+            <button role="tab" id="t-chat" data-tab="chat" aria-controls="tab-chat" aria-selected="true"><span class="lbl">Console</span></button>
+            <button role="tab" id="t-overview" data-tab="overview" aria-controls="tab-overview" aria-selected="false" tabindex="-1"><span class="lbl">Telemetry</span></button>
+            <button role="tab" id="t-runs" data-tab="runs" aria-controls="tab-runs" aria-selected="false" tabindex="-1"><span class="lbl">Runs</span></button>
+            <button role="tab" id="t-bench" data-tab="bench" aria-controls="tab-bench" aria-selected="false" tabindex="-1"><span class="lbl">Benchmarks</span></button>
+            <button role="tab" id="t-models" data-tab="models" aria-controls="tab-models" aria-selected="false" tabindex="-1"><span class="lbl">Models</span></button>
+            <button role="tab" id="t-media" data-tab="media" aria-controls="tab-media" aria-selected="false" tabindex="-1"><span class="lbl">Studio</span></button>
+            <button role="tab" id="t-memory" data-tab="memory" aria-controls="tab-memory" aria-selected="false" tabindex="-1"><span class="lbl">Memory</span></button>
+            <button role="tab" id="t-ext" data-tab="ext" aria-controls="tab-ext" aria-selected="false" tabindex="-1"><span class="lbl">Extensions</span></button>
+            <button role="tab" id="t-system" data-tab="system" aria-controls="tab-system" aria-selected="false" tabindex="-1"><span class="lbl">System</span></button>
           </div>
         </nav>
         <div class="rail-foot">
@@ -93,19 +95,23 @@
                 </div>
               </div>
               <dl class="readouts">
-                <div><dt>turn</dt><dd id="run-turn">–</dd></div>
-                <div><dt>TTFT</dt><dd id="run-ttft">–</dd></div>
-                <div><dt>decode</dt><dd id="run-tps">–</dd></div>
-                <div><dt>tools</dt><dd id="run-tools">–</dd></div>
+                <div><dt>turn</dt><dd id="run-turn">-</dd></div>
+                <div><dt>TTFT</dt><dd id="run-ttft">-</dd></div>
+                <div><dt>decode</dt><dd id="run-tps">-</dd></div>
+                <div><dt>tools</dt><dd id="run-tools">-</dd></div>
               </dl>
               <div class="ctx">
-                <div class="ctx-head"><span>context</span><span id="run-ctx-label" class="num">–</span></div>
+                <div class="ctx-head"><span>context</span><span id="run-ctx-label" class="num">-</span></div>
                 <div class="meter" role="meter" id="run-ctx" aria-label="Context used" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span></span></div>
               </div>
               <div class="spark">
-                <div class="ctx-head"><span>GPU load</span><span id="gpu-now" class="num">–</span></div>
+                <div class="ctx-head"><span>GPU load</span><span id="gpu-now" class="num">-</span></div>
                 <canvas id="gpu-spark" aria-label="GPU utilisation, last two minutes" role="img"></canvas>
               </div>
+              <figure class="screen" id="run-screen" hidden>
+                <div class="ctx-head"><span>Screen</span><span id="run-screen-label" class="num"></span></div>
+                <img id="run-screen-img" alt="Latest screenshot the agent took" />
+              </figure>
               <h3 class="inst-sub">Event trace</h3>
               <ol id="run-trace" class="trace"><li class="trace-empty">Events stream here while a task runs.</li></ol>
             </aside>
@@ -191,6 +197,48 @@
               </form>
               <div id="m3d-out" class="media-out"><div class="canvas-empty"><span>Preview and .glb appear here</span></div></div>
             </article>
+          </div>
+        </section>
+
+        <section id="tab-memory" class="tab" role="tabpanel" aria-labelledby="h-memory" hidden>
+          <header class="page-head">
+            <h1 id="h-memory" class="title">Memory</h1>
+            <p class="lede">What the agent carries between sessions. Lessons are written only after a check passed; notes are its own claims. Trust rises or falls with the runs that use them.</p>
+          </header>
+          <div class="split">
+            <article class="cell">
+              <div class="filters">
+                <label class="search"><span>Search</span><input id="mem-q" type="search" placeholder="build error, test command" autocomplete="off" /></label>
+                <span id="mem-count" class="meta"></span>
+              </div>
+              <div id="memories"></div>
+            </article>
+            <article class="cell">
+              <h2>Add a note</h2>
+              <form id="mem-form" class="stack">
+                <label for="mem-text">Fact to remember</label>
+                <textarea id="mem-text" rows="4" required></textarea>
+                <p class="help">A preference, convention or pitfall. Saved as an unverified note.</p>
+                <label class="check"><input type="checkbox" id="mem-global" /><span>All workspaces</span></label>
+                <button class="primary" type="submit"><span class="btn-label">Save note</span></button>
+              </form>
+            </article>
+          </div>
+        </section>
+
+        <section id="tab-ext" class="tab" role="tabpanel" aria-labelledby="h-ext" hidden>
+          <header class="page-head">
+            <h1 id="h-ext" class="title">Extensions</h1>
+            <p class="lede">MCP servers, plugins, skills and desktop control, discovered from your config and this workspace.</p>
+          </header>
+          <div id="ext-trust"></div>
+          <div class="split">
+            <article class="cell"><h2>MCP servers</h2><div id="ext-mcp"></div></article>
+            <article class="cell"><h2>Desktop control</h2><div id="ext-computer"></div></article>
+          </div>
+          <div class="split ext-lower">
+            <article class="cell"><h2>Skills</h2><div id="ext-skills"></div></article>
+            <article class="cell"><h2>Plugins</h2><div id="ext-plugins"></div></article>
           </div>
         </section>
 

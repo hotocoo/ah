@@ -87,7 +87,7 @@ export class Telemetry {
 function jsonlSink(dir: string): AgentEventHandler {
   mkdirSync(dir, { recursive: true });
   return (e) => {
-    if (e.type === "text_delta" || e.type === "thinking_delta") return;
+    if (e.type === "text_delta" || e.type === "thinking_delta" || e.type === "tool_image") return;
     const day = new Date().toISOString().slice(0, 10);
     appendFileSync(join(dir, `${day}.jsonl`), `${JSON.stringify(e)}\n`);
   };

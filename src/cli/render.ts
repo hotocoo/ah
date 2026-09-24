@@ -24,7 +24,7 @@ export function terminalRenderer(opts: { verbose?: boolean; json?: boolean } = {
   };
   return (e: AgentEvent) => {
     if (opts.json) {
-      if (e.type !== "text_delta" && e.type !== "thinking_delta") process.stdout.write(`${JSON.stringify(e)}\n`);
+      if (e.type !== "text_delta" && e.type !== "thinking_delta" && e.type !== "tool_image") process.stdout.write(`${JSON.stringify(e)}\n`);
       return;
     }
     switch (e.type) {

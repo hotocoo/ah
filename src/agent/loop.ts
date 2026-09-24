@@ -389,6 +389,8 @@ export class Agent {
       preview: out.content.slice(0, 300),
       t: Date.now(),
     });
+    const shot = out.images?.at(-1);
+    if (shot) this.emit({ type: "tool_image", runId: this.runId, turn: this.turn, id: c.id, name: c.name, mediaType: shot.mediaType, data: shot.data });
     const blocks: ContentBlock[] = [{ type: "tool_result", toolCallId: c.id, content: out.content, isError: out.isError }];
     // Images (read_file on a png, generate_image) go back to the model as content.
     for (const img of out.images ?? []) blocks.push(img);

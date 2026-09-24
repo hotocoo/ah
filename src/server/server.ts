@@ -150,17 +150,17 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
           case "/api/bench":
             return json(listBenchRuns(env));
           case "/api/chat":
-            return chat(req);
+            return await chat(req);
           case "/api/approve":
-            return approve(req);
+            return await approve(req);
           case "/api/memory":
-            return memory(req, q);
+            return await memory(req, q);
           case "/api/extensions":
-            return extensions(req);
+            return await extensions(req);
           case "/api/image":
-            return image(req);
+            return await image(req);
           case "/api/3d":
-            return model3d(req);
+            return await model3d(req);
         }
         if (p.startsWith("/api/telemetry/run/")) return json(runDetail(db(), decodeURIComponent(p.slice("/api/telemetry/run/".length))));
         if (p.startsWith("/api/bench/")) {

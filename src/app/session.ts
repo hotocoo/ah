@@ -220,7 +220,8 @@ export interface Session {
 }
 
 export async function createSession(env: Environment, o: SessionOptions): Promise<Session> {
-  const modelRef = o.model ?? env.cfg.defaultModel ?? autoSelectModel(env);
+  // An empty string (e.g. a UI with nothing selected) means "pick for me".
+  const modelRef = o.model || env.cfg.defaultModel || autoSelectModel(env);
   if (!modelRef) {
     const found = env.runtimes.map((r) => `${r.kind} at ${r.baseURL} (${r.models.length} models)`).join("; ") || "none";
     throw new Error(`no model configured and none discovered. Runtimes found: ${found}. Pull or load a model, or pass --model provider/model.`);

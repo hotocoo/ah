@@ -17,11 +17,11 @@ const api = async (path, body, quiet = false) => {
   if (!res.ok) throw new Error(j.error ?? res.statusText);
   return j;
 };
-const num = (x, d = 0) => (x === null || x === undefined || Number.isNaN(x) ? "–" : Number(x).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d }));
-const ms = (x) => (x === null || x === undefined ? "–" : x < 1000 ? `${num(x)} ms` : `${num(x / 1000, 1)} s`);
-const pct = (x) => (x === null || x === undefined || Number.isNaN(x) ? "–" : `${num(x * 100)}%`);
-const gb = (b) => (b ? `${num(b / 1024 ** 3, 1)} GB` : "–");
-const compact = (x) => (x === null || x === undefined ? "–" : Number(x).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 }));
+const num = (x, d = 0) => (x === null || x === undefined || Number.isNaN(x) ? "-" : Number(x).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d }));
+const ms = (x) => (x === null || x === undefined ? "-" : x < 1000 ? `${num(x)} ms` : `${num(x / 1000, 1)} s`);
+const pct = (x) => (x === null || x === undefined || Number.isNaN(x) ? "-" : `${num(x * 100)}%`);
+const gb = (b) => (b ? `${num(b / 1024 ** 3, 1)} GB` : "-");
+const compact = (x) => (x === null || x === undefined ? "-" : Number(x).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 }));
 const ago = (t) => {
   const s = (Date.now() - t) / 1000;
   return s < 60 ? `${num(s)}s ago` : s < 3600 ? `${num(s / 60)}m ago` : s < 86400 ? `${num(s / 3600)}h ago` : new Date(t).toLocaleDateString();
@@ -269,7 +269,7 @@ function showRun(r) {
   return withDetail("#run-detail", async () => {
     const d = await api(`/api/telemetry/run/${encodeURIComponent(r.run_id)}`);
     const el = document.createElement("div");
-    el.innerHTML = `<dl class="kv"><dt>run</dt><dd>${esc(r.run_id)}</dd><dt>model</dt><dd>${esc(r.provider)}/${esc(r.model)}</dd><dt>outcome</dt><dd>${outcome(r.outcome)}</dd><dt>context window</dt><dd>${num(r.context_window)}</dd><dt>tokens in/out</dt><dd>${num(r.input_tokens)} / ${num(r.output_tokens)} (cache ${num(r.cache_read_tokens)})</dd><dt>GPU util avg</dt><dd>${r.gpu_util_avg === null ? "–" : `${num(r.gpu_util_avg)}%`}</dd></dl><p class="prompt">${esc(r.prompt)}</p><h3>Turns</h3>`;
+    el.innerHTML = `<dl class="kv"><dt>run</dt><dd>${esc(r.run_id)}</dd><dt>model</dt><dd>${esc(r.provider)}/${esc(r.model)}</dd><dt>outcome</dt><dd>${outcome(r.outcome)}</dd><dt>context window</dt><dd>${num(r.context_window)}</dd><dt>tokens in/out</dt><dd>${num(r.input_tokens)} / ${num(r.output_tokens)} (cache ${num(r.cache_read_tokens)})</dd><dt>GPU util avg</dt><dd>${r.gpu_util_avg === null ? "-" : `${num(r.gpu_util_avg)}%`}</dd></dl><p class="prompt">${esc(r.prompt)}</p><h3>Turns</h3>`;
     el.append(table([
       { label: "#", get: (t) => t.turn },
       { label: "latency", get: (t) => ms(t.latency_ms), num: 1 },
@@ -370,7 +370,7 @@ const inst = {
   },
   reset() {
     this.set("idle");
-    ["#run-turn", "#run-ttft", "#run-tps", "#run-tools"].forEach((s) => ($(s).textContent = "–"));
+    ["#run-turn", "#run-ttft", "#run-tps", "#run-tools"].forEach((s) => ($(s).textContent = "-"));
     this.ctx(0, 0);
     $("#run-trace").innerHTML = `<li class="trace-empty">Events stream here while a task runs.</li>`;
   },
@@ -380,7 +380,7 @@ const inst = {
     m.querySelector("span").style.setProperty("--v", f);
     m.classList.toggle("hot", f > 0.8);
     m.setAttribute("aria-valuenow", String(Math.round(f * 100)));
-    $("#run-ctx-label").textContent = window ? `${compact(used)} / ${compact(window)}` : "–";
+    $("#run-ctx-label").textContent = window ? `${compact(used)} / ${compact(window)}` : "-";
   },
   trace(text, kind = "") {
     const list = $("#run-trace");
@@ -513,10 +513,27 @@ $("#chat-form").addEventListener("submit", async (e) => {
           inst.ctx(ev.afterTokens, ctxWindow);
         } else if (ev.type === "tool_calls_recovered") {
           inst.trace(`recovered ${ev.count} tool call${ev.count === 1 ? "" : "s"} from ${ev.formats.join(", ")}`);
+        } else if (ev.type === "approval_request") {
+          const card = approvalCard(ev);
+          msg.append(card);
+          card.querySelector("button").focus({ preventScroll: true });
+          inst.set("waiting");
+          inst.trace(`waiting for approval · ${ev.summary}`, "gold");
+        } else if (ev.type === "tool_image") {
+          showScreen(ev);
+        } else if (ev.type === "memory_recall") {
+          const d = html(`<details class="recall"><summary>Recalled ${plural(ev.memories.length, "memory").replace("memorys", "memories")}</summary><ul>${ev.memories.map((m) => `<li><span class="tag ${m.kind === "lesson" ? "gold" : ""}">${esc(m.kind)} ${esc(num(m.trust, 2))}</span> ${esc(m.text)}</li>`).join("")}</ul></details>`).firstElementChild;
+          msg.append(d);
+          inst.trace(`recalled ${ev.memories.length} from memory`);
+        } else if (ev.type === "evidence_gate") {
+          inst.trace(`${ev.lastFailed ? "last check failed" : "no passing check"} after editing ${ev.files.join(", ")}; asked to verify`, "gold");
+        } else if (ev.type === "evidence") {
+          if (ev.lessons.length) inst.trace(`learned ${plural(ev.lessons.length, "lesson")}`, "ok");
         } else if (ev.type === "run_end") {
           const r = ev.result;
           const chip = (v, cls = "") => `<span class="tag ${cls}">${esc(v)}</span>`;
-          msg.insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "gold" : "")}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${num(r.usage.inputTokens)} in / ${num(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
+          const verdict = r.verdict && r.verdict !== "none" ? chip(r.verdict, r.verdict === "verified" ? "ok" : r.verdict === "failed" ? "bad" : "") : "";
+          msg.insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "gold" : "")}${verdict}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${num(r.usage.inputTokens)} in / ${num(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
           inst.set(r.outcome === "completed" ? "done" : "error");
           inst.trace(`run ${r.outcome} · ${ms(r.wallMs)}`, r.outcome === "completed" ? "ok" : "bad");
         } else if (ev.type === "error") {
@@ -568,6 +585,106 @@ mediaForm("#m3d-form", "#m3d-out", async () => {
   return html(`<img alt="3D preview" src="data:image/png;base64,${esc(r.preview)}"><p class="caption">${esc(r.model)} · ${r.scene.objects.length} parts · ${num(r.triangles)} triangles · ${ms(r.ms)} · <a download="model.glb" href="${URL.createObjectURL(blob)}">download .glb</a></p>`);
 });
 
+// ---------- approvals and live screen ----------
+// A tool outside the workspace (desktop control, dangerous shell) waits here for the user.
+function approvalCard(ev) {
+  const el = html(`<div class="approval" role="group" aria-labelledby="ap-${esc(ev.id)}"><p id="ap-${esc(ev.id)}">Allow <code>${esc(ev.summary)}</code>?</p><details><summary>Tool input</summary><pre>${esc(ev.input)}</pre></details><div class="approval-actions"><button type="button" class="primary" data-a="allow"><span class="btn-label">Allow</span></button><button type="button" class="ghost" data-a="always">Always allow ${esc(ev.tool)}</button><button type="button" class="ghost" data-a="deny">Deny</button></div></div>`).firstElementChild;
+  el.querySelectorAll("button").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const a = b.dataset.a;
+      el.querySelectorAll("button").forEach((x) => (x.disabled = true));
+      try {
+        await api("/api/approve", { id: ev.id, allow: a !== "deny", always: a === "always" }, true);
+        el.classList.add(a === "deny" ? "denied" : "allowed");
+        el.querySelector(".approval-actions").textContent = a === "deny" ? "Denied" : a === "always" ? `Allowed ${ev.tool} for this session` : "Allowed";
+        inst.set(a === "deny" ? "thinking" : "tool");
+      } catch (err) {
+        el.querySelectorAll("button").forEach((x) => (x.disabled = false));
+        el.append(alertBox("Could not send the answer", err.message));
+      }
+    }),
+  );
+  return el;
+}
+function showScreen(ev) {
+  const fig = $("#run-screen");
+  fig.hidden = false;
+  $("#run-screen-img").src = `data:${ev.mediaType};base64,${ev.data}`;
+  $("#run-screen-label").textContent = `${ev.name} · ${new Date().toLocaleTimeString()}`;
+}
+
+// ---------- memory ----------
+let memTimer;
+loaders.memory = async () => {
+  shimmer("#memories");
+  const q = $("#mem-q").value.trim();
+  const d = await api(`/api/memory${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+  const box = $("#memories");
+  if (!d.enabled) {
+    box.innerHTML = `<div class="empty"><strong>Memory is off.</strong><span>Set recall.enabled in ~/.ah/config.json or unset AH_MEMORY=0.</span></div>`;
+    return loaded("#memories");
+  }
+  $("#mem-count").textContent = plural(d.memories.length, "memory").replace("memorys", "memories");
+  box.replaceChildren(
+    d.memories.length
+      ? html(`<ul class="mem-list">${d.memories.map((m) => `<li class="mem k-${esc(m.kind)}"><div class="mem-head"><span class="tag ${m.kind === "lesson" ? "gold" : ""}">${esc(m.kind)}</span><span class="mem-trust" title="trust"><span class="meter"><span style="--v:${clamp01(m.trust)}"></span></span><span class="num">${esc(num(m.trust, 2))}</span></span><span class="meta">${esc(m.scope === "global" ? "all workspaces" : "this workspace")} · used ${esc(num(m.uses))}×</span><button type="button" class="ghost sm" data-del="${esc(m.id)}" aria-label="Delete memory ${esc(m.id)}">Delete</button></div><p>${esc(m.text)}</p></li>`).join("")}</ul>`)
+      : html(`<div class="empty"><strong>${q ? "Nothing matches." : "No memories yet."}</strong><span>${q ? "Try fewer or different words." : "Lessons appear after runs that fixed a failure and passed a check. You can also add a note."}</span></div>`),
+  );
+  box.querySelectorAll("[data-del]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      await fetch(`/api/memory?id=${b.dataset.del}`, { method: "DELETE", headers: { "x-ah-token": TOKEN } });
+      loaders.memory();
+    }),
+  );
+  loaded("#memories");
+};
+$("#mem-q").addEventListener("input", () => (clearTimeout(memTimer), (memTimer = setTimeout(() => openTab("memory"), 250))));
+$("#mem-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = e.submitter;
+  btn.disabled = true;
+  try {
+    await api("/api/memory", { text: $("#mem-text").value, global: $("#mem-global").checked });
+    $("#mem-text").value = "";
+    await loaders.memory();
+  } catch (err) {
+    $("#mem-form").append(alertBox("Could not save", err.message));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------- extensions ----------
+function renderExt(x) {
+  const empty = (t, s) => `<div class="empty"><strong>${esc(t)}</strong><span>${esc(s)}</span></div>`;
+  $("#ext-trust").replaceChildren(
+    x.skipped.length && !x.trusted
+      ? html(`<div class="alert trust"><span class="glyph" aria-hidden="true">!</span><div><strong>This workspace ships extensions that can run code.</strong><p>${esc(x.skipped.join(", "))}. They load only after you trust the workspace.</p></div><button type="button" class="ghost" id="ext-trust-btn">Trust workspace</button></div>`)
+      : html(""),
+  );
+  $("#ext-trust-btn")?.addEventListener("click", async (e) => {
+    e.currentTarget.disabled = true;
+    renderExt(await api("/api/extensions", {}));
+  });
+  $("#ext-mcp").innerHTML = x.mcp.length
+    ? x.mcp.map((m) => `<div class="runtime"><div class="runtime-head"><strong>${esc(m.name)}</strong><span class="tag ${m.connected ? "ok" : m.enabled ? "bad" : ""}">${m.connected ? "connected" : m.enabled ? "failed" : "disabled"}</span></div><span class="runtime-url">${esc(m.transport)}${m.server?.name ? ` · ${esc(m.server.name)} ${esc(m.server.version ?? "")}` : ""}</span>${m.error ? `<p class="bad">${esc(m.error)}</p>` : ""}<div class="runtime-models">${m.tools.map((t) => `<span class="tag">${esc(t)}</span>`).join("")}</div></div>`).join("")
+    : empty("No MCP servers configured.", 'Add "mcpServers" to ~/.ah/config.json (Claude Desktop format) or a trusted .mcp.json.');
+  const c = x.computer;
+  $("#ext-computer").innerHTML = `<dl class="kv"><dt>mode</dt><dd><span class="tag ${c.mode === "auto" ? "bad" : c.mode === "ask" ? "gold" : ""}">${esc(c.mode)}</span></dd><dt>backend</dt><dd>${esc(c.backend ?? "none found")}</dd><dt>completion gate</dt><dd>${x.evidenceGate ? "on" : "off"}</dd></dl><p class="help">${c.mode === "ask" ? "Every screenshot, click and keystroke waits for your approval in the console." : c.mode === "auto" ? "The agent acts on the desktop without asking." : "Desktop tools are hidden from the agent."} Change with computerUse in ~/.ah/config.json or AH_COMPUTER.</p>`;
+  $("#ext-skills").innerHTML = x.skills.length
+    ? `<ul class="skill-list">${x.skills.map((s) => `<li><strong>${esc(s.name)}</strong><span class="meta">${esc(s.source)}</span><p>${esc(s.description || "No description.")}</p></li>`).join("")}</ul>`
+    : empty("No skills found.", "Put <name>/SKILL.md folders in ~/.ah/skills or a plugin's skills directory.");
+  $("#ext-plugins").innerHTML = x.plugins.length
+    ? `<ul class="skill-list">${x.plugins.map((p) => `<li><strong>${esc(p.name)}</strong><span class="meta">${esc(p.source)}</span><p>${esc(p.description ?? "")}</p></li>`).join("")}</ul>${x.errors.map((e) => `<p class="bad">${esc(e)}</p>`).join("")}`
+    : empty("No plugins installed.", "A plugin is a folder in ~/.ah/plugins with a plugin.json.");
+}
+loaders.ext = async () => {
+  shimmer("#ext-mcp", "#ext-computer", "#ext-skills", "#ext-plugins");
+  renderExt(await api("/api/extensions"));
+  loaded("#ext-mcp", "#ext-computer", "#ext-skills", "#ext-plugins");
+};
+
 // ---------- system ----------
 const gauge = (label, value, f) => `<div class="gauge"><div class="ctx-head"><span>${esc(label)}</span><span class="num">${esc(value)}</span></div><div class="meter${f > 0.85 ? " hot" : ""}"><span style="--v:${clamp01(f)}"></span></div></div>`;
 loaders.system = async () => {
@@ -579,9 +696,9 @@ loaders.system = async () => {
   const h = d.hardware;
   const used = h.memTotalBytes && h.memFreeBytes !== undefined ? h.memTotalBytes - h.memFreeBytes : 0;
   $("#hardware").innerHTML =
-    gauge("GPU utilisation", h.gpuUtilPct === null || h.gpuUtilPct === undefined ? "–" : `${h.gpuUtilPct}%`, (h.gpuUtilPct ?? 0) / 100) +
+    gauge("GPU utilisation", h.gpuUtilPct === null || h.gpuUtilPct === undefined ? "-" : `${h.gpuUtilPct}%`, (h.gpuUtilPct ?? 0) / 100) +
     gauge("memory in use", `${gb(used)} / ${gb(h.memTotalBytes)}`, h.memTotalBytes ? used / h.memTotalBytes : 0) +
-    `<dl class="kv"><dt>GPU</dt><dd>${esc(h.gpuName ?? "–")}</dd><dt>GPU allocated</dt><dd>${gb(h.gpuAllocBytes)}</dd><dt>CPU threads</dt><dd>${esc(h.cpuCount)}</dd><dt>load (1m)</dt><dd>${num(h.load1, 2)}</dd><dt>workspace</dt><dd>${esc(d.root)}</dd><dt>catalog</dt><dd>${num(d.catalogSize)} models</dd></dl>`;
+    `<dl class="kv"><dt>GPU</dt><dd>${esc(h.gpuName ?? "-")}</dd><dt>GPU allocated</dt><dd>${gb(h.gpuAllocBytes)}</dd><dt>CPU threads</dt><dd>${esc(h.cpuCount)}</dd><dt>load (1m)</dt><dd>${num(h.load1, 2)}</dd><dt>workspace</dt><dd>${esc(d.root)}</dd><dt>catalog</dt><dd>${num(d.catalogSize)} models</dd></dl>`;
   loaded("#runtimes", "#hardware");
 };
 
@@ -627,12 +744,12 @@ async function pollHw() {
   try {
     const h = await api("/api/hardware", undefined, true);
     box.classList.remove("offline");
-    $("#hw-pill").textContent = `GPU ${h.gpuUtilPct ?? "–"}% · ${gb(h.gpuAllocBytes)} · ${num(h.load1, 1)}`;
-    $(".hw").title = `GPU ${h.gpuUtilPct ?? "–"}% utilised · ${gb(h.gpuAllocBytes)} allocated · load ${num(h.load1, 2)} (1m)`;
+    $("#hw-pill").textContent = `GPU ${h.gpuUtilPct ?? "-"}% · ${gb(h.gpuAllocBytes)} · ${num(h.load1, 1)}`;
+    $(".hw").title = `GPU ${h.gpuUtilPct ?? "-"}% utilised · ${gb(h.gpuAllocBytes)} allocated · load ${num(h.load1, 2)} (1m)`;
     $("#hw-meter").style.setProperty("--v", clamp01((h.gpuUtilPct ?? 0) / 100));
     gpuHist.push(h.gpuUtilPct ?? 0);
     if (gpuHist.length > 60) gpuHist.shift();
-    $("#gpu-now").textContent = h.gpuUtilPct === null || h.gpuUtilPct === undefined ? "–" : `${h.gpuUtilPct}%`;
+    $("#gpu-now").textContent = h.gpuUtilPct === null || h.gpuUtilPct === undefined ? "-" : `${h.gpuUtilPct}%`;
     drawSpark();
   } catch {
     box.classList.add("offline");
