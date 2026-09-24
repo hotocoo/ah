@@ -30,6 +30,7 @@ process.stdin.on("data", (c) => {
     if (!line.trim()) continue;
     const m = JSON.parse(line);
     if (m.method === "initialize") { out({ jsonrpc: "2.0", id: 999, method: "ping" }); out({ jsonrpc: "2.0", id: m.id, result: { protocolVersion: m.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: "fake", version: "1" } } }); }
+    else if (m.params?._meta?.["io.modelcontextprotocol/protocolVersion"]) out({ jsonrpc: "2.0", id: m.id, error: { code: -32602, message: "Invalid _meta envelope for protocol revision 2026-07-28" } });
     else if (m.method === "tools/list") out({ jsonrpc: "2.0", id: m.id, result: m.params.cursor ? { tools: [tools[1]] } : { tools: [tools[0]], nextCursor: "p2" } });
     else if (m.method === "tools/call") out({ jsonrpc: "2.0", id: m.id, result: m.params.name === "echo" ? { content: [{ type: "text", text: "echo: " + m.params.arguments.text }] } : { content: [{ type: "text", text: "nope" }], isError: true } });
     else if (m.id === 999) console.error("got pong");
@@ -38,7 +39,39 @@ process.stdin.on("data", (c) => {
 });
 `;
 
+// A stateless (2026-07-28) server: no initialize; every request must carry the full _meta envelope.
+const STATELESS = `
+const out = (m) => process.stdout.write(JSON.stringify(m) + "\\n");
+let buf = "";
+process.stdin.on("data", (c) => {
+  buf += c;
+  let i;
+  while ((i = buf.indexOf("\\n")) >= 0) {
+    const line = buf.slice(0, i); buf = buf.slice(i + 1);
+    if (!line.trim()) continue;
+    const m = JSON.parse(line);
+    if (m.id === undefined) { console.error("unexpected notification " + m.method); continue; }
+    const meta = m.params?._meta ?? {};
+    if (m.method === "initialize") out({ jsonrpc: "2.0", id: m.id, error: { code: -32601, message: "no initialize" } });
+    else if (meta["io.modelcontextprotocol/protocolVersion"] !== "2026-07-28" || !meta["io.modelcontextprotocol/clientCapabilities"]) out({ jsonrpc: "2.0", id: m.id, error: { code: -32602, message: "bad envelope" } });
+    else if (m.method === "tools/list") out({ jsonrpc: "2.0", id: m.id, result: { tools: [{ name: "now", inputSchema: { type: "object", properties: {} } }] } });
+    else if (m.method === "tools/call") out({ jsonrpc: "2.0", id: m.id, result: { content: [{ type: "text", text: "stateless ok" }] } });
+  }
+});
+`;
+
 describe("mcp client", () => {
+  test("stdio: stateless 2026-07-28 server gets the per-request envelope", async () => {
+    const d = tmp("ah-mcp-sl-");
+    writeFileSync(join(d, "server.js"), STATELESS);
+    const c = new McpClient("sl", { command: process.execPath, args: [join(d, "server.js")] });
+    await c.connect();
+    expect(c.tools.map((t) => t.name)).toEqual(["now"]);
+    const ctx = { root: d, bashTimeoutMs: 1000, todos: [], readFiles: new Set<string>(), media: {} };
+    expect((await wrapMcpTools(c)[0]!.run({}, ctx)).content).toBe("stateless ok");
+    c.close();
+  });
+
   test("stdio: handshake, paged tools/list, calls, errors", async () => {
     const d = tmp("ah-mcp-");
     writeFileSync(join(d, "server.js"), SERVER);
@@ -139,5 +172,28 @@ describe("plugins and skills", () => {
   test("frontmatter parsing", () => {
     expect(frontmatter('---\nname: "x"\ndescription: does y\n---\nbody')).toEqual({ name: "x", description: "does y" });
     expect(frontmatter("no fm")).toEqual({});
+  });
+});
+
+describe("deferred mcp tools", () => {
+  test("one mcp tool routes calls; bad arguments return the schema; auto defers only when MCP outweighs core", async () => {
+    const { deferMcpTools, shouldDefer } = await import("../src/mcp/deferred.ts");
+    const calls: unknown[] = [];
+    const inner = {
+      readOnly: true,
+      spec: { name: "mcp__s__echo", description: "[MCP s] Echo text back. Second sentence.", inputSchema: { type: "object", properties: { text: { type: "string" } }, required: ["text"] } },
+      run: async (i: Record<string, unknown>) => (calls.push(i), { content: `echo: ${i.text}` }),
+    } as const;
+    const { tool, index } = deferMcpTools([inner as never]);
+    expect(index).toContain("- mcp__s__echo: Echo text back.");
+    expect(index).not.toContain("Second sentence");
+    const ctx = { root: "/tmp", bashTimeoutMs: 1000, todos: [], readFiles: new Set<string>(), media: {} };
+    expect((await tool.run({ tool: "mcp__s__echo", arguments: { text: "hi" } }, ctx)).content).toBe("echo: hi");
+    await expect(tool.run({ tool: "mcp__s__echo" }, ctx)).rejects.toThrow(/input schema:\n\{"type":"object"/);
+    await expect(tool.run({ tool: "nope" }, ctx)).rejects.toThrow(/unknown MCP tool/);
+    expect(calls).toHaveLength(1);
+    expect(shouldDefer("auto", [inner as never], [inner as never, inner as never])).toBe(false);
+    expect(shouldDefer("auto", [inner as never, inner as never], [inner as never])).toBe(true);
+    expect(shouldDefer("inline", [inner as never, inner as never], [])).toBe(false);
   });
 });

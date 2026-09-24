@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { Agent, type AgentOptions } from "../agent/loop.ts";
 import { buildSystemPrompt } from "../agent/prompt.ts";
+import { deferMcpTools, shouldDefer } from "../mcp/deferred.ts";
 import { projectFacts, renderProjectFacts } from "../agent/project.ts";
 import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
@@ -50,11 +51,14 @@ export function loadExtensions(env: Environment, root: string): Promise<LoadedEx
       const ext = discoverExtensions(root, env.cfg.dataDir);
       const mcp = new McpManager(ext.mcpServers);
       const [mcpTools, pluginTools] = await Promise.all([mcp.tools(), loadPluginTools(ext)]);
-      const tools = [...mcpTools, ...pluginTools, ...(ext.skills.length ? [skillViewTool(ext.skills)] : [])];
-      const serverNotes = mcp
-        .status()
-        .filter((s) => s.connected)
-        .map((s) => `- MCP server ${s.name}: ${s.tools.length} tools (mcp__${s.name}__*)`);
+      const deferred = shouldDefer(env.cfg.mcpTools, mcpTools, ALL_TOOLS) ? deferMcpTools(mcpTools) : undefined;
+      const tools = [...(deferred ? [deferred.tool] : mcpTools), ...pluginTools, ...(ext.skills.length ? [skillViewTool(ext.skills)] : [])];
+      const serverNotes = deferred
+        ? [deferred.index]
+        : mcp
+            .status()
+            .filter((s) => s.connected)
+            .map((s) => `- MCP server ${s.name}: ${s.tools.length} tools (mcp__${s.name}__*)`);
       const prompt = [renderSkillIndex(ext.skills), ...ext.instructions, serverNotes.join("\n")].filter(Boolean).join("\n\n");
       return { ext, mcp, tools, prompt };
     })();

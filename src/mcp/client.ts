@@ -18,6 +18,8 @@ export interface McpServerConfig {
 }
 
 export const MCP_PROTOCOL_VERSION = "2025-11-25";
+// Stateless revision: no initialize; every request carries version, client info and capabilities in _meta.
+export const MCP_STATELESS_VERSION = "2026-07-28";
 const VERSION = "0.2.0";
 
 interface McpToolDef {
@@ -41,6 +43,7 @@ export class McpClient {
   private pending = new Map<number, Pending>();
   private proc?: Subprocess<"pipe", "pipe", "pipe">;
   private sessionId?: string;
+  private stateless = false;
   private stderrTail = "";
   tools: McpToolDef[] = [];
   serverInfo?: { name?: string; version?: string };
@@ -59,13 +62,14 @@ export class McpClient {
       capabilities: {},
       clientInfo: { name: "ah", version: VERSION },
     }).catch((err: McpError) => {
-      // Stateless (2026-07-28) servers may not implement initialize; continue without it.
-      if (err.code === -32601) return {};
-      throw err;
+      // Stateless (2026-07-28) servers may not implement initialize; switch to per-request envelopes.
+      if (err.code !== -32601) throw err;
+      this.stateless = true;
+      return {};
     })) as { serverInfo?: { name?: string; version?: string }; instructions?: string };
     this.serverInfo = init.serverInfo;
     this.instructions = init.instructions;
-    await this.notify("notifications/initialized");
+    if (!this.stateless) await this.notify("notifications/initialized");
     this.tools = [];
     let cursor: string | undefined;
     do {
@@ -170,7 +174,7 @@ export class McpClient {
     return {
       "content-type": "application/json",
       accept: "application/json, text/event-stream",
-      "mcp-protocol-version": MCP_PROTOCOL_VERSION,
+      "mcp-protocol-version": this.stateless ? MCP_STATELESS_VERSION : MCP_PROTOCOL_VERSION,
       ...(this.sessionId ? { "mcp-session-id": this.sessionId } : {}),
       ...this.cfg.headers,
     };
@@ -185,7 +189,14 @@ export class McpClient {
   request(method: string, params: unknown, signal?: AbortSignal): Promise<unknown> {
     const id = this.nextId++;
     const timeoutMs = this.cfg.timeoutMs ?? 60_000;
-    const msg = { jsonrpc: "2.0", id, method, params: { ...(params as object), _meta: { "io.modelcontextprotocol/protocolVersion": MCP_PROTOCOL_VERSION } } };
+    // A 2025-11-25 session must not carry the stateless envelope keys: servers that speak both
+    // revisions (context7) treat any io.modelcontextprotocol/protocolVersion as a 2026-07-28 request.
+    const envelope = {
+      "io.modelcontextprotocol/protocolVersion": MCP_STATELESS_VERSION,
+      "io.modelcontextprotocol/clientInfo": { name: "ah", version: VERSION },
+      "io.modelcontextprotocol/clientCapabilities": {},
+    };
+    const msg = { jsonrpc: "2.0", id, method, params: this.stateless ? { ...(params as object), _meta: envelope } : params };
     if (this.transport === "http") return this.httpRequest(id, msg, timeoutMs, signal);
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {

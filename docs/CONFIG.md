@@ -52,4 +52,6 @@ Repository instructions: `AGENTS.md`, `CLAUDE.md`, `.ah/instructions.md`, `.curs
 }
 ```
 
+`"mcpTools": "auto" | "inline" | "deferred"` (default `auto`) sets how MCP tools reach the model. `inline` sends every server's schemas with every request. `deferred` sends one `mcp` tool (`{ tool, arguments }`) plus a one-line index of tool names. A call with missing or invalid arguments gets back that tool's input schema, so a model pays for the schemas of the tools it uses and no others. `auto` defers when the MCP schemas are larger than ah's own tool definitions. Measured with context7 + deepwiki + mcp-server-git + @playwright/mcp (42 tools) and the Qwen3.8 tokenizer: 6,329 tokens inline, 1,348 deferred.
+
 Plugins live in `~/.ah/plugins/<name>/plugin.json`: `{ "name", "description", "mcpServers", "instructions": "text or file.md", "tools": "tools.ts", "skills": "skills" }`. A tool module exports `tools: Tool[]` (see `src/tools/types.ts`). Skills are `<dir>/<name>/SKILL.md` with `name` and `description` frontmatter.

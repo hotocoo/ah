@@ -52,6 +52,9 @@ export interface AhConfig {
   resetAfterFailures: number;
   // Desktop control tools (screenshot, computer): off, ask (approve every action), auto.
   computerUse: "off" | "ask" | "auto";
+  // MCP tool exposure: inline (every schema in every request), deferred (one `mcp` tool plus an
+  // index), auto (deferred when MCP schemas outweigh ah's own tools).
+  mcpTools: "auto" | "inline" | "deferred";
 }
 
 export const AH_HOME = process.env.AH_HOME ?? join(homedir(), ".ah");
@@ -84,6 +87,7 @@ export const defaultConfig = (): AhConfig => ({
   evidenceGate: true,
   resetAfterFailures: 4,
   computerUse: (process.env.AH_COMPUTER as "off" | "ask" | "auto" | undefined) ?? "ask",
+  mcpTools: "auto",
 });
 
 function readJson(path: string): Partial<AhConfig> {
