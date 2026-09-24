@@ -1,0 +1,61 @@
+{
+  "model": "llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF",
+  "benchRunId": "bench_2026-09-24T03-52-26_llamacpp_ggml-org_MiMo-V2.6-Distill-Qwen-9B-GGUF",
+  "k": 1,
+  "tasks": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "language": "python",
+      "n": 1,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.7934567085261071
+      },
+      "meanWallMs": 2699952.106375,
+      "p95WallMs": 2699952.106375,
+      "meanTurns": 6,
+      "meanToolErrors": 0,
+      "meanTokens": 91285,
+      "decodeTps": 45.36974526549087,
+      "failReasons": {
+        "timeout": 1
+      }
+    }
+  ],
+  "overall": {
+    "trials": 1,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.7934567085261071
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "meanScore": 0,
+    "verdictAgreement": null,
+    "totalWallMs": 2699981.1285,
+    "p50WallMs": 2699952.106375,
+    "p95WallMs": 2699952.106375,
+    "meanTtftMs": 1173.1569170000002,
+    "meanPrefillTps": 437.5179586872803,
+    "meanDecodeTps": 45.36974526549087,
+    "inputTokens": 13574,
+    "outputTokens": 77711,
+    "costUsd": 0,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0
+  }
+}

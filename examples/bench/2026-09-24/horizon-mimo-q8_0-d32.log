@@ -1,1 +1,5 @@
 bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 1 tasks × 1 trials · {} · /Users/acotech/workspace/ah/examples/bench/2026-09-24/horizon-mimo-q8_0-d32
+  FAIL py-optimal-scheduler #1 2700.0s · 6 turns · 6 tools · timeout
+
+result 0/1 trials · pass@1 0% · pass^1 0% · 0/1 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/2026-09-24/horizon-mimo-q8_0-d32/report.md
