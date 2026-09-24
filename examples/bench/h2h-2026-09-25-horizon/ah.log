@@ -1,0 +1,6 @@
+bench llamacpp/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored-NM-DAU-NEO-MTP-GGUF:Q6_K · 1 tasks × 2 trials · {} · /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-25-horizon/ah
+  FAIL py-optimal-scheduler #1 461.2s · 7 turns · 8 tools (1 err) · grader
+  PASS py-optimal-scheduler #2 1308.1s · 8 turns · 8 tools (1 err)
+
+result 1/2 trials · pass@1 50% · pass^2 0% · 1/1 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-25-horizon/ah/report.md

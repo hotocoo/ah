@@ -1,0 +1,122 @@
+{
+  "benchRunId": "bench_2026-09-24T17-20-53_external_dsh",
+  "model": "external/dsh",
+  "startedAt": "2026-09-24T17:20:53.080Z",
+  "finishedAt": "2026-09-24T18:19:30.837Z",
+  "trials": 2,
+  "features": {},
+  "agentCmd": "cd {dir} && NODE_OPTIONS='--import file:///Users/acotech/.dsh/net-timeouts.mjs' dsh --profile headless {prompt}",
+  "hardware": {
+    "t": 1790270453080,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 6043484160,
+    "load1": 2.109375,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 40744353792,
+    "gpuInUseBytes": 39417118720,
+    "gpuName": "Apple M4 Max"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "a61ede8",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "tags": [
+        "python",
+        "algorithm",
+        "long-horizon"
+      ],
+      "id": "py-optimal-scheduler",
+      "language": "python",
+      "prompt": "Implement schedule() in scheduler.py as specified in SPEC.md. The makespan must be optimal, not approximate. Hidden tests check optimality against known optima, plan validity, error handling and a 5 s time limit per call.",
+      "grader": {
+        "cmd": "python3 grade.py",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 60,
+        "timeoutMs": 2700000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0.9655172413793104,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 9,
+      "toolCalls": 9,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 809485.8798339999,
+      "ttftMs": null,
+      "graderMs": 7878.8720419999445,
+      "graderTail": "FAIL case 15: over 5 s\nAH_SCORE 28 29",
+      "changedFiles": [
+        "__pycache__/scheduler.cpython-314.pyc",
+        "scheduler.py"
+      ],
+      "diffStat": "2 files changed, 118 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 2,
+      "passed": false,
+      "failReason": "timeout",
+      "score": 0,
+      "outcome": "aborted",
+      "runId": "",
+      "turns": 3,
+      "toolCalls": 4,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 2700017.4285,
+      "ttftMs": null,
+      "graderMs": 38.7095420002006,
+      "graderTail": "FAIL case 18: NotImplementedError: \nFAIL case 19: NotImplementedError: \nFAIL case 20: NotImplementedError: \nFAIL case 21: NotImplementedError: \nFAIL case 22: NotImplementedError: \nFAIL case 23: NotImplementedError: \nFAIL case 24: NotImplementedError: \nFAIL cycle: NotImplementedError: \nFAIL unknown dep: NotImplementedError: \nFAIL zero workers: NotImplementedError: \nFAIL bad duration: NotImplementedError: \nAH_SCORE 0 29",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    }
+  ]
+}

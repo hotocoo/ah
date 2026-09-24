@@ -1,0 +1,149 @@
+{
+  "benchRunId": "bench_2026-09-24T16-16-10_llamacpp_DavidAU_Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Unce",
+  "model": "llamacpp/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored-NM-DAU-NEO-MTP-GGUF:Q6_K",
+  "startedAt": "2026-09-24T16:16:10.005Z",
+  "finishedAt": "2026-09-24T16:45:48.268Z",
+  "trials": 2,
+  "features": {},
+  "hardware": {
+    "t": 1790266570005,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 2537979904,
+    "load1": 4.1943359375,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 41040412672,
+    "gpuInUseBytes": 39232684032,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "llamacpp",
+    "version": "b10621-c1d0e7a00",
+    "baseURL": "http://127.0.0.1:8080"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "a61ede8",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "tags": [
+        "python",
+        "algorithm",
+        "long-horizon"
+      ],
+      "id": "py-optimal-scheduler",
+      "language": "python",
+      "prompt": "Implement schedule() in scheduler.py as specified in SPEC.md. The makespan must be optimal, not approximate. Hidden tests check optimality against known optima, plan validity, error handling and a 5 s time limit per call.",
+      "grader": {
+        "cmd": "python3 grade.py",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 60,
+        "timeoutMs": 2700000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0.9655172413793104,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufqhqdd_92lcf3",
+      "turns": 7,
+      "toolCalls": 8,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 27317,
+        "outputTokens": 6748,
+        "cacheReadTokens": 22828,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 461206.14966700005,
+      "ttftMs": 12805.435916999999,
+      "graderMs": 7512.196667000011,
+      "graderTail": "FAIL case 15: over 5 s\nAH_SCORE 28 29",
+      "changedFiles": [
+        "scheduler.py"
+      ],
+      "diffStat": "3 files changed, 91 insertions(+), 1 deletion(-)",
+      "prefillTps": 166.58690410832895,
+      "decodeTps": 15.519820516339164,
+      "gpuUtilAvg": 98.78958785249458,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufqrs1y_d1rkkq",
+      "turns": 8,
+      "toolCalls": 8,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 34448,
+        "outputTokens": 18905,
+        "cacheReadTokens": 30336,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 1308081.129959,
+      "ttftMs": 2605.1910420000204,
+      "graderMs": 1215.3438750000205,
+      "graderTail": "AH_SCORE 29 29",
+      "changedFiles": [
+        "scheduler.py"
+      ],
+      "diffStat": "3 files changed, 169 insertions(+), 1 deletion(-)",
+      "prefillTps": 167.12204000487486,
+      "decodeTps": 14.932265511956563,
+      "gpuUtilAvg": 98.85604900459418,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    }
+  ]
+}

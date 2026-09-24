@@ -1,0 +1,64 @@
+{
+  "model": "llamacpp/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored-NM-DAU-NEO-MTP-GGUF:Q6_K",
+  "benchRunId": "bench_2026-09-24T16-16-10_llamacpp_DavidAU_Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Unce",
+  "k": 2,
+  "tasks": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "language": "python",
+      "n": 2,
+      "passes": 1,
+      "passRate": 0.5,
+      "passAt1": 0.5,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.09452865480086614,
+        "high": 0.9054713451991339
+      },
+      "meanWallMs": 884643.6398130001,
+      "p95WallMs": 1265737.3809444,
+      "meanTurns": 7.5,
+      "meanToolErrors": 1,
+      "meanTokens": 43709,
+      "decodeTps": 15.226043014147864,
+      "failReasons": {
+        "grader": 1
+      }
+    }
+  ],
+  "overall": {
+    "trials": 2,
+    "passes": 1,
+    "passRate": 0.5,
+    "wilson": {
+      "low": 0.09452865480086614,
+      "high": 0.9054713451991339
+    },
+    "meanPassAt1": 0.5,
+    "meanPassAtK": 1,
+    "meanPassHatK": 0,
+    "solvedAny": 1,
+    "solvedAll": 0,
+    "meanScore": 0.9827586206896552,
+    "verdictAgreement": {
+      "agree": 1,
+      "judged": 2
+    },
+    "totalWallMs": 1778014.8201680002,
+    "p50WallMs": 884643.6398130001,
+    "p95WallMs": 1265737.3809444,
+    "meanTtftMs": 7705.31347950001,
+    "meanPrefillTps": 166.8544720566019,
+    "meanDecodeTps": 15.226043014147864,
+    "inputTokens": 61765,
+    "outputTokens": 25653,
+    "costUsd": 0,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.125
+  }
+}

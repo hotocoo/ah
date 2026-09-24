@@ -1,0 +1,6 @@
+bench external/dsh · 1 tasks × 2 trials · {} · /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-25-horizon/dsh
+  FAIL py-optimal-scheduler #1 809.5s · 9 turns · 9 tools · grader
+  FAIL py-optimal-scheduler #2 2700.0s · 3 turns · 4 tools · timeout
+
+result 0/2 trials · pass@1 0% · pass^2 0% · 0/1 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-25-horizon/dsh/report.md

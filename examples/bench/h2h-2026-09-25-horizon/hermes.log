@@ -1,0 +1,6 @@
+bench external/hermes · 1 tasks × 2 trials · {} · /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-25-horizon/hermes
+  PASS py-optimal-scheduler #1 1571.4s · 18 turns · 19 tools
+  FAIL py-optimal-scheduler #2 505.3s · 7 turns · 7 tools · grader
+
+result 1/2 trials · pass@1 50% · pass^2 0% · 1/1 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-25-horizon/hermes/report.md

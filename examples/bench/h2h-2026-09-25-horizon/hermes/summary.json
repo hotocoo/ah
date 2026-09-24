@@ -1,0 +1,61 @@
+{
+  "model": "external/hermes",
+  "benchRunId": "bench_2026-09-24T16-45-56_external_hermes",
+  "k": 2,
+  "tasks": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "language": "python",
+      "n": 2,
+      "passes": 1,
+      "passRate": 0.5,
+      "passAt1": 0.5,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.09452865480086614,
+        "high": 0.9054713451991339
+      },
+      "meanWallMs": 1038374.2032290001,
+      "p95WallMs": 1518128.4593348,
+      "meanTurns": 12.5,
+      "meanToolErrors": 0,
+      "meanTokens": 275154.5,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 1
+      }
+    }
+  ],
+  "overall": {
+    "trials": 2,
+    "passes": 1,
+    "passRate": 0.5,
+    "wilson": {
+      "low": 0.09452865480086614,
+      "high": 0.9054713451991339
+    },
+    "meanPassAt1": 0.5,
+    "meanPassAtK": 1,
+    "meanPassHatK": 0,
+    "solvedAny": 1,
+    "solvedAll": 0,
+    "meanScore": 0.9655172413793103,
+    "verdictAgreement": null,
+    "totalWallMs": 2088498.8754990003,
+    "p50WallMs": 1038374.2032290001,
+    "p95WallMs": 1518128.4593348,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 523785,
+    "outputTokens": 26524,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0
+  }
+}
