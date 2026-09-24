@@ -124,6 +124,11 @@ Same model, server, suite and trial count as the rows above, with the evidence l
 - New result: the harness's own verdict (computed from what tool calls did, without seeing the grader) matched the hidden grader on 23 of 24 trials. The one miss (`ts-write-tests` #3) ended on a failing test run the grader nonetheless passed.
 - Report: [`examples/bench/2026-09-24/llamacpp-mimo-q8_0-evidence/report.md`](examples/bench/2026-09-24/llamacpp-mimo-q8_0-evidence/report.md).
 
+**Targeted re-runs (same model):**
+
+- `ts-feature-lru` with episodic reset (D31): 0/3, same as before. The reset fired in 1 of 3 trials; failures were rarely consecutive enough to trigger it, and the trial where it fired still hit the 20-turn limit.
+- Horizon suite, `py-optimal-scheduler` (provably optimal DAG scheduling; 29 hidden checks; greedy list scheduling scores 22/29): 0/2, partial score 0/29. Both trials ended after 3-4 turns because a reply hit the output cap mid-reasoning and the loop treated that as the end of the run. That was a harness bug, fixed in D32; the task is being re-run with the fix.
+
 **Comparison with other harnesses:** none has been run head to head; `ah` is not shown to be better than Claude Code, Codex, OpenCode, Aider or Pi. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
 
 Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/bench/). Reproduce with the commands in each report.

@@ -1,0 +1,145 @@
+{
+  "benchRunId": "bench_2026-09-24T03-14-23_llamacpp_ggml-org_MiMo-V2.6-Distill-Qwen-9B-GGUF",
+  "model": "llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF",
+  "startedAt": "2026-09-24T03:14:23.255Z",
+  "finishedAt": "2026-09-24T03:50:47.630Z",
+  "trials": 2,
+  "features": {},
+  "hardware": {
+    "t": 1790219663255,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 19194494976,
+    "load1": 1.8369140625,
+    "cpuCount": 16,
+    "gpuUtilPct": 98,
+    "gpuAllocBytes": 31891668992,
+    "gpuInUseBytes": 21726838784,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "llamacpp",
+    "version": "b10621-c1d0e7a00",
+    "baseURL": "http://127.0.0.1:8080"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "4a83b80",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "tags": [
+        "python",
+        "algorithm",
+        "long-horizon"
+      ],
+      "id": "py-optimal-scheduler",
+      "language": "python",
+      "prompt": "Implement schedule() in scheduler.py as specified in SPEC.md. The makespan must be optimal, not approximate. Hidden tests check optimality against known optima, plan validity, error handling and a 5 s time limit per call.",
+      "grader": {
+        "cmd": "python3 grade.py",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 60,
+        "timeoutMs": 2700000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/horizon/py-optimal-scheduler/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_tokens",
+      "score": 0,
+      "verdict": "none",
+      "outcome": "max_tokens",
+      "runId": "run_mueykcw1_87a6yp",
+      "turns": 4,
+      "toolCalls": 8,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 10891,
+        "outputTokens": 62954,
+        "cacheReadTokens": 9357,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 1441791.379375,
+      "ttftMs": 1038.1914579999998,
+      "graderMs": 28.433041000040248,
+      "graderTail": "FAIL case 18: NotImplementedError: \nFAIL case 19: NotImplementedError: \nFAIL case 20: NotImplementedError: \nFAIL case 21: NotImplementedError: \nFAIL case 22: NotImplementedError: \nFAIL case 23: NotImplementedError: \nFAIL case 24: NotImplementedError: \nFAIL cycle: NotImplementedError: \nFAIL unknown dep: NotImplementedError: \nFAIL zero workers: NotImplementedError: \nFAIL bad duration: NotImplementedError: \nAH_SCORE 0 29",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": 694.3301947608574,
+      "decodeTps": 45.377125243667265,
+      "gpuUtilAvg": 97.34212352532963,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_tokens",
+      "score": 0,
+      "verdict": "none",
+      "outcome": "max_tokens",
+      "runId": "run_muezf9f8_o92143",
+      "turns": 3,
+      "toolCalls": 5,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 8234,
+        "outputTokens": 32170,
+        "cacheReadTokens": 6851,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 742327.874292,
+      "ttftMs": 3636.9281669999473,
+      "graderMs": 27.118333000224084,
+      "graderTail": "FAIL case 18: NotImplementedError: \nFAIL case 19: NotImplementedError: \nFAIL case 20: NotImplementedError: \nFAIL case 21: NotImplementedError: \nFAIL case 22: NotImplementedError: \nFAIL case 23: NotImplementedError: \nFAIL case 24: NotImplementedError: \nFAIL cycle: NotImplementedError: \nFAIL unknown dep: NotImplementedError: \nFAIL zero workers: NotImplementedError: \nFAIL bad duration: NotImplementedError: \nAH_SCORE 0 29",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": 755.6572437186568,
+      "decodeTps": 45.3509431690321,
+      "gpuUtilAvg": 97.20080862533693,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 0.6,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card XiaomiMiMo/MiMo-V2.6-Distill-Qwen-9B"
+      },
+      "toolProtocol": "native"
+    }
+  ]
+}
