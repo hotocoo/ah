@@ -222,6 +222,33 @@ describe("tolerant edits", () => {
     expect(r.content).toContain("ignoring indentation");
     expect(readFileSync(join(root, "p.ts"), "utf8")).toContain("\n  const start = (page - 1) * size;\n");
   });
+
+  // Seen in MiMo-9B bench telemetry: old_string copied with read_file's "N\t" prefixes or a stray ">" quote marker.
+  test("strips copied line-number prefixes and quote markers from old_string", async () => {
+    const { applyEditTolerant } = await import("../src/tools/edit-match.ts");
+    const file = "// Stack is a LIFO stack.\ntype Stack[T any] struct {\n}\n";
+    expect(applyEditTolerant(file, ">>> type Stack[T any] struct {", "type Stack[T any] struct {\n\titems []T", false).text).toContain("struct {\n\titems []T\n}");
+    const numbered = applyEditTolerant(file, "2\ttype Stack[T any] struct {\n3\t}", "2\ttype Stack[T any] struct{}", false);
+    expect(numbered.text).toBe("// Stack is a LIFO stack.\ntype Stack[T any] struct{}\n");
+    expect(numbered.strategy).toBe("prefix");
+  });
+
+  test("says when the edit already looks applied", async () => {
+    const { applyEditTolerant } = await import("../src/tools/edit-match.ts");
+    expect(() => applyEditTolerant("const start = (page - 1) * size;\n", "const start = page * size;", "const start = (page - 1) * size;", false)).toThrow(/already contains new_string/);
+  });
+});
+
+describe("path recovery", () => {
+  test("a path repeating the workspace's own trailing dirs resolves inside it", () => {
+    const ws = join(root, "work", "go-feature-stack", "1");
+    mkdirSync(ws, { recursive: true });
+    expect(confine(ws, "work/go-feature-stack/1/stack.go")).toBe(join(ws, "stack.go"));
+    expect(confine(ws, "1/stack.go")).toBe(join(ws, "stack.go"));
+    // A real directory of that name wins.
+    mkdirSync(join(ws, "1"));
+    expect(confine(ws, "1/stack.go")).toBe(join(ws, "1", "stack.go"));
+  });
 });
 
 describe("process hygiene", () => {

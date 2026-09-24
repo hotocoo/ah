@@ -188,3 +188,20 @@ test("parseScore reads the last AH_SCORE line", () => {
   expect(parseScore("no score")).toBeNull();
   expect(parseScore("AH_SCORE 0 0")).toBeNull();
 });
+
+describe("external harness (--agent-cmd)", () => {
+  test("another CLI works the same sandbox and is graded by the same hidden tests", async () => {
+    const { runBench } = await import("../src/bench/runner.ts");
+    const out = mkdtempSync(join(tmpdir(), "ah-ext-"));
+    const tasks = loadSuite(SUITE, { ids: ["ts-bugfix-pagination"] });
+    const env = { registry: { runtimes: new Map() }, telemetry: {} } as unknown as Parameters<typeof runBench>[0]["env"];
+    const run = (agentCmd: string) => runBench({ env, model: "external/test", tasks, trials: 1, outDir: out, benchRunId: "t", agentCmd });
+    // The prompt arrives intact through shell quoting (it contains backticks).
+    const fixed = await run(`printf %s {prompt} | grep -q '\`paginate\`' && sed -i.bak 's/page \\* size/(page - 1) * size/' src/paginate.ts && rm src/paginate.ts.bak`);
+    expect(fixed.results[0]!.passed).toBe(true);
+    expect(fixed.results[0]!.changedFiles).toEqual(["src/paginate.ts"]);
+    const noop = await run("true");
+    expect(noop.results[0]!).toMatchObject({ passed: false, failReason: "grader" });
+    rmSync(out, { recursive: true, force: true });
+  });
+});

@@ -1,5 +1,5 @@
-import { realpathSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { existsSync, realpathSync } from "node:fs";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { ImageBlock, ToolSpec } from "../core/types.ts";
 import type { MemoryStore } from "../memory/store.ts";
 
@@ -60,9 +60,23 @@ export class ToolError extends Error {}
 
 // Resolves a model-supplied path inside the workspace root. Rejects `..` escapes,
 // absolute paths outside root and symlinks that point outside root.
+// Models shown "Workspace root: /x/work/task/1" often write "work/task/1/file". When the path's leading
+// segments repeat the root's trailing segments and no such directory exists in the root, drop them.
+function stripRootEcho(absRoot: string, p: string): string | null {
+  if (isAbsolute(p)) return null;
+  const segs = p.split(/[\\/]+/).filter((s) => s !== "" && s !== ".");
+  if (segs.length < 2 || existsSync(join(absRoot, segs[0]!))) return null;
+  const rootSegs = absRoot.split(sep);
+  for (let k = Math.min(segs.length - 1, rootSegs.length); k >= 1; k--)
+    if (segs.slice(0, k).join("/") === rootSegs.slice(-k).join("/")) return segs.slice(k).join("/");
+  return null;
+}
+
 export function confine(root: string, p: unknown): string {
   if (typeof p !== "string" || p === "") throw new ToolError("path must be a non-empty string");
   const absRoot = resolve(root);
+  const recovered = stripRootEcho(absRoot, p);
+  if (recovered !== null) return confine(root, recovered);
   const target = resolve(absRoot, p);
   const rel = relative(absRoot, target);
   if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) throw new ToolError(`path escapes workspace: ${p}`);

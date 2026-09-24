@@ -16,6 +16,8 @@ const HELP = `ah bench — benchmarks
                [--baseline] [--no-context-sizing] [--no-text-tools] [--no-compact] [--protocol native|text]
       Agentic coding suite. Each trial runs in a fresh sandbox; hidden graders decide pass/fail.
       --baseline switches off ah's local-model adaptations (for ablation).
+      --agent-cmd CMD runs another harness instead of ah ({prompt} = quoted task prompt, {dir} = sandbox);
+      --label NAME names that run in reports (default "external").
   ah bench throughput [--model p/m] [--sizes 512,2048,8192] [--gen 128] [--trials 3] [--out DIR]
       Serving-path TTFT / prefill / decode measurements.
   ah bench compare <baseline/results.json> <candidate/results.json>
@@ -45,6 +47,8 @@ export async function cmdBench(argv: string[]): Promise<number> {
       "no-compact": { type: "boolean" },
       protocol: { type: "string" },
       keep: { type: "boolean" },
+      "agent-cmd": { type: "string" },
+      label: { type: "string" },
       sizes: { type: "string" },
       gen: { type: "string" },
       verbose: { type: "boolean", short: "v" },
@@ -71,7 +75,8 @@ export async function cmdBench(argv: string[]): Promise<number> {
 
   if (sub === "run" || sub === "throughput") {
     const env = await buildEnvironment({});
-    const model = (v.model as string | undefined) ?? env.cfg.defaultModel ?? autoSelectModel(env);
+    const agentCmd = v["agent-cmd"] as string | undefined;
+    const model = agentCmd ? `external/${(v.label as string | undefined) ?? "external"}` : ((v.model as string | undefined) ?? env.cfg.defaultModel ?? autoSelectModel(env));
     if (!model) {
       process.stderr.write(red("no model: pass --model provider/model (see `ah doctor`)\n"));
       return 2;
@@ -123,6 +128,7 @@ export async function cmdBench(argv: string[]): Promise<number> {
       benchRunId,
       features,
       keepWorkdirs: Boolean(v.keep),
+      agentCmd,
       onTrial: (r) =>
         process.stderr.write(
           `  ${r.passed ? green("PASS") : red("FAIL")} ${r.taskId} #${r.trial} ${dim(`${(r.wallMs / 1000).toFixed(1)}s · ${r.turns} turns · ${r.toolCalls} tools${r.toolErrors ? ` (${r.toolErrors} err)` : ""}${r.recoveredToolCalls ? ` · ${r.recoveredToolCalls} recovered` : ""}${r.failReason ? ` · ${r.failReason}` : ""}`)}\n`,

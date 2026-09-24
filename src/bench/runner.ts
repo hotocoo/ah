@@ -51,6 +51,9 @@ export interface BenchRunOptions {
   benchRunId: string;
   features?: SessionFeatures;
   keepWorkdirs?: boolean;
+  // External harness command run in the sandbox instead of ah's agent (head-to-head).
+  // {prompt} is replaced by the shell-quoted task prompt, {dir} by the sandbox path.
+  agentCmd?: string;
   onTrial?: (r: TrialResult, t: BenchTask) => void;
   onEvent?: AgentEventHandler;
   signal?: AbortSignal;
@@ -63,6 +66,7 @@ export interface BenchRun {
   finishedAt: string;
   trials: number;
   features: SessionFeatures;
+  agentCmd?: string;
   hardware: HardwareSample;
   runtime?: { kind: string; version?: string; baseURL: string };
   ahVersion: string;
@@ -95,6 +99,7 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
   prepareSandbox(task, dir);
   await sh("git init -q && git add -A && git commit -qm fixture", dir, 20_000, GIT_ENV);
   if (task.setup) await sh(task.setup, dir, task.limits.timeoutMs);
+  if (o.agentCmd) return runExternalTrial(o, o.agentCmd, task, trial, dir);
 
   const { provider } = parseModelRef(o.model);
   let model = o.model;
@@ -181,6 +186,36 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
   };
 }
 
+export const shellQuote = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`;
+
+// Head-to-head: another harness's CLI works the same sandbox under the same limits and hidden grader.
+// Only what is observable from outside is recorded (pass, score, wall time, diff); the transcript goes to agent.log.
+async function runExternalTrial(o: BenchRunOptions, cmd: string, task: BenchTask, trial: number, dir: string): Promise<TrialResult> {
+  const line = cmd.replaceAll("{prompt}", shellQuote(task.prompt)).replaceAll("{dir}", shellQuote(dir));
+  const a = await exec(line, { root: dir, signal: o.signal }, task.limits.timeoutMs);
+  writeFileSync(`${dir}.agent.log`, `$ ${line}\nexit ${a.code}${a.timedOut ? " (timeout)" : ""}\n\n${a.stdout}\n${a.stderr}`);
+  const diff = await sh("git add -A && git diff --cached --stat HEAD | tail -1", dir, 20_000, GIT_ENV);
+  const files = await sh("git diff --cached --name-only HEAD", dir, 20_000, GIT_ENV);
+  if (task.hiddenDir) cpSync(task.hiddenDir, dir, { recursive: true, force: true });
+  const g = await sh(task.grader.cmd, dir, task.grader.timeoutMs);
+  const passed = g.code === 0 && !g.timedOut;
+  const outcome = a.timedOut ? "aborted" : a.code === 0 ? "completed" : "error";
+  if (!o.keepWorkdirs && passed) rmSync(dir, { recursive: true, force: true });
+  return {
+    ...emptyResult(task.id, trial, ""),
+    passed,
+    failReason: passed ? null : a.timedOut ? "timeout" : a.code === 0 ? "grader" : "agent_error",
+    score: passed ? 1 : parseScore(`${g.stdout}\n${g.stderr}`),
+    outcome,
+    wallMs: a.durationMs,
+    graderMs: g.durationMs,
+    graderTail: `${g.stdout}\n${g.stderr}`.trim().split("\n").slice(-12).join("\n"),
+    changedFiles: files.stdout.split("\n").filter(Boolean),
+    diffStat: diff.stdout.trim(),
+    ...(outcome === "error" ? { error: `exit ${a.code}: ${a.stderr.trim().split("\n").slice(-3).join(" | ")}` } : {}),
+  };
+}
+
 // Last "AH_SCORE <passed> <total>" line in grader output.
 export function parseScore(out: string): number | null {
   const all = [...out.matchAll(/AH_SCORE\s+(\d+)\s+(\d+)/g)];
@@ -221,6 +256,7 @@ export async function runBench(o: BenchRunOptions): Promise<BenchRun> {
     finishedAt: new Date().toISOString(),
     trials: o.trials,
     features: o.features ?? {},
+    ...(o.agentCmd ? { agentCmd: o.agentCmd } : {}),
     hardware,
     runtime: rt ? { kind: rt.kind, version: rt.version, baseURL: rt.baseURL } : undefined,
     ahVersion: "0.1.0",

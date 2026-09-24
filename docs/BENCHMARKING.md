@@ -49,6 +49,18 @@ Per task and overall: pass count, **pass@1** and **pass@k** (unbiased estimator,
 
 `--baseline` turns off every local-model adaptation: explicit memory-aware context sizing (runtime default context, no compaction), text tool-call recovery, the compact tool profile, project facts in the prompt (languages, test command, installed toolchains), indentation-tolerant edits, and recoveries (repetition guard, empty-turn nudges, dropped-tool-call fallback); tool calls are native only. What remains is a plain tool loop with the same tools and prompt. Individual switches: `--no-context-sizing`, `--no-text-tools`, `--no-compact`, `--protocol native|text`. Run the same model with and without to measure what the harness itself contributes.
 
+## Head-to-head with other harnesses
+
+`--agent-cmd` runs another harness's CLI in the sandbox instead of ah's agent, with the same fixture, turn-free time limit (`limits.timeoutMs`) and hidden grader. `{prompt}` becomes the shell-quoted task prompt and `{dir}` the sandbox path; the external transcript is saved next to the sandbox as `<trial>.agent.log`. Only what is visible from outside is recorded (pass, partial score, wall time, diff); turns and tokens stay 0.
+
+```bash
+ah bench run --label hermes --agent-cmd 'HERMES_HOME=/path/iso hermes -z {prompt} --in {dir} --yolo'
+ah bench run --label dsh --agent-cmd 'cd {dir} && dsh --profile headless {prompt}'
+bash scripts/h2h.sh --trials 3        # ah, Hermes, dsh on the model the local server is serving, then ah bench compare
+```
+
+`scripts/h2h.sh` reads the served model id from `$BASE_URL/models`, gives Hermes an isolated `HERMES_HOME` pointed at the same server (no user memory, skills or cloud keys), runs dsh's headless profile with the user's settings (its default model must be the served model), and runs the three harnesses one after another. Run it yourself: it starts autonomous agents with shell access.
+
 ## Throughput
 
 ```bash

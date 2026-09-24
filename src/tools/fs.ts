@@ -123,7 +123,12 @@ export const editFileTool: Tool = {
     if (!ctx.readFiles.has(abs)) throw new ToolError(`read ${input.path} before editing it`);
     const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits);
     writeFileSync(abs, r.text);
-    const note = r.strategy === "whitespace" ? " (old_string matched ignoring indentation; new_string re-indented to the file)" : "";
+    const note =
+      r.strategy === "whitespace"
+        ? " (old_string matched ignoring indentation; new_string re-indented to the file)"
+        : r.strategy === "prefix"
+          ? " (old_string matched after removing copied line numbers or '>' markers; do not include them)"
+          : "";
     return { content: `edited ${rel(ctx.root, abs)}${note}${(ctx.syntaxCheck === false ? "" : syntaxNote(abs, r.text))}`, changedFiles: [rel(ctx.root, abs)] };
   },
 };

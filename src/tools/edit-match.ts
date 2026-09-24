@@ -6,7 +6,23 @@ import { ToolError } from "./types.ts";
 
 export interface EditResult {
   text: string;
-  strategy: "exact" | "whitespace";
+  strategy: "exact" | "whitespace" | "prefix";
+}
+
+// Shorter new_strings match by accident ("z" in "size").
+const MIN_APPLIED_CHARS = 10;
+const LINE_NO = /^\s*\d+\t/;
+const allNumbered = (s: string) => {
+  const lines = s.split("\n").filter((l) => l.trim() !== "");
+  return lines.length > 0 && lines.every((l) => LINE_NO.test(l));
+};
+const stripNumbers = (s: string) => s.split("\n").map((l) => l.replace(LINE_NO, "")).join("\n");
+
+// old_string copied with read_file's "N\t" line prefixes, or with a stray ">" quote marker.
+function stripCopied(oldStr: string, newStr: string): [string, string] | null {
+  if (allNumbered(oldStr)) return [stripNumbers(oldStr), allNumbered(newStr) ? stripNumbers(newStr) : newStr];
+  if (/^>+ ?/.test(oldStr)) return [oldStr.replace(/^>+ ?/, ""), newStr.replace(/^>+ ?/, "")];
+  return null;
 }
 
 const indentOf = (l: string) => l.match(/^[ \t]*/)![0];
@@ -65,11 +81,21 @@ export function applyEditTolerant(text: string, oldStr: string, newStr: string, 
   if (count > 1) throw new ToolError(`old_string matches ${count} times; add surrounding context or set replace_all`);
 
   if (exactOnly) throw new ToolError("old_string not found; re-read the file and copy the exact text including whitespace");
+  const cleaned = stripCopied(oldN, newN);
+  if (cleaned && cleaned[0].trim() !== "" && cleaned[0] !== cleaned[1]) {
+    try {
+      return { text: applyEditTolerant(text, cleaned[0], cleaned[1], replaceAll).text, strategy: "prefix" };
+    } catch {
+      // Fall through to the whitespace-tolerant match on the original text.
+    }
+  }
   // Fallback: line-by-line match ignoring leading/trailing whitespace.
   const fileLines = src.split("\n");
   const oldLines = oldN.replace(/\n$/, "").split("\n");
   const hits = flexibleMatches(fileLines, oldLines);
   if (hits.length === 0) {
+    if (newN.trim().length >= MIN_APPLIED_CHARS && src.includes(newN))
+      throw new ToolError("old_string not found, but the file already contains new_string: the edit looks already applied. Re-read the file before editing again.");
     const near = nearestLines(src, oldN);
     throw new ToolError(`old_string not found; re-read the file and copy the exact text.${near.length ? ` Closest lines:\n${near.join("\n")}` : ""}`);
   }
