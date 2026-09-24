@@ -66,7 +66,8 @@ export function nearestLines(text: string, oldStr: string): string[] {
   return scored.map((x) => `${x.i + 1}: ${JSON.stringify(x.l)}`);
 }
 
-export function applyEditTolerant(text: string, oldStr: string, newStr: string, replaceAll: boolean, exactOnly = false): EditResult {
+// onInexact: called instead of the exact-only error, e.g. to ask for a read of an unread file.
+export function applyEditTolerant(text: string, oldStr: string, newStr: string, replaceAll: boolean, exactOnly = false, onInexact?: () => never): EditResult {
   if (oldStr === "") throw new ToolError("old_string must not be empty");
   if (oldStr === newStr) throw new ToolError("old_string and new_string are identical");
   const crlf = text.includes("\r\n");
@@ -80,6 +81,7 @@ export function applyEditTolerant(text: string, oldStr: string, newStr: string, 
     return { text: restore(replaceAll ? src.split(oldN).join(newN) : src.replace(oldN, () => newN)), strategy: "exact" };
   if (count > 1) throw new ToolError(`old_string matches ${count} times; add surrounding context or set replace_all`);
 
+  if (onInexact) onInexact();
   if (exactOnly) throw new ToolError("old_string not found; re-read the file and copy the exact text including whitespace");
   const cleaned = stripCopied(oldN, newN);
   if (cleaned && cleaned[0].trim() !== "" && cleaned[0] !== cleaned[1]) {

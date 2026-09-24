@@ -32,6 +32,12 @@ export function syntaxNote(abs: string, text: string): string {
   }
 }
 
+// An unread file may still be edited when old_string matches its text exactly and once (the model
+// saw that text, e.g. in grep output). Anything looser needs a real read first.
+function needsRead(path: unknown): never {
+  throw new ToolError(`read ${String(path)} before editing it`);
+}
+
 export const readFileTool: Tool = {
   readOnly: true,
   spec: {
@@ -120,8 +126,9 @@ export const editFileTool: Tool = {
   async run(input, ctx) {
     const abs = confine(ctx.root, input.path);
     if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
-    if (!ctx.readFiles.has(abs)) throw new ToolError(`read ${input.path} before editing it`);
-    const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits);
+    const unread = !ctx.readFiles.has(abs);
+    const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits, unread ? () => needsRead(input.path) : undefined);
+    ctx.readFiles.add(abs);
     writeFileSync(abs, r.text);
     const note =
       r.strategy === "whitespace"
@@ -159,17 +166,19 @@ export const multiEditTool: Tool = {
   async run(input, ctx) {
     const abs = confine(ctx.root, input.path);
     if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
-    if (!ctx.readFiles.has(abs)) throw new ToolError(`read ${input.path} before editing it`);
+    const unread = !ctx.readFiles.has(abs);
     const edits = input.edits as { old_string: string; new_string: string; replace_all?: boolean }[];
     let text = readFileSync(abs, "utf8");
     edits.forEach((e, i) => {
       try {
-        text = applyEditTolerant(text, e.old_string, e.new_string, e.replace_all === true, ctx.exactEdits).text;
+        text = applyEditTolerant(text, e.old_string, e.new_string, e.replace_all === true, ctx.exactEdits, unread ? () => needsRead(input.path) : undefined).text;
       } catch (err) {
+        if (unread) throw err;
         throw new ToolError(`edit ${i + 1}: ${(err as Error).message}`);
       }
     });
     writeFileSync(abs, text);
+    ctx.readFiles.add(abs);
     return { content: `applied ${edits.length} edits to ${rel(ctx.root, abs)}${(ctx.syntaxCheck === false ? "" : syntaxNote(abs, text))}`, changedFiles: [rel(ctx.root, abs)] };
   },
 };

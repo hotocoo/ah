@@ -52,10 +52,17 @@ describe("file tools", () => {
     expect(ctx.readFiles.has(join(root, "src", "a.ts"))).toBe(true);
   });
 
-  test("edit_file requires a prior read", async () => {
-    const r = await run("edit_file", { path: "src/a.ts", old_string: "a - b", new_string: "a + b" });
+  test("edit_file on an unread file needs a prior read unless old_string matches exactly once", async () => {
+    // Not an exact match (would need the tolerant matcher): the model has not seen the real text.
+    const r = await run("edit_file", { path: "src/a.ts", old_string: "  return a-b;", new_string: "a + b" });
     expect(r.isError).toBe(true);
     expect(r.content).toMatch(/read src\/a.ts before editing/);
+    // Exact, unique text (e.g. copied from grep output) is grounded in the file: applied, file counts as read.
+    writeFileSync(join(root, "g.ts"), "export const greet = getUserName;\n");
+    const ok = await run("edit_file", { path: "g.ts", old_string: "getUserName", new_string: "getDisplayName" });
+    expect(ok.isError).toBeFalsy();
+    expect(readFileSync(join(root, "g.ts"), "utf8")).toBe("export const greet = getDisplayName;\n");
+    expect(ctx.readFiles.has(join(root, "g.ts"))).toBe(true);
   });
 
   test("edit_file replaces a unique match and reports changed files", async () => {
