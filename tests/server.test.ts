@@ -42,6 +42,21 @@ describe("web app security", () => {
     expect((await fetch(`${base}/api/doctor`)).status).toBe(401);
     expect((await fetch(`${base}/../../etc/passwd`)).status).toBe(404);
   });
+
+  test("UI fonts are served self-hosted and allowed by the CSP", async () => {
+    const index = await fetch(`${base}/`);
+    expect(index.headers.get("cache-control")).toBe("no-store");
+    expect((await fetch(`${base}/fx.js`)).status).toBe(200);
+    const csp = index.headers.get("content-security-policy") ?? "";
+    expect(csp).toContain("font-src 'self'");
+    for (const f of ["geist", "geist-mono"]) {
+      const res = await fetch(`${base}/fonts/${f}.woff2`);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("font/woff2");
+      const head = new Uint8Array(await res.arrayBuffer()).slice(0, 4);
+      expect(new TextDecoder().decode(head)).toBe("wOF2");
+    }
+  });
 });
 
 describe("web app API", () => {

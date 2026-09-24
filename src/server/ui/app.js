@@ -1,14 +1,18 @@
 // web app. Vanilla JS; all dynamic text is escaped (model output is untrusted).
+import { fx } from "/fx.js";
 const TOKEN = document.querySelector('meta[name="ah-token"]').content;
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const api = async (path, body) => {
+let inflight = 0;
+const busy = (d) => document.body.classList.toggle("busy", (inflight = Math.max(0, inflight + d)) > 0);
+const api = async (path, body, quiet = false) => {
+  if (!quiet) busy(1);
   const res = await fetch(path, {
     method: body ? "POST" : "GET",
     headers: { "x-ah-token": TOKEN, ...(body ? { "content-type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
-  });
+  }).finally(() => quiet || busy(-1));
   const j = await res.json().catch(() => ({ error: `${res.status} ${res.statusText}` }));
   if (!res.ok) throw new Error(j.error ?? res.statusText);
   return j;
@@ -22,6 +26,7 @@ const ago = (t) => {
   const s = (Date.now() - t) / 1000;
   return s < 60 ? `${num(s)}s ago` : s < 3600 ? `${num(s / 60)}m ago` : s < 86400 ? `${num(s / 3600)}h ago` : new Date(t).toLocaleDateString();
 };
+const plural = (n, w) => `${num(n)} ${w}${n === 1 ? "" : "s"}`;
 const clamp01 = (x) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const html = (s) => {
@@ -80,17 +85,30 @@ async function openTab(name) {
   try {
     await fn();
   } catch (err) {
-    const box = alertBox(`Could not load ${name}`, err.message, () => openTab(name));
+    const label = $(`[role="tab"][data-tab="${name}"] .lbl`)?.textContent ?? name;
+    const box = alertBox(`Could not load ${label.toLowerCase()}`, err.message, () => openTab(name));
     box.classList.add("page-alert");
     sec.querySelector(".page-head")?.after(box) ?? sec.prepend(box);
   } finally {
     sec.removeAttribute("aria-busy");
   }
 }
+// One indicator glides between tabs: vertical in the rail, horizontal in the mobile bar.
+function moveInk() {
+  const b = $('[role="tab"][aria-selected="true"]');
+  const ink = $(".tab-ink");
+  if (!b || !ink) return;
+  ink.style.setProperty("--ink-y", `${b.offsetTop}px`);
+  ink.style.height = matchMedia("(max-width: 900px)").matches ? "" : `${b.offsetHeight}px`;
+  ink.style.setProperty("--ink-x", `${b.offsetLeft + 12}px`);
+  ink.style.setProperty("--ink-w", `${b.offsetWidth - 24}px`);
+}
+addEventListener("resize", moveInk);
 function select(name, { focus = false } = {}) {
   if (!TABS.includes(name)) name = "chat";
   const current = $(".tab.active");
   const next = $(`#tab-${name}`);
+  const viaTransition = current !== next && document.startViewTransition && !reducedMotion();
   const swap = () => {
     $$('[role="tab"]').forEach((b) => {
       const on = b.dataset.tab === name;
@@ -98,19 +116,20 @@ function select(name, { focus = false } = {}) {
       b.tabIndex = on ? 0 : -1;
       if (on && focus) b.focus();
     });
+    moveInk();
     $$(".tab").forEach((t) => {
       const on = t === next;
       t.classList.toggle("active", on);
       t.hidden = !on;
     });
-    if (current !== next) {
+    if (current !== next && !viaTransition) {
       next.classList.remove("entering");
       next.querySelectorAll(".cell, .kpis > *").forEach((c, i) => c.style.setProperty("--i", i));
       void next.offsetWidth;
       next.classList.add("entering");
     }
   };
-  if (current !== next && document.startViewTransition && !reducedMotion()) document.startViewTransition(swap);
+  if (viaTransition) document.startViewTransition(swap);
   else swap();
   if (location.hash.slice(1) !== name) history.replaceState(null, "", `#${name}`);
   openTab(name);
@@ -188,7 +207,7 @@ loaders.overview = async () => {
   const k = (v, l) => `<div class="kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`;
   const rate = t.runs ? t.completed / t.runs : null;
   $("#kpis").innerHTML =
-    `<div class="kpi-hero"><div class="l">runs completed</div><div class="v"><span id="kpi-hero-n">${num(t.completed)}</span><small> / ${esc(num(t.runs))}</small></div><div class="foot">${
+    `<div class="kpi-hero edge"><div class="l">runs completed</div><div class="v"><span id="kpi-hero-n">${num(t.completed)}</span><small> / ${esc(num(t.runs))}</small></div><div class="foot">${
       t.runs ? `<span class="tag gold">${esc(pct(rate))} completion</span><span>across ${esc(num(models.length))} model${models.length === 1 ? "" : "s"}</span>` : `<span>No runs yet.</span><button type="button" class="ghost" data-go="chat">Open console</button>`
     }</div></div>` +
     `<div class="strip">${k(compact((t.input_tokens ?? 0) + (t.output_tokens ?? 0)), "tokens")}${k(pct(t.cacheHitRate), "prompt cache hit")}${k(pct(t.toolErrorRate), "tool error rate")}${k(ms(s.ttftMs.p50), "TTFT p50")}${k(num(s.tokensPerSec.p50, 1), "decode tok/s p50")}</div>`;
@@ -288,7 +307,7 @@ function showBench(r) {
     if (!summary) return mount("#bench-detail", Object.assign(document.createElement("p"), { className: "empty-note", textContent: "Still running or no results." }));
     const o = summary.overall;
     const el = document.createElement("div");
-    el.innerHTML = `<div class="kpi-hero"><div class="l">pass@1</div><div class="v">${esc(pct(o.meanPassAt1))}</div><div class="foot"><span class="tag gold">${esc(`${o.passes}/${o.trials}`)} trials</span><span>95% CI ${esc(pct(o.wilson.low))} to ${esc(pct(o.wilson.high))}</span></div></div><div class="strip" style="margin-top:14px">${[
+    el.innerHTML = `<div class="kpi-hero edge"><div class="l">pass@1</div><div class="v">${esc(pct(o.meanPassAt1))}</div><div class="foot"><span class="tag gold">${esc(`${o.passes}/${o.trials}`)} trials</span><span>95% CI ${esc(pct(o.wilson.low))} to ${esc(pct(o.wilson.high))}</span></div></div><div class="strip" style="margin-top:14px">${[
       [pct(o.meanPassHatK), `pass^${summary.k}`],
       [`${o.solvedAny}/${summary.tasks.length}`, "solved ≥1×"],
       [num(o.meanDecodeTps, 1), "decode tok/s"],
@@ -347,6 +366,7 @@ const inst = {
     const el = $("#run-state");
     el.dataset.state = state;
     el.textContent = state;
+    fx.energy(state);
   },
   reset() {
     this.set("idle");
@@ -377,6 +397,7 @@ let ctxWindow = 0;
 function showWelcome() {
   const log = $("#chat-log");
   log.replaceChildren($("#chat-empty").content.cloneNode(true));
+  fx.syncCores();
   log.querySelectorAll(".chip").forEach((c) =>
     c.addEventListener("click", () => {
       $("#chat-input").value = c.textContent;
@@ -405,6 +426,7 @@ $("#chat-form").addEventListener("submit", async (e) => {
   const btn = $("#chat-form button[type=submit]");
   if (btn.disabled) return;
   btn.disabled = true;
+  $("#chat-new").disabled = true;
   btn.querySelector(".btn-label").textContent = "Running";
   $("#chat-input").value = "";
   log.querySelector(".welcome")?.remove();
@@ -494,7 +516,7 @@ $("#chat-form").addEventListener("submit", async (e) => {
         } else if (ev.type === "run_end") {
           const r = ev.result;
           const chip = (v, cls = "") => `<span class="tag ${cls}">${esc(v)}</span>`;
-          msg.insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "gold" : "")}${chip(`${r.turns} turns`)}${chip(`${r.toolCalls} tools`)}${chip(ms(r.wallMs))}${chip(`${num(r.usage.inputTokens)} in / ${num(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
+          msg.insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "gold" : "")}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${num(r.usage.inputTokens)} in / ${num(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
           inst.set(r.outcome === "completed" ? "done" : "error");
           inst.trace(`run ${r.outcome} · ${ms(r.wallMs)}`, r.outcome === "completed" ? "ok" : "bad");
         } else if (ev.type === "error") {
@@ -513,6 +535,7 @@ $("#chat-form").addEventListener("submit", async (e) => {
     msg.classList.remove("streaming");
     if (!msg.childElementCount) msg.remove();
     btn.disabled = false;
+    $("#chat-new").disabled = false;
     btn.querySelector(".btn-label").textContent = "Run task";
     $("#chat-input").focus();
   }
@@ -563,21 +586,62 @@ loaders.system = async () => {
 };
 
 // ---------- live hardware ----------
+const gpuHist = [];
+function drawSpark() {
+  const c = $("#gpu-spark");
+  if (!c || !c.clientWidth) return;
+  const dpr = Math.min(devicePixelRatio || 1, 2), W = c.clientWidth, H = c.clientHeight;
+  if (c.width !== Math.round(W * dpr)) (c.width = Math.round(W * dpr)), (c.height = Math.round(H * dpr));
+  const g = c.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, W, H);
+  if (gpuHist.length < 2) return;
+  const N = 60, step = W / (N - 1), off = N - gpuHist.length;
+  const pts = gpuHist.map((v, i) => [(off + i) * step, H - 3 - (H - 6) * clamp01(v / 100)]);
+  const fill = g.createLinearGradient(0, 0, 0, H);
+  fill.addColorStop(0, "rgba(212,173,90,0.35)");
+  fill.addColorStop(1, "rgba(212,173,90,0)");
+  g.beginPath();
+  pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+  g.lineTo(pts.at(-1)[0], H);
+  g.lineTo(pts[0][0], H);
+  g.fillStyle = fill;
+  g.fill();
+  g.beginPath();
+  pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+  g.strokeStyle = "#e6c77f";
+  g.lineWidth = 1.5;
+  g.shadowColor = "rgba(230,199,127,0.8)";
+  g.shadowBlur = 6;
+  g.stroke();
+  g.shadowBlur = 0;
+  const [lx, ly] = pts.at(-1);
+  g.fillStyle = "#f3dfa6";
+  g.beginPath();
+  g.arc(lx - 2, ly, 2.5, 0, Math.PI * 2);
+  g.fill();
+}
+addEventListener("resize", drawSpark);
 async function pollHw() {
   const box = $(".hw");
   try {
-    const h = await api("/api/hardware");
+    const h = await api("/api/hardware", undefined, true);
     box.classList.remove("offline");
     $("#hw-pill").textContent = `GPU ${h.gpuUtilPct ?? "–"}% · ${gb(h.gpuAllocBytes)} · ${num(h.load1, 1)}`;
     $(".hw").title = `GPU ${h.gpuUtilPct ?? "–"}% utilised · ${gb(h.gpuAllocBytes)} allocated · load ${num(h.load1, 2)} (1m)`;
     $("#hw-meter").style.setProperty("--v", clamp01((h.gpuUtilPct ?? 0) / 100));
+    gpuHist.push(h.gpuUtilPct ?? 0);
+    if (gpuHist.length > 60) gpuHist.shift();
+    $("#gpu-now").textContent = h.gpuUtilPct === null || h.gpuUtilPct === undefined ? "–" : `${h.gpuUtilPct}%`;
+    drawSpark();
   } catch {
     box.classList.add("offline");
     $("#hw-pill").textContent = "offline";
     $("#hw-meter").style.setProperty("--v", 0);
   }
 }
+fx.init();
 pollHw();
-setInterval(pollHw, 3000);
+setInterval(pollHw, 2000);
 showWelcome();
 select(location.hash.slice(1) || "chat");
