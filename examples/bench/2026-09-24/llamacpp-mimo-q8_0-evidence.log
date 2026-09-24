@@ -21,3 +21,8 @@ bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 8 tasks × 3 trials ·
   PASS ts-multifile-rename #2 21.7s · 6 turns · 11 tools
   PASS ts-multifile-rename #3 29.2s · 8 turns · 16 tools
   PASS ts-write-tests #1 90.6s · 13 turns · 13 tools (3 err)
+  FAIL ts-write-tests #2 173.9s · 15 turns · 17 tools (4 err) · max_turns
+  PASS ts-write-tests #3 107.9s · 15 turns · 16 tools (4 err)
+
+result 18/24 trials · pass@1 75% · pass^3 50% · 7/8 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/2026-09-24/llamacpp-mimo-q8_0-evidence/report.md

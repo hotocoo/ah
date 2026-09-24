@@ -1,0 +1,2 @@
+bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 1 tasks × 3 trials · {} · /Users/acotech/workspace/ah/examples/bench/2026-09-24/lru-episodic-reset
+  FAIL ts-feature-lru #1 538.4s · 20 turns · 22 tools (9 err) · max_turns

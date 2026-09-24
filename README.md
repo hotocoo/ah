@@ -111,6 +111,21 @@ How to read these numbers:
 - **4-bit vs 8-bit.** The Q8_0 GGUF on llama.cpp solved more tasks than the OptiQ 4-bit MLX build (7/8 vs 5/8); the MLX server decoded faster (64.5 vs 45.0 tok/s).
 - `ts-feature-lru` (implement an LRU cache from a written spec, 20-turn limit) was not solved by any configuration.
 
+### 2026-09-24: with the evidence loop
+
+Same model, server, suite and trial count as the rows above, with the evidence ledger, completion gate and syntax check on (memory and user extensions are off in benchmarks).
+
+| run | trials passed (95% CI) | pass@1 | pass^3 | tool error rate | harness verdict agrees with hidden grader | completion-gate firings |
+|---|---|---|---|---|---|---|
+| ah + evidence loop | 18/24 (55%-88%) | 75% | 50% | 17% | 23/24 | 0 |
+
+- The pass rate (18/24) is within noise of the 20/24 run without the loop: this run shows neither a gain nor a loss.
+- The completion gate never fired: MiMo already runs the tests before finishing. The gate targets models that stop without checking.
+- New result: the harness's own verdict (computed from what tool calls did, without seeing the grader) matched the hidden grader on 23 of 24 trials. The one miss (`ts-write-tests` #3) ended on a failing test run the grader nonetheless passed.
+- Report: [`examples/bench/2026-09-24/llamacpp-mimo-q8_0-evidence/report.md`](examples/bench/2026-09-24/llamacpp-mimo-q8_0-evidence/report.md).
+
+**Comparison with other harnesses:** none has been run head to head; `ah` is not shown to be better than Claude Code, Codex, OpenCode, Aider or Pi. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
+
 Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/bench/). Reproduce with the commands in each report.
 
 ## What makes it different
@@ -126,6 +141,9 @@ Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/b
 | Media | none | image generation + procedural 3D modelling as agent tools |
 
 ## Documentation
+
+- [docs/ARCHITECTURE-NEXT.md](docs/ARCHITECTURE-NEXT.md): the Aletheia loop (evidence-gated completion, memory and context)
+- [docs/COMPARISON.md](docs/COMPARISON.md): published harness comparisons and where `ah` stands
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Runtimes, providers and models](docs/RUNTIMES.md)
