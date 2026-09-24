@@ -197,7 +197,7 @@ Two more robustness features came out of these runs: project facts in the system
 
 ## D36. Appearance and presets
 
-- **Chosen:** one `--accent` variable drives every accent-derived colour through CSS relative colour. Four skins are surface presets. The uploaded wallpaper is one fixed file with a size cap, a magic-byte check and token auth, and the page shows it from a `blob:` URL. Presets are user-defined bundles (model, mode, turns, instructions); none are built in, per the no-hardcoding rule. The console never takes its permission mode from a preset.
+- **Chosen:** a neutral grey system in light and dark (OS default, user override), Geist type on a 4 px grid. One `--accent-base` feeds a per-theme accent, clamped in lightness for contrast. Colour marks only interaction, selection and outcomes. The ambient canvas, grain and gradient washes were removed (a "vibe-coded" look, per the user). There is a ⌘K command palette, and tables have sticky headers. Lighthouse on the console: Accessibility 100, Best Practices 100. The uploaded wallpaper is one fixed file with a size cap, a magic-byte check and token auth, and the page shows it from a `blob:` URL. Presets are user-defined bundles (model, mode, turns, instructions); none are built in, per the no-hardcoding rule. The console never takes its permission mode from a preset.
 
 ## D37. Tool-error coaching (invented)
 

@@ -149,7 +149,7 @@ Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/b
 | Edit slips | fail, retry | copied line numbers / `>` markers stripped, "already applied" detected, root-echo paths resolved |
 | Other harnesses | n/a | `ah bench run --agent-cmd` grades them on the same sandbox and hidden tests (`scripts/h2h.sh`) |
 | Request arguments | fixed by the harness | any request-body field per provider, model, preset or call (`--param options.num_gpu=40`, `null` removes one) |
-| Look | fixed theme | skins, custom accent, uploaded wallpaper (opacity/blur/dim); user presets (`-p NAME`) |
+| Look | fixed theme | light/dark/system, accent presets or custom, uploaded wallpaper (opacity/blur/dim), ⌘K palette; user run presets (`-p NAME`) |
 
 ## Documentation
 

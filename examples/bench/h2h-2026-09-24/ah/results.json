@@ -1,0 +1,593 @@
+{
+  "benchRunId": "bench_2026-09-24T10-36-55_llamacpp_DavidAU_Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Unce",
+  "model": "llamacpp/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored-NM-DAU-NEO-MTP-GGUF:Q6_K",
+  "startedAt": "2026-09-24T10:36:55.625Z",
+  "finishedAt": "2026-09-24T11:03:47.734Z",
+  "trials": 1,
+  "features": {},
+  "hardware": {
+    "t": 1790246215625,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 555876352,
+    "load1": 8.05224609375,
+    "cpuCount": 16,
+    "gpuUtilPct": 16,
+    "gpuAllocBytes": 47129608192,
+    "gpuInUseBytes": 40596242432,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "llamacpp",
+    "version": "b10621-c1d0e7a00",
+    "baseURL": "http://127.0.0.1:8080"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "edb103c",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Fix pagination off-by-one",
+      "category": "bugfix",
+      "difficulty": 1,
+      "tags": [
+        "bun"
+      ],
+      "id": "ts-bugfix-pagination",
+      "language": "typescript",
+      "prompt": "Users report that page 1 from `paginate` in src/paginate.ts skips the first items. Pages are 1-based. Fix the bug and add a regression test in src/paginate.test.ts.",
+      "grader": {
+        "cmd": "bun test",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-bugfix-pagination",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-bugfix-pagination/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-bugfix-pagination/hidden"
+    },
+    {
+      "name": "Implement a generic Go stack",
+      "category": "feature",
+      "difficulty": 2,
+      "tags": [
+        "go"
+      ],
+      "id": "go-feature-stack",
+      "language": "go",
+      "prompt": "Implement the generic Stack[T] type in stack.go as documented in the comments (Push, Pop, Peek, Len, IsEmpty). Pop and Peek on an empty stack return the zero value and false. Add tests and run `go test ./...`.",
+      "grader": {
+        "cmd": "go test ./...",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/go-feature-stack",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/go-feature-stack/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/go-feature-stack/hidden"
+    },
+    {
+      "name": "Fix a Python duration parser",
+      "category": "bugfix",
+      "difficulty": 2,
+      "tags": [
+        "python"
+      ],
+      "id": "py-bugfix-duration",
+      "language": "python",
+      "prompt": "`parse_duration` in duration.py should convert strings like '1h30m', '45s', '2h', '1h2m3s' into total seconds, but mixed units give wrong results. Fix it and verify with pytest.",
+      "grader": {
+        "cmd": "python3 -m pytest -q",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/py-bugfix-duration",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/py-bugfix-duration/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/py-bugfix-duration/hidden"
+    },
+    {
+      "name": "Fix a Rust crate that does not compile and has a logic bug",
+      "category": "bugfix",
+      "difficulty": 3,
+      "tags": [
+        "rust"
+      ],
+      "id": "rust-fix-compile-and-logic",
+      "language": "rust",
+      "prompt": "This Rust crate does not compile, and once it does, `cargo test` has a failing test. Make it compile and fix the logic so all tests pass. Do not change the tests.",
+      "grader": {
+        "cmd": "cargo test --quiet 2>&1",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/rust-fix-compile-and-logic",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/rust-fix-compile-and-logic/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/rust-fix-compile-and-logic/hidden"
+    },
+    {
+      "name": "Debug a failing test whose cause is in another module",
+      "category": "debugging",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "debugging",
+        "multi-file"
+      ],
+      "id": "ts-debug-cross-file",
+      "language": "typescript",
+      "prompt": "`bun test` fails in tests/checkout.test.ts. Find the root cause and fix it. Do not modify the tests.",
+      "grader": {
+        "cmd": "bun test && git diff --quiet -- tests",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-debug-cross-file",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-debug-cross-file/fixture"
+    },
+    {
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "spec"
+      ],
+      "id": "ts-feature-lru",
+      "language": "typescript",
+      "prompt": "Implement the LRU cache described in SPEC.md. Write your own tests in src/lru.test.ts and make sure they pass.",
+      "grader": {
+        "cmd": "bun test",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-feature-lru",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-feature-lru/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-feature-lru/hidden"
+    },
+    {
+      "name": "Rename a function across a codebase",
+      "category": "refactor",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "multi-file"
+      ],
+      "id": "ts-multifile-rename",
+      "language": "typescript",
+      "prompt": "Rename the function `getUserName` to `getDisplayName` everywhere (definition, all call sites, imports, tests). Keep behaviour identical and make sure `bun test` passes.",
+      "grader": {
+        "cmd": "bun test && ! grep -rn getUserName src tests",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 25,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-multifile-rename",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-multifile-rename/fixture"
+    },
+    {
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "tags": [
+        "bun",
+        "mutation-testing"
+      ],
+      "id": "ts-write-tests",
+      "language": "typescript",
+      "prompt": "Write a thorough test suite for `slugify` (src/slugify.ts) in src/slugify.test.ts. It must pass against the current implementation and should catch regressions: accents, case, punctuation runs, leading/trailing separators, digits, empty input.",
+      "grader": {
+        "cmd": "bash grade.sh",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests",
+      "fixtureDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah/bench/suites/core/ts-write-tests/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufedgxj_3qo9si",
+      "turns": 6,
+      "toolCalls": 6,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 19828,
+        "outputTokens": 818,
+        "cacheReadTokens": 16052,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 120871.711459,
+      "ttftMs": 13616.757,
+      "graderMs": 9.03245899999456,
+      "graderTail": "\u001b[0m\u001b[1mbun test \u001b[0m\u001b[2mv1.4.0 (34cbb9a40)\u001b[0m\n\n\n\u001b[0m\u001b[32m 8 pass\u001b[0m\n\u001b[0m\u001b[2m 0 fail\u001b[0m\n 8 expect() calls\nRan 8 tests across 2 files. \u001b[0m\u001b[2m[\u001b[1m3.00ms\u001b[0m\u001b[2m]\u001b[0m",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 27 insertions(+), 1 deletion(-)",
+      "prefillTps": 165.31414909565947,
+      "decodeTps": 14.650080095287208,
+      "gpuUtilAvg": 96.0909090909091,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufeg2ai_f0akcz",
+      "turns": 4,
+      "toolCalls": 6,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 14229,
+        "outputTokens": 1329,
+        "cacheReadTokens": 12324,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 173679.172083,
+      "ttftMs": 31762.630457999985,
+      "graderMs": 147.91941600001883,
+      "graderTail": "ok  \texample.com/stack\t0.005s",
+      "changedFiles": [
+        "stack.go",
+        "stack_test.go"
+      ],
+      "diffStat": "2 files changed, 121 insertions(+)",
+      "prefillTps": 171.8420433692857,
+      "decodeTps": 14.959958401586192,
+      "gpuUtilAvg": 98.74712643678161,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufejsjn_qqpxv0",
+      "turns": 8,
+      "toolCalls": 9,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 26864,
+        "outputTokens": 1044,
+        "cacheReadTokens": 25324,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 172550.55308399996,
+      "ttftMs": 24184.857542000012,
+      "graderMs": 204.63145899999654,
+      "graderTail": ".............                                                            [100%]\n13 passed in 0.01s",
+      "changedFiles": [
+        "duration.py",
+        "test_duration.py"
+      ],
+      "diffStat": "4 files changed, 30 insertions(+), 1 deletion(-)",
+      "prefillTps": 151.51850687866894,
+      "decodeTps": 13.654565339025671,
+      "gpuUtilAvg": 97.30635838150289,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufenhz3_b0rk2t",
+      "turns": 5,
+      "toolCalls": 5,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 17170,
+        "outputTokens": 671,
+        "cacheReadTokens": 15501,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 74436.26058300002,
+      "ttftMs": 8369.980749999988,
+      "graderMs": 131.4182499999879,
+      "graderTail": ".\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 2 tests\n..\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "331 files changed, 31 insertions(+), 2 deletions(-)",
+      "prefillTps": 181.64720759274428,
+      "decodeTps": 14.27228261805141,
+      "gpuUtilAvg": 93.24,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufep3r7_xxbfew",
+      "turns": 5,
+      "toolCalls": 8,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 19738,
+        "outputTokens": 800,
+        "cacheReadTokens": 17565,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 210877.87670800008,
+      "ttftMs": 37175.52358399995,
+      "graderMs": 21.286833000020124,
+      "graderTail": "\u001b[0m\u001b[1mbun test \u001b[0m\u001b[2mv1.4.0 (34cbb9a40)\u001b[0m\n\n\n\u001b[0m\u001b[32m 1 pass\u001b[0m\n\u001b[0m\u001b[2m 0 fail\u001b[0m\n 2 expect() calls\nRan 1 test across 1 file. \u001b[0m\u001b[2m[\u001b[1m3.00ms\u001b[0m\u001b[2m]\u001b[0m",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 174.15796057943413,
+      "decodeTps": 14.638396484127878,
+      "gpuUtilAvg": 98.03317535545024,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mufetmjx_6zijdf",
+      "turns": 6,
+      "toolCalls": 7,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 23775,
+        "outputTokens": 2797,
+        "cacheReadTokens": 20449,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 314728.9364589999,
+      "ttftMs": 45110.81904099998,
+      "graderMs": 15.336750000016764,
+      "graderTail": "\u001b[0m\u001b[1mbun test \u001b[0m\u001b[2mv1.4.0 (34cbb9a40)\u001b[0m\n\n\n\u001b[0m\u001b[32m 23 pass\u001b[0m\n\u001b[0m\u001b[2m 0 fail\u001b[0m\n 54 expect() calls\nRan 23 tests across 2 files. \u001b[0m\u001b[2m[\u001b[1m7.00ms\u001b[0m\u001b[2m]\u001b[0m",
+      "changedFiles": [
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "2 files changed, 234 insertions(+)",
+      "prefillTps": 169.5569516012882,
+      "decodeTps": 14.30057096545814,
+      "gpuUtilAvg": 97.35238095238095,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_muff0djn_m9j9rp",
+      "turns": 6,
+      "toolCalls": 18,
+      "toolErrors": 7,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 26835,
+        "outputTokens": 2396,
+        "cacheReadTokens": 21987,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 265030.4605419999,
+      "ttftMs": 29737.28749999986,
+      "graderMs": 12.996209000004455,
+      "graderTail": "\u001b[0m\u001b[1mbun test \u001b[0m\u001b[2mv1.4.0 (34cbb9a40)\u001b[0m\n\n\n\u001b[0m\u001b[32m 3 pass\u001b[0m\n\u001b[0m\u001b[2m 0 fail\u001b[0m\n 3 expect() calls\nRan 3 tests across 1 file. \u001b[0m\u001b[2m[\u001b[1m3.00ms\u001b[0m\u001b[2m]\u001b[0m",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 7 insertions(+), 7 deletions(-)",
+      "prefillTps": 185.28901698974823,
+      "decodeTps": 15.931743179029105,
+      "gpuUtilAvg": 95.43396226415095,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_muff624m_1sogku",
+      "turns": 7,
+      "toolCalls": 7,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 31558,
+        "outputTokens": 2511,
+        "cacheReadTokens": 28007,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 277858.52049999987,
+      "ttftMs": 10595.270207999973,
+      "graderMs": 59.7798330001533,
+      "graderTail": "\u001b[0m\u001b[1mbun test \u001b[0m\u001b[2mv1.4.0 (34cbb9a40)\u001b[0m\nmutants killed: 5/5\n\n\n\u001b[0m\u001b[32m 11 pass\u001b[0m\n\u001b[0m\u001b[2m 0 fail\u001b[0m\n 37 expect() calls\nRan 11 tests across 1 file. \u001b[0m\u001b[2m[\u001b[1m3.00ms\u001b[0m\u001b[2m]\u001b[0m",
+      "changedFiles": [
+        "src/slugify.test.ts"
+      ],
+      "diffStat": "1 file changed, 74 insertions(+)",
+      "prefillTps": 179.10428483536475,
+      "decodeTps": 15.143913061546188,
+      "gpuUtilAvg": 97.44244604316546,
+      "energyJ": null,
+      "contextWindow": 262144,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored"
+      },
+      "toolProtocol": "native"
+    }
+  ]
+}

@@ -119,12 +119,12 @@ describe("appearance", () => {
   const H = { "x-ah-token": "t0k" };
   const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
 
-  test("skin, accent and wallpaper settings are validated and persisted", async () => {
+  test("theme, accent and wallpaper settings are validated and persisted", async () => {
     const post = (b: unknown) => fetch(`${base}/api/appearance`, { method: "POST", headers: { ...H, "content-type": "application/json" }, body: JSON.stringify(b) }).then((r) => r.json());
-    expect(await post({ skin: "forest", accent: "#22AA66", wallpaper: { opacity: 5, blur: -1 } })).toMatchObject({ skin: "forest", accent: "#22aa66", wallpaper: { opacity: 1, blur: 0 } });
+    expect(await post({ theme: "light", accent: "#22AA66", wallpaper: { opacity: 5, blur: -1 } })).toMatchObject({ theme: "light", accent: "#22aa66", wallpaper: { opacity: 1, blur: 0 } });
     // Invalid values keep the stored ones; CSS injection through accent is impossible.
-    expect(await post({ skin: "../x", accent: "red;}body{display:none" })).toMatchObject({ skin: "forest", accent: "#22aa66" });
-    expect(JSON.parse(readFileSync(join(home, "appearance.json"), "utf8")).skin).toBe("forest");
+    expect(await post({ theme: "../x", accent: "red;}body{display:none" })).toMatchObject({ theme: "light", accent: "#22aa66" });
+    expect(JSON.parse(readFileSync(join(home, "appearance.json"), "utf8")).theme).toBe("light");
   });
 
   test("wallpaper upload sniffs magic bytes, needs the token, and round-trips", async () => {

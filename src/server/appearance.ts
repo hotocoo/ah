@@ -1,18 +1,18 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-// Web UI appearance: a skin (surface preset), an accent colour, and an optional uploaded
+// Web UI appearance: a theme (light, dark, or follow the OS), an accent colour, and an optional uploaded
 // wallpaper with opacity / blur / dim. Stored in the data dir; the wallpaper is one fixed file,
 // so an upload can never choose a path.
 
-export const SKINS = ["obsidian", "graphite", "forest", "ember"] as const;
+export const THEMES = ["system", "light", "dark"] as const;
 export interface Appearance {
-  skin: (typeof SKINS)[number];
-  accent: string | null; // #rrggbb; null = the skin's own accent
+  theme: (typeof THEMES)[number];
+  accent: string | null; // #rrggbb; null = the default accent
   wallpaper: { enabled: boolean; opacity: number; blur: number; dim: number };
 }
 
-export const DEFAULT_APPEARANCE: Appearance = { skin: "obsidian", accent: null, wallpaper: { enabled: false, opacity: 0.6, blur: 8, dim: 0.35 } };
+export const DEFAULT_APPEARANCE: Appearance = { theme: "system", accent: null, wallpaper: { enabled: false, opacity: 0.6, blur: 8, dim: 0.35 } };
 export const MAX_WALLPAPER_BYTES = 12 * 1024 * 1024;
 
 const clampNum = (v: unknown, lo: number, hi: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -21,10 +21,10 @@ const clampNum = (v: unknown, lo: number, hi: number, d: number) => (typeof v ==
 export function sanitizeAppearance(raw: unknown, base: Appearance = DEFAULT_APPEARANCE): Appearance {
   const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const w = (r.wallpaper && typeof r.wallpaper === "object" ? r.wallpaper : {}) as Record<string, unknown>;
-  const skin = SKINS.includes(r.skin as Appearance["skin"]) ? (r.skin as Appearance["skin"]) : base.skin;
+  const theme = THEMES.includes(r.theme as Appearance["theme"]) ? (r.theme as Appearance["theme"]) : base.theme;
   const accent = r.accent === null ? null : typeof r.accent === "string" && /^#[0-9a-f]{6}$/i.test(r.accent) ? r.accent.toLowerCase() : base.accent;
   return {
-    skin,
+    theme,
     accent,
     wallpaper: {
       enabled: typeof w.enabled === "boolean" ? w.enabled : base.wallpaper.enabled,

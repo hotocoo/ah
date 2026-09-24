@@ -1,0 +1,12 @@
+bench llamacpp/DavidAU/Qwen3.8-27B-TWIN-TURBO-Fable-Cold-Fusion-709-ULTRA-HERETIC-Uncensored-NM-DAU-NEO-MTP-GGUF:Q6_K · 8 tasks × 1 trials · {} · /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-24/ah
+  PASS ts-bugfix-pagination #1 120.9s · 6 turns · 6 tools (1 err)
+  PASS go-feature-stack #1 173.7s · 4 turns · 6 tools
+  PASS py-bugfix-duration #1 172.6s · 8 turns · 9 tools (1 err)
+  PASS rust-fix-compile-and-logic #1 74.4s · 5 turns · 5 tools (1 err)
+  PASS ts-debug-cross-file #1 210.9s · 5 turns · 8 tools (1 err)
+  PASS ts-feature-lru #1 314.7s · 6 turns · 7 tools
+  PASS ts-multifile-rename #1 265.0s · 6 turns · 18 tools (7 err)
+  PASS ts-write-tests #1 277.9s · 7 turns · 7 tools (1 err)
+
+result 8/8 trials · pass@1 100% · pass^1 100% · 8/8 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-24/ah/report.md

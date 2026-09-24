@@ -201,7 +201,7 @@ function countUp(el, to) {
 }
 loaders.overview = async () => {
   shimmer("#chart-runs", "#latency", "#by-model", "#by-tool");
-  if (!$("#kpis").dataset.loaded) $("#kpis").innerHTML = `<div class="sk" style="height:190px;border-radius:18px"></div><div class="sk" style="height:190px;border-radius:18px"></div>`;
+  if (!$("#kpis").dataset.loaded) $("#kpis").innerHTML = `<div class="sk" style="height:190px;border-radius:8px"></div><div class="sk" style="height:190px;border-radius:8px"></div>`;
   const [s, series, models, tools] = await Promise.all([api("/api/telemetry/summary"), api("/api/telemetry/timeseries?bucket=3600000"), api("/api/telemetry/models"), api("/api/telemetry/tools")]);
   const t = s.totals;
   const k = (v, l) => `<div class="kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`;
@@ -408,7 +408,6 @@ let ctxWindow = 0;
 function showWelcome() {
   const log = $("#chat-log");
   log.replaceChildren($("#chat-empty").content.cloneNode(true));
-  fx.syncCores();
   log.querySelectorAll(".chip").forEach((c) =>
     c.addEventListener("click", () => {
       $("#chat-input").value = c.textContent;
@@ -702,7 +701,7 @@ loaders.system = async () => {
   shimmer("#runtimes", "#hardware");
   const d = await api("/api/doctor");
   $("#runtimes").innerHTML = d.runtimes.length
-    ? d.runtimes.map((r) => `<div class="runtime"><div class="runtime-head"><strong>${esc(r.key)}</strong><span class="tag gold">${esc(r.kind)} ${esc(r.version ?? "")}</span></div><span class="runtime-url">${esc(r.baseURL)}</span><div class="runtime-models">${r.models.length ? r.models.map((m) => `<span class="tag">${esc(m)}</span>`).join("") : '<span class="muted">no models loaded</span>'}</div></div>`).join("")
+    ? d.runtimes.map((r) => `<div class="runtime"><div class="runtime-head"><strong>${esc(r.key)}</strong><span class="tag gold">${esc(r.product ?? r.kind)} ${esc(r.version ?? "")}</span>${r.product ? `<span class="tag">${esc(r.kind)} API</span>` : ""}</div><span class="runtime-url">${esc(r.baseURL)}</span><div class="runtime-models">${r.models.length ? r.models.map((m) => `<span class="tag">${esc(m)}</span>`).join("") : '<span class="muted">no models loaded</span>'}</div></div>`).join("")
     : `<div class="empty"><strong>No local runtimes discovered.</strong><span>Start Ollama, llama.cpp, LM Studio or vLLM and reopen this tab.</span></div>`;
   const h = d.hardware;
   const used = h.memTotalBytes && h.memFreeBytes !== undefined ? h.memTotalBytes - h.memFreeBytes : 0;
@@ -768,16 +767,17 @@ async function pollHw() {
     $("#hw-meter").style.setProperty("--v", 0);
   }
 }
-// Appearance: skin, accent, wallpaper (System tab). Applied before the ambient layer starts.
-const SKIN_DOTS = { obsidian: "oklch(80% 0.115 84)", graphite: "oklch(74% 0.13 252)", forest: "oklch(84% 0.11 118)", ember: "oklch(76% 0.14 58)" };
+// Appearance: theme, accent, wallpaper (System tab). Applied before first paint of data.
+const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
+// Accent presets: hues only; lightness and chroma come from the theme's accent formula.
+const SWATCHES = [["#3b6ff5", "Cobalt"], ["#0f9d7a", "Teal"], ["#c2410c", "Rust"], ["#b45309", "Amber"], ["#be185d", "Rose"], ["#525252", "Graphite"]];
 let wallUrl = null;
 async function applyAppearance(ap) {
   const r = document.documentElement;
-  r.dataset.skin = ap.skin;
-  if (ap.accent) {
-    r.dataset.accent = "";
-    r.style.setProperty("--user-accent", ap.accent);
-  } else delete r.dataset.accent;
+  if (ap.theme === "system") delete r.dataset.theme;
+  else r.dataset.theme = ap.theme;
+  if (ap.accent) r.style.setProperty("--accent-base", ap.accent);
+  else r.style.removeProperty("--accent-base");
   r.style.setProperty("--wall-opacity", ap.wallpaper.opacity);
   r.style.setProperty("--wall-blur", `${ap.wallpaper.blur}px`);
   r.style.setProperty("--wall-dim", ap.wallpaper.dim);
@@ -798,9 +798,8 @@ async function applyAppearance(ap) {
   renderAppearance(ap);
 }
 function renderAppearance(ap) {
-  $("#skins").innerHTML = Object.entries(SKIN_DOTS)
-    .map(([k, c]) => `<button type="button" class="skin-chip" data-skin="${k}" aria-pressed="${k === ap.skin}"><span class="skin-dot" style="--dot:${c}"></span>${esc(k[0].toUpperCase() + k.slice(1))}</button>`)
-    .join("");
+  $("#themes").innerHTML = THEMES.map(([k, l]) => `<button type="button" role="radio" data-theme="${k}" aria-checked="${k === ap.theme}">${l}</button>`).join("");
+  $("#swatches").innerHTML = SWATCHES.map(([c, l]) => `<button type="button" role="radio" class="swatch" data-accent="${c}" aria-checked="${c === ap.accent}" aria-label="${l}" title="${l}" style="--sw:${c}"></button>`).join("");
   $("#ap-accent").value = ap.accent ?? rgbHex(accent.gold);
   for (const k of ["opacity", "blur", "dim"]) {
     $(`#ap-${k}`).value = ap.wallpaper[k];
@@ -812,9 +811,13 @@ function renderAppearance(ap) {
 }
 const rgbHex = (c) => `#${c.map((x) => x.toString(16).padStart(2, "0")).join("")}`;
 const saveAppearance = async (patch) => applyAppearance(await api("/api/appearance", patch, true)).catch((e) => ($("#ap-msg").textContent = e.message));
-$("#skins").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-skin]");
-  if (b) saveAppearance({ skin: b.dataset.skin });
+$("#themes").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-theme]");
+  if (b) saveAppearance({ theme: b.dataset.theme });
+});
+$("#swatches").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-accent]");
+  if (b) saveAppearance({ accent: b.dataset.accent });
 });
 $("#ap-accent").addEventListener("change", (e) => saveAppearance({ accent: e.target.value }));
 $("#ap-accent-reset").addEventListener("click", () => saveAppearance({ accent: null }));
@@ -844,6 +847,63 @@ $("#ap-remove").addEventListener("click", async () => {
   if (res.ok) applyAppearance(await res.json());
 });
 await api("/api/appearance", undefined, true).then(applyAppearance).catch(() => {});
+
+// Command palette (Cmd/Ctrl+K): pages and actions, filtered by substring, keyboard-driven.
+const commands = () => [
+  ...$$('[role="tab"][data-tab]').map((t) => ({ label: `Go to ${t.textContent.trim()}`, hint: "page", run: () => select(t.dataset.tab, { focus: true }) })),
+  { label: "New session", hint: "console", run: () => (select("chat"), $("#chat-new").click(), $("#chat-input").focus()) },
+  { label: "Focus task input", hint: "console", run: () => (select("chat"), $("#chat-input").focus()) },
+  ...THEMES.map(([k, l]) => ({ label: `Theme: ${l}`, hint: "appearance", run: () => saveAppearance({ theme: k }) })),
+  ...SWATCHES.map(([c, l]) => ({ label: `Accent: ${l}`, hint: "appearance", run: () => saveAppearance({ accent: c }) })),
+];
+let cmdSel = 0;
+function renderCmdk() {
+  const q = $("#cmdk-q").value.trim().toLowerCase();
+  const list = commands().filter((c) => !q || c.label.toLowerCase().includes(q));
+  cmdSel = Math.min(cmdSel, Math.max(0, list.length - 1));
+  $("#cmdk-list").innerHTML = list.length
+    ? list.map((c, i) => `<li role="option" id="cmdk-${i}" data-i="${i}" aria-selected="${i === cmdSel}"><span>${esc(c.label)}</span><span class="cmdk-hint">${esc(c.hint)}</span></li>`).join("")
+    : `<li class="cmdk-empty">No matching command</li>`;
+  $("#cmdk-q").setAttribute("aria-activedescendant", list.length ? `cmdk-${cmdSel}` : "");
+  return list;
+}
+function openCmdk() {
+  $("#cmdk-q").value = "";
+  cmdSel = 0;
+  renderCmdk();
+  $("#cmdk").showModal();
+  $("#cmdk-q").focus();
+}
+function runCmd(i) {
+  const c = renderCmdk()[i];
+  $("#cmdk").close();
+  c?.run();
+}
+addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    $("#cmdk").open ? $("#cmdk").close() : openCmdk();
+  }
+});
+$("#cmdk-open").addEventListener("click", openCmdk);
+$("#cmdk-q").addEventListener("input", () => ((cmdSel = 0), renderCmdk()));
+$("#cmdk-q").addEventListener("keydown", (e) => {
+  const n = renderCmdk().length;
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    cmdSel = n ? (cmdSel + (e.key === "ArrowDown" ? 1 : n - 1)) % n : 0;
+    renderCmdk();
+    $(`#cmdk-${cmdSel}`)?.scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    runCmd(cmdSel);
+  }
+});
+$("#cmdk-list").addEventListener("click", (e) => {
+  const li = e.target.closest("[data-i]");
+  if (li) runCmd(Number(li.dataset.i));
+});
+$("#cmdk").addEventListener("click", (e) => e.target === $("#cmdk") && $("#cmdk").close());
 
 fx.init();
 pollHw();

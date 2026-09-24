@@ -4,23 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="ah-token" content="__AH_TOKEN__" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#0b0a09" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <title>ah · Aletheia Harness</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f3dfa6'/%3E%3Cstop offset='.5' stop-color='%23d4ad5a'/%3E%3Cstop offset='1' stop-color='%23946f2a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='%230b0a09'/%3E%3Crect x='.5' y='.5' width='31' height='31' rx='7.5' fill='none' stroke='url(%23g)' stroke-opacity='.5'/%3E%3Ctext x='16' y='21.5' font-family='monospace' font-weight='700' font-size='14' text-anchor='middle' fill='url(%23g)'%3Eah%3C/text%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111'/%3E%3Ctext x='16' y='21' font-family='ui-monospace,monospace' font-weight='600' font-size='14' text-anchor='middle' fill='%23fff'%3Eah%3C/text%3E%3C/svg%3E" />
     <link rel="preload" href="/fonts/geist.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body data-run="idle">
-    <canvas id="fx-field" aria-hidden="true"></canvas>
     <div class="progress" aria-hidden="true"></div>
-    <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
-      <defs>
-        <radialGradient id="core-glow"><stop offset="0" style="stop-color: var(--gold-hi); stop-opacity: .9" /><stop offset=".5" style="stop-color: var(--gold); stop-opacity: .35" /><stop offset="1" style="stop-color: var(--gold); stop-opacity: 0" /></radialGradient>
-        <linearGradient id="core-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--gold-hi)" /><stop offset=".4" style="stop-color: var(--gold)" /><stop offset=".75" style="stop-color: var(--gold-lo)" /><stop offset="1" style="stop-color: var(--gold)" /></linearGradient>
-        <linearGradient id="core-stroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--gold-hi)" /><stop offset=".5" style="stop-color: var(--gold); stop-opacity: .25" /><stop offset="1" style="stop-color: var(--gold-hi)" /></linearGradient>
-      </defs>
-    </svg>
     <div class="wallpaper" aria-hidden="true"></div>
     <a class="skip" href="#main">Skip to content</a>
     <div class="shell">
@@ -29,6 +22,7 @@
           <span class="mark" aria-hidden="true">ah</span>
           <span class="brand-text"><strong>Aletheia</strong><span>Harness</span></span>
         </div>
+        <button type="button" class="cmdk-trigger" id="cmdk-open" aria-keyshortcuts="Meta+K Control+K"><span>Search or jump to</span><kbd>⌘K</kbd></button>
         <nav aria-label="Sections">
           <div class="tabs" role="tablist" aria-orientation="vertical">
             <span class="tab-ink" aria-hidden="true"></span>
@@ -82,20 +76,8 @@
 
             <aside class="instrument" aria-labelledby="h-inst">
               <div class="inst-head">
-                <div class="core core-sm" aria-hidden="true">
-            <svg viewBox="0 0 200 200">
-              <circle class="c-halo" cx="100" cy="100" r="98" />
-              <g class="c-ring c-r1"><circle cx="100" cy="100" r="90" /></g>
-              <g class="c-ring c-r2"><circle cx="100" cy="100" r="74" /><circle class="c-sat" cx="174" cy="100" r="3.2" /></g>
-              <g class="c-tilt"><g class="c-ring c-r3"><ellipse cx="100" cy="100" rx="62" ry="24" /><circle class="c-sat" cx="162" cy="100" r="2.6" /></g></g>
-              <g class="c-tilt c-tilt-b"><g class="c-ring c-r4"><ellipse cx="100" cy="100" rx="56" ry="18" /><circle class="c-sat" cx="44" cy="100" r="2.2" /></g></g>
-              <circle class="c-glow" cx="100" cy="100" r="40" fill="url(#core-glow)" />
-              <circle class="c-nucleus" cx="100" cy="100" r="24" fill="url(#core-metal)" />
-              <text class="c-mark" x="100" y="106.5" text-anchor="middle">ah</text>
-            </svg>
-          </div>
                 <div>
-                  <h2 id="h-inst" class="inst-title">Harness core</h2>
+                  <h2 id="h-inst" class="inst-title">Run</h2>
                   <div class="inst-state"><span id="run-state" class="state" data-state="idle">idle</span></div>
                 </div>
               </div>
@@ -260,13 +242,19 @@
             <h2>Appearance</h2>
             <div class="appearance">
               <div>
-                <p class="field-row">Skin</p>
-                <div class="skins" id="skins" role="group" aria-label="Skin"></div>
-                <div class="field-row">
-                  <label for="ap-accent">Accent</label>
-                  <input type="color" id="ap-accent" />
-                  <button class="ghost" id="ap-accent-reset" type="button">Use skin accent</button>
-                </div>
+                <fieldset class="seg-field">
+                  <legend>Theme</legend>
+                  <div class="seg" id="themes" role="radiogroup" aria-label="Theme"></div>
+                </fieldset>
+                <fieldset class="seg-field">
+                  <legend>Accent</legend>
+                  <div class="swatches" id="swatches" role="radiogroup" aria-label="Accent colour"></div>
+                  <div class="field-row">
+                    <label for="ap-accent">Custom</label>
+                    <input type="color" id="ap-accent" />
+                    <button class="ghost sm" id="ap-accent-reset" type="button">Default</button>
+                  </div>
+                </fieldset>
               </div>
               <div>
                 <div class="wall-preview" id="ap-preview">No wallpaper</div>
@@ -287,20 +275,9 @@
     </div>
     <template id="chat-empty">
       <div class="welcome">
-        <div class="core core-lg" aria-hidden="true">
-            <svg viewBox="0 0 200 200">
-              <circle class="c-halo" cx="100" cy="100" r="98" />
-              <g class="c-ring c-r1"><circle cx="100" cy="100" r="90" /></g>
-              <g class="c-ring c-r2"><circle cx="100" cy="100" r="74" /><circle class="c-sat" cx="174" cy="100" r="3.2" /></g>
-              <g class="c-tilt"><g class="c-ring c-r3"><ellipse cx="100" cy="100" rx="62" ry="24" /><circle class="c-sat" cx="162" cy="100" r="2.6" /></g></g>
-              <g class="c-tilt c-tilt-b"><g class="c-ring c-r4"><ellipse cx="100" cy="100" rx="56" ry="18" /><circle class="c-sat" cx="44" cy="100" r="2.2" /></g></g>
-              <circle class="c-glow" cx="100" cy="100" r="40" fill="url(#core-glow)" />
-              <circle class="c-nucleus" cx="100" cy="100" r="24" fill="url(#core-metal)" />
-              <text class="c-mark" x="100" y="106.5" text-anchor="middle">ah</text>
-            </svg>
-          </div>
-        <h2 class="welcome-title">Point the harness at <span class="shine">your workspace.</span></h2>
-        <p class="welcome-sub">Local models first. Every turn, token and tool call is traced live in the instrument panel.</p>
+        
+        <h2 class="welcome-title">What should the agent do in this workspace?</h2>
+        <p class="welcome-sub">Runs locally. Every turn, token and tool call is traced in the panel on the right.</p>
         <ul class="suggest" aria-label="Suggested tasks">
           <li><button type="button" class="chip">Map this repository and summarise its architecture</button></li>
           <li><button type="button" class="chip">Find the failing test and fix it</button></li>
@@ -308,6 +285,11 @@
         </ul>
       </div>
     </template>
+    <dialog id="cmdk" class="cmdk" aria-label="Command palette">
+      <input id="cmdk-q" type="text" placeholder="Type a command or page" autocomplete="off" spellcheck="false" aria-controls="cmdk-list" />
+      <ul id="cmdk-list" role="listbox"></ul>
+      <footer class="cmdk-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> run</span><span><kbd>Esc</kbd> close</span></footer>
+    </dialog>
     <script type="module" src="/app.js"></script>
   </body>
 </html>
