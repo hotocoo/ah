@@ -202,6 +202,10 @@ describe("external harness (--agent-cmd)", () => {
     expect(fixed.results[0]!.changedFiles).toEqual(["src/paginate.ts"]);
     const noop = await run("true");
     expect(noop.results[0]!).toMatchObject({ passed: false, failReason: "grader" });
+    expect(noop.results[0]!.measured).toBe(false);
+    // Stats read from the harness's own records after the trial.
+    const withStats = await runBench({ env, model: "external/test", tasks, trials: 1, outDir: out, benchRunId: "t", agentCmd: "true", agentStats: `echo noise; echo '{"turns":7,"toolCalls":9,"toolErrors":1,"inputTokens":1200,"outputTokens":80}'` });
+    expect(withStats.results[0]!).toMatchObject({ measured: true, turns: 7, toolCalls: 9, toolErrors: 1, usage: { inputTokens: 1200, outputTokens: 80 } });
     rmSync(out, { recursive: true, force: true });
   });
 });

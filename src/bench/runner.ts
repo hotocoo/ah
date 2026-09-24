@@ -37,6 +37,8 @@ export interface TrialResult {
   gpuUtilAvg: number | null;
   energyJ: number | null;
   contextWindow: number;
+  // False for an external harness whose turns/tools/tokens were not reported (shown as n/a).
+  measured?: boolean;
   generation?: { temperature?: number; sampling?: Record<string, number | undefined>; templateKwargs?: Record<string, unknown>; source: string };
   toolProtocol?: string;
   error?: string;
@@ -54,6 +56,9 @@ export interface BenchRunOptions {
   // External harness command run in the sandbox instead of ah's agent (head-to-head).
   // {prompt} is replaced by the shell-quoted task prompt, {dir} by the sandbox path.
   agentCmd?: string;
+  // Run after each external trial, in the sandbox; its last stdout line is JSON
+  // {turns, toolCalls, toolErrors, inputTokens, outputTokens} read from the harness's own records.
+  agentStats?: string;
   onTrial?: (r: TrialResult, t: BenchTask) => void;
   onEvent?: AgentEventHandler;
   signal?: AbortSignal;
@@ -200,6 +205,7 @@ async function runExternalTrial(o: BenchRunOptions, cmd: string, task: BenchTask
   const g = await sh(task.grader.cmd, dir, task.grader.timeoutMs);
   const passed = g.code === 0 && !g.timedOut;
   const outcome = a.timedOut ? "aborted" : a.code === 0 ? "completed" : "error";
+  const stats = o.agentStats ? await externalStats(o.agentStats, dir) : null;
   if (!o.keepWorkdirs && passed) rmSync(dir, { recursive: true, force: true });
   return {
     ...emptyResult(task.id, trial, ""),
@@ -207,6 +213,8 @@ async function runExternalTrial(o: BenchRunOptions, cmd: string, task: BenchTask
     failReason: passed ? null : a.timedOut ? "timeout" : a.code === 0 ? "grader" : "agent_error",
     score: passed ? 1 : parseScore(`${g.stdout}\n${g.stderr}`),
     outcome,
+    ...(stats ? { turns: stats.turns ?? 0, toolCalls: stats.toolCalls ?? 0, toolErrors: stats.toolErrors ?? 0, usage: { inputTokens: stats.inputTokens ?? 0, outputTokens: stats.outputTokens ?? 0, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 } } : {}),
+    measured: Boolean(stats),
     wallMs: a.durationMs,
     graderMs: g.durationMs,
     graderTail: `${g.stdout}\n${g.stderr}`.trim().split("\n").slice(-12).join("\n"),
@@ -214,6 +222,25 @@ async function runExternalTrial(o: BenchRunOptions, cmd: string, task: BenchTask
     diffStat: diff.stdout.trim(),
     ...(outcome === "error" ? { error: `exit ${a.code}: ${a.stderr.trim().split("\n").slice(-3).join(" | ")}` } : {}),
   };
+}
+
+interface ExternalStats {
+  turns?: number;
+  toolCalls?: number;
+  toolErrors?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
+async function externalStats(cmd: string, dir: string): Promise<ExternalStats | null> {
+  const r = await exec(cmd.replaceAll("{dir}", shellQuote(dir)), { root: dir }, 30_000);
+  const line = r.stdout.trim().split("\n").at(-1) ?? "";
+  try {
+    const j = JSON.parse(line) as ExternalStats;
+    return j && typeof j === "object" ? j : null;
+  } catch {
+    return null;
+  }
 }
 
 // Last "AH_SCORE <passed> <total>" line in grader output.

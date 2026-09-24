@@ -59,13 +59,15 @@ toolsets:
   - hermes-cli
 EOF
   bun src/cli/main.ts bench run --label hermes --trials "$TRIALS" --out "$OUT/hermes" ${PASS[@]+"${PASS[@]}"} \
-    --agent-cmd "cd {dir} && TERMINAL_CWD={dir} HERMES_HOME='$PWD/$HH' hermes -z {prompt} --yolo" 2>&1 | tee "$OUT/hermes.log"
+    --agent-cmd "cd {dir} && TERMINAL_CWD={dir} HERMES_HOME='$PWD/$HH' hermes -z {prompt} --yolo" \
+    --agent-stats "python3 '$PWD/scripts/agent-stats.py' hermes '$PWD/$HH' {dir}" 2>&1 | tee "$OUT/hermes.log"
 fi
 
 # dsh: headless profile with the user's own settings (its default model must be the same server's model).
 if want dsh; then
   bun src/cli/main.ts bench run --label dsh --trials "$TRIALS" --out "$OUT/dsh" ${PASS[@]+"${PASS[@]}"} \
-    --agent-cmd "cd {dir} && NODE_OPTIONS='--import file://$HOME/.dsh/net-timeouts.mjs' dsh --profile headless {prompt}" 2>&1 | tee "$OUT/dsh.log"
+    --agent-cmd "cd {dir} && NODE_OPTIONS='--import file://$HOME/.dsh/net-timeouts.mjs' dsh --profile headless {prompt}" \
+    --agent-stats "python3 '$PWD/scripts/agent-stats.py' dsh {dir}" 2>&1 | tee "$OUT/dsh.log"
 fi
 
 for b in hermes dsh; do
