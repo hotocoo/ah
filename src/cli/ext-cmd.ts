@@ -1,10 +1,9 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { AH_HOME, loadConfig } from "../config.ts";
 import { McpManager } from "../mcp/client.ts";
 import { MemoryStore } from "../memory/store.ts";
-import { discoverExtensions } from "../plugins/index.ts";
+import { discoverExtensions, setTrusted } from "../plugins/index.ts";
 import { bold, cyan, dim, green, red, yellow } from "./render.ts";
 
 const out = (s: string) => process.stdout.write(`${s}\n`);
@@ -13,12 +12,7 @@ const out = (s: string) => process.stdout.write(`${s}\n`);
 export async function cmdTrust(argv: string[]): Promise<number> {
   const { values: v, positionals } = parseArgs({ args: argv, allowPositionals: true, options: { remove: { type: "boolean" } } });
   const dir = resolve(positionals[0] ?? process.cwd());
-  const path = join(AH_HOME, "config.json");
-  const cfg = existsSync(path) ? (JSON.parse(readFileSync(path, "utf8")) as { trustedWorkspaces?: string[] }) : {};
-  const list = new Set((cfg.trustedWorkspaces ?? []).map((d) => resolve(d)));
-  if (v.remove) list.delete(dir);
-  else list.add(dir);
-  writeFileSync(path, `${JSON.stringify({ ...cfg, trustedWorkspaces: [...list].sort() }, null, 2)}\n`);
+  setTrusted(dir, !v.remove);
   out(v.remove ? `${yellow("untrusted")} ${dir}` : `${green("trusted")} ${dir} ${dim("(its .mcp.json, .ah/config.json mcpServers, .ah/plugins and .ah/skills will load)")}`);
   return 0;
 }

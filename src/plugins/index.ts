@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { AH_HOME } from "../config.ts";
 import type { McpServerConfig } from "../mcp/client.ts";
@@ -64,6 +64,16 @@ export function userConfig(home = AH_HOME): { mcpServers?: Record<string, McpSer
 export function isTrusted(root: string, home = AH_HOME): boolean {
   const r = resolve(root);
   return (userConfig(home).trustedWorkspaces ?? []).some((t) => r === resolve(t) || r.startsWith(`${resolve(t)}/`));
+}
+
+// Adds (or removes) a workspace in ~/.ah/config.json "trustedWorkspaces".
+export function setTrusted(root: string, trusted: boolean, home = AH_HOME): void {
+  const path = join(home, "config.json");
+  const cfg = (readJson<Record<string, unknown>>(path) ?? {}) as { trustedWorkspaces?: string[] };
+  const list = new Set((cfg.trustedWorkspaces ?? []).map((d) => resolve(d)));
+  if (trusted) list.add(resolve(root));
+  else list.delete(resolve(root));
+  writeFileSync(path, `${JSON.stringify({ ...cfg, trustedWorkspaces: [...list].sort() }, null, 2)}\n`);
 }
 
 // Minimal frontmatter reader: `key: value` lines between leading --- fences.

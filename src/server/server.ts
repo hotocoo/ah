@@ -3,7 +3,9 @@ import { randomBytes } from "node:crypto";
 import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentEvent } from "../agent/events.ts";
-import { autoSelectModel, buildEnvironment, createSession, resolveModelContext, type Environment, type Session } from "../app/session.ts";
+import { autoSelectModel, buildEnvironment, createSession, loadExtensions, resolveModelContext, type Environment, type Session } from "../app/session.ts";
+import { isTrusted, setTrusted } from "../plugins/index.ts";
+import { discoverBackend } from "../tools/computer.ts";
 import { parseModelRef } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
 import { compileScene, designScene } from "../media/model3d.ts";
@@ -34,7 +36,18 @@ const EXAMPLES_DIR = assetDir("examples/bench") ?? "";
 interface ChatSession {
   session: Session;
   busy: boolean;
+  alwaysAllow: Set<string>;
 }
+
+// A tool call waiting for the user in the web UI.
+interface PendingApproval {
+  sessionId: string;
+  tool: string;
+  resolve: (allow: boolean) => void;
+  timer: Timer;
+}
+const APPROVAL_TIMEOUT_MS = 10 * 60_000;
+type ApprovalEvent = { type: "approval_request"; id: string; tool: string; summary: string; input: string };
 
 // Every API call must carry the per-process token, and the Host header must be local:
 // this blocks cross-site requests and DNS rebinding from driving a tool-running agent.
@@ -73,6 +86,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   const env = opts.env ?? (await buildEnvironment({ cwd: opts.root }));
   const token = opts.token ?? randomBytes(24).toString("hex");
   const chats = new Map<string, ChatSession>();
+  const approvals = new Map<string, PendingApproval>();
   const db = () => {
     if (!env.telemetry.store) throw new Error("telemetry disabled");
     return env.telemetry.store.db;
@@ -137,6 +151,12 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return json(listBenchRuns(env));
           case "/api/chat":
             return chat(req);
+          case "/api/approve":
+            return approve(req);
+          case "/api/memory":
+            return memory(req, q);
+          case "/api/extensions":
+            return extensions(req);
           case "/api/image":
             return image(req);
           case "/api/3d":
@@ -169,7 +189,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     const encoder = new TextEncoder();
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const stream = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
-    const send = (e: AgentEvent | { type: "session"; sessionId: string; model: string; contextWindow: number }) => {
+    const send = (e: AgentEvent | ApprovalEvent | { type: "session"; sessionId: string; model: string; contextWindow: number }) => {
       try {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
       } catch {
@@ -179,11 +199,29 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     const ac = new AbortController();
     req.signal.addEventListener("abort", () => ac.abort());
     let listener: ((e: AgentEvent) => void) | null = send;
+    // Approvals travel to the page as SSE events and come back through /api/approve.
+    let approvalSink: ((e: ApprovalEvent) => void) | null = send;
+    const approveFn = (tool: string, input: Record<string, unknown>, summary: string) =>
+      new Promise<boolean>((resolve) => {
+        const cs = chats.get(id!);
+        if (cs?.alwaysAllow.has(tool)) return resolve(true);
+        if (!approvalSink) return resolve(false);
+        const aid = randomBytes(8).toString("hex");
+        const timer = setTimeout(() => {
+          approvals.delete(aid);
+          resolve(false);
+        }, APPROVAL_TIMEOUT_MS);
+        approvals.set(aid, { sessionId: id!, tool, resolve, timer });
+        approvalSink({ type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 2000) });
+      });
     if (!chatSession) {
-      const s = await createSession(env, { model: body.model, root: opts.root, mode: "auto", onEvent: (e) => listener?.(e), signal: ac.signal });
+      const s = await createSession(env, { model: body.model, root: opts.root, mode: "auto", approve: (t, i, sm) => approveFn(t, i, sm), onEvent: (e) => listener?.(e), signal: ac.signal });
       id = s.agent.sessionId;
-      chatSession = { session: s, busy: false };
+      chatSession = { session: s, busy: false, alwaysAllow: new Set() };
       chats.set(id, chatSession);
+    } else {
+      // Later runs reuse the session; route its approvals to this request's stream.
+      chatSession.session.agent.setApprover((t, i, sm) => approveFn(t, i, sm));
     }
     const cs = chatSession;
     cs.busy = true;
@@ -191,9 +229,62 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     void cs.session.agent.run(body.prompt).finally(() => {
       cs.busy = false;
       listener = null;
+      approvalSink = null;
+      for (const [aid, a] of approvals) {
+        if (a.sessionId !== id) continue;
+        clearTimeout(a.timer);
+        approvals.delete(aid);
+        a.resolve(false);
+      }
       controller.close();
     });
     return new Response(stream, { headers: { "content-type": "text/event-stream", "cache-control": "no-store" } });
+  }
+
+  async function approve(req: Request): Promise<Response> {
+    if (req.method !== "POST") return json({ error: "POST required" }, 405);
+    const b = (await req.json()) as { id?: string; allow?: boolean; always?: boolean };
+    const a = b.id ? approvals.get(b.id) : undefined;
+    if (!a) return json({ error: "no such pending approval" }, 404);
+    approvals.delete(b.id!);
+    clearTimeout(a.timer);
+    if (b.allow && b.always) chats.get(a.sessionId)?.alwaysAllow.add(a.tool);
+    a.resolve(Boolean(b.allow));
+    return json({ ok: true });
+  }
+
+  async function memory(req: Request, q: URLSearchParams): Promise<Response> {
+    if (!env.memory) return json({ enabled: false, memories: [] });
+    const scopes = [opts.root, "global"];
+    if (req.method === "DELETE") return json({ ok: env.memory.delete(Number(q.get("id"))) });
+    if (req.method === "POST") {
+      const b = (await req.json()) as { text?: string; global?: boolean };
+      if (!b.text?.trim()) return json({ error: "text required" }, 400);
+      return json({ id: env.memory.save({ scope: b.global ? "global" : opts.root, kind: "note", text: b.text }) });
+    }
+    const text = q.get("q");
+    return json({ enabled: true, memories: text ? env.memory.search(text, scopes, 50, 0) : env.memory.list(scopes, 200) });
+  }
+
+  async function extensions(req: Request): Promise<Response> {
+    if (req.method === "POST") {
+      // Trusting from the page is the same as `ah trust`: the workspace's own servers and plugins may load.
+      setTrusted(opts.root, true, env.cfg.dataDir);
+      (await env.extensions.get(opts.root))?.mcp.close();
+      env.extensions.delete(opts.root);
+    }
+    const x = await loadExtensions(env, opts.root);
+    const backend = discoverBackend();
+    return json({
+      trusted: isTrusted(opts.root, env.cfg.dataDir),
+      mcp: x.mcp.status(),
+      plugins: x.ext.plugins.map((p) => ({ name: p.manifest.name, description: p.manifest.description, source: p.source })),
+      skills: x.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source })),
+      skipped: x.ext.skipped,
+      errors: x.ext.errors,
+      computer: { mode: env.cfg.computerUse, backend: backend?.name ?? null },
+      evidenceGate: env.cfg.evidenceGate,
+    });
   }
 
   async function image(req: Request): Promise<Response> {

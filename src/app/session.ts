@@ -47,7 +47,7 @@ export function loadExtensions(env: Environment, root: string): Promise<LoadedEx
   let p = env.extensions.get(root);
   if (!p) {
     p = (async () => {
-      const ext = discoverExtensions(root);
+      const ext = discoverExtensions(root, env.cfg.dataDir);
       const mcp = new McpManager(ext.mcpServers);
       const [mcpTools, pluginTools] = await Promise.all([mcp.tools(), loadPluginTools(ext)]);
       const tools = [...mcpTools, ...pluginTools, ...(ext.skills.length ? [skillViewTool(ext.skills)] : [])];

@@ -88,6 +88,11 @@ export class Agent {
   // Set when the server drops native tool calls; persists for the session.
   private textProtocolFallback = false;
 
+  // Approvals go wherever the current caller listens (the web app has one stream per run).
+  setApprover(fn: AgentOptions["approve"]) {
+    this.o.approve = fn;
+  }
+
   private emit(e: AgentEvent) {
     this.o.onEvent?.(e);
   }

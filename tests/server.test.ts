@@ -90,3 +90,27 @@ describe("web app API", () => {
     expect(runs[0]!.outcome).toBe("completed");
   });
 });
+
+describe("memory, extensions and approvals API", () => {
+  const h = { "x-ah-token": "t0k", "content-type": "application/json" };
+  test("memory CRUD", async () => {
+    const add = await (await fetch(`${base}/api/memory`, { method: "POST", headers: h, body: JSON.stringify({ text: "use bun test here" }) })).json();
+    expect(add.id).toBeGreaterThan(0);
+    const found = await (await fetch(`${base}/api/memory?q=bun`, { headers: h })).json();
+    expect(found.memories[0].text).toBe("use bun test here");
+    expect((await (await fetch(`${base}/api/memory?id=${add.id}`, { method: "DELETE", headers: h })).json()).ok).toBe(true);
+  });
+
+  test("extensions status and trust", async () => {
+    const x = await (await fetch(`${base}/api/extensions`, { headers: h })).json();
+    expect(x.trusted).toBe(false);
+    expect(x.mcp).toEqual([]);
+    expect(["off", "ask", "auto"]).toContain(x.computer.mode);
+    const t = await (await fetch(`${base}/api/extensions`, { method: "POST", headers: h })).json();
+    expect(t.trusted).toBe(true);
+  });
+
+  test("unknown approval id is 404", async () => {
+    expect((await fetch(`${base}/api/approve`, { method: "POST", headers: h, body: JSON.stringify({ id: "nope", allow: true }) })).status).toBe(404);
+  });
+});
