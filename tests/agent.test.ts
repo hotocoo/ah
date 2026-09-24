@@ -272,3 +272,25 @@ describe("presets", () => {
     await expect(createSession(env, { root, preset: "nope" })).rejects.toThrow(/unknown preset "nope"; defined: review/);
   });
 });
+
+describe("tool-error coaching", () => {
+  test("only error classes recurring across runs of the same model become hints", async () => {
+    const { Database } = await import("bun:sqlite");
+    const { coachingHints, classify } = await import("../src/agent/coaching.ts");
+    const db = new Database(":memory:");
+    db.run("CREATE TABLE runs (run_id TEXT, provider TEXT, model TEXT, started_at INTEGER)");
+    db.run("CREATE TABLE events (run_id TEXT, seq INTEGER, type TEXT, t INTEGER, data TEXT)");
+    const ev = (run: string, preview: string) => db.run("INSERT INTO events VALUES (?, 0, 'tool_end', 0, ?)", [run, JSON.stringify({ preview })]);
+    for (const [i, m] of ["a", "a", "b"].entries()) db.run("INSERT INTO runs VALUES (?, 'p', ?, ?)", [`r${i}`, m, i]);
+    ev("r0", "old_string not found; re-read the file");
+    ev("r0", "old_string not found; re-read the file");
+    ev("r1", "old_string not found; re-read the file");
+    ev("r0", "path escapes workspace: /tmp/x"); // 3 times in one run only: not a pattern
+    ev("r0", "path escapes workspace: /tmp/y");
+    ev("r0", "path escapes workspace: /tmp/z");
+    ev("r2", "old_string not found; re-read the file"); // another model
+    expect(coachingHints(db, "p", "a")).toEqual(["When an edit misses, re-read the file first and copy old_string from the fresh output."]);
+    expect(coachingHints(db, "p", "b")).toEqual([]);
+    expect(classify("edited a.ts (old_string matched after removing copied line numbers or '>' markers; do not include them)")).toBe("copied-prefix");
+  });
+});

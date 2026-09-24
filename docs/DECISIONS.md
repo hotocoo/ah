@@ -178,3 +178,28 @@ Two more robustness features came out of these runs: project facts in the system
 
 - **Found by:** the first horizon trial (`py-optimal-scheduler`, MiMo Q8_0): after 4 turns and 24 minutes a reply hit the output cap while the model was still reasoning, with no tool call, and the loop ended the whole run as `max_tokens`.
 - **Chosen:** a reply cut off at the output cap without a tool call gets a continuation message asking for a short concrete next step (at most twice per run, part of `recoveries`). Truncated tool inputs keep their existing handling (retry with a doubled budget).
+
+## D33. Edit and path recovery from measured tool errors
+
+- **Found by:** the telemetry of the 2026-09-23 MiMo-9B core run. 15 of 81 `edit_file` calls failed, against 2 of 44 in the baseline. The causes: `old_string` copied with read_file's `N\t` line prefixes or a stray `>` marker, repeat edits of changes already applied, and paths like `work/<task>/1/file` that repeat the workspace root shown in the prompt.
+- **Chosen:** `confine()` drops leading path segments that repeat the root's trailing segments, but only when the root has no such directory. An edit miss is retried once with the copied prefixes stripped (strategy `prefix`, which the result reports to the model). A miss whose `new_string` is already in the file says so. All of this is off with `tolerantEdits: false`.
+
+## D34. MCP revisions and deferred MCP tools
+
+- **Found by:** installing context7. ah put `io.modelcontextprotocol/protocolVersion` into `_meta` on a 2025-11-25 session. Servers that speak both revisions read that key as a 2026-07-28 stateless envelope and reject the request because `clientCapabilities` is missing.
+- **Chosen:** legacy sessions send no envelope. A server that does not implement `initialize` (-32601) gets the full 2026-07-28 envelope (version, clientInfo, clientCapabilities) and the matching header.
+- **Deferred tools:** four common servers (context7, deepwiki, mcp-server-git, @playwright/mcp) have 42 tools, whose schemas cost 6,329 tokens with the Qwen3.8 tokenizer. That is six times ah's own tool set (1,017). `mcpTools: auto` replaces them with one `mcp` tool (the tool name is an enum) and a one-line index, 1,348 tokens in total. Bad arguments return the schema, so a model pays only for the tools it uses. Verified end to end: the local 27B used context7 through it, and its first bad call recovered from the returned schema.
+
+## D35. Head-to-head through `--agent-cmd`
+
+- **Chosen:** other harnesses run as a shell command in the same sandbox, under the same time limit and hidden grader. ah's runner, statistics and reports are reused; the runner contains no harness-specific code. `scripts/h2h.sh` wires Hermes (isolated `HERMES_HOME`, pointed at the same server) and dsh (headless profile).
+- **Constraint:** Claude Code's permission classifier does not let an assistant session start `hermes --yolo` / dsh full-access agents, so the user launches the script.
+
+## D36. Appearance and presets
+
+- **Chosen:** one `--accent` variable drives every accent-derived colour through CSS relative colour. Four skins are surface presets. The uploaded wallpaper is one fixed file with a size cap, a magic-byte check and token auth, and the page shows it from a `blob:` URL. Presets are user-defined bundles (model, mode, turns, instructions); none are built in, per the no-hardcoding rule. The console never takes its permission mode from a preset.
+
+## D37. Tool-error coaching (invented)
+
+- **Gap:** harnesses reset what a model is told at every session. Hermes has in-session loop guardrails (`tool_loop_guardrails` in its config) but no cross-session memory of how a given model misuses tools. dsh's CLI bundle had no match for similar patterns.
+- **Chosen:** ah already records every tool result per model. Error classes that recur (3 or more times across 2 or more of the model's last 40 runs) become up to three one-line hints in its system prompt. A model with a clean record pays zero tokens. On current telemetry, MiMo-9B gets 3 hints and Qwen3.8-27B gets none. This follows the memory switch, so bench trials stay independent. Measuring the gain needs an A/B run with memory on; that is not done yet.

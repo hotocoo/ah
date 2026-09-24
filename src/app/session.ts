@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { Agent, type AgentOptions } from "../agent/loop.ts";
 import { buildSystemPrompt } from "../agent/prompt.ts";
 import { deferMcpTools, shouldDefer } from "../mcp/deferred.ts";
+import { coachingHints, renderCoaching } from "../agent/coaching.ts";
 import { projectFacts, renderProjectFacts } from "../agent/project.ts";
 import { getPreset, loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
@@ -248,7 +249,10 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
   const project = projectInfo ? renderProjectFacts(projectInfo) : undefined;
   const testCommand = projectInfo ? projectInfo.testCommand : detectTestCommand(o.root);
   const memory = f.memory !== false && env.memory ? { store: env.memory, scopes: [o.root, "global"] } : undefined;
-  const extensionsPrompt = [loaded?.prompt, pre?.instructions].filter(Boolean).join("\n\n") || undefined;
+  // Coaching reads past runs, so it follows the memory switch (bench trials stay independent).
+  const db = f.memory !== false ? env.telemetry.store?.db : undefined;
+  const coaching = db ? renderCoaching(coachingHints(db, provider, model)) : "";
+  const extensionsPrompt = [loaded?.prompt, pre?.instructions, coaching].filter(Boolean).join("\n\n") || undefined;
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project, extensions: extensionsPrompt });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
   const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;

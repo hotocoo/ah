@@ -49,3 +49,19 @@ A fair ranking would run the same model, served the same way, on the same tasks 
 2. **harness-bench**: its author publishes per-cell CSVs; running `ah` on the same models is possible only if the private tasks are shared.
 
 Until one of these exists, the honest claim is: `ah` is designed around failure modes the literature measures, and its own benchmark results are published with confidence intervals and ablations. It is not proven superior.
+
+## On this machine: ah, Hermes Agent, DeepSeek Harness (2026-09-24)
+
+Measured without running Hermes or dsh as agents (static inspection plus tokenizer counts from the served model, Qwen3.8-27B Q6_K on llama.cpp):
+
+| | ah | Hermes Agent 0.21.3 | dsh 0.1.1-rc.2 |
+|---|---|---|---|
+| default tool schemas sent per request | 12 tools, 1,017 tokens | 24 tools (`hermes-cli` toolset), 10,179 tokens | not measured |
+| 4 common MCP servers (42 tools) | 1,348 tokens (deferred, D34) | lazy `tool_search` / `tool_describe` / `tool_call` exists | not measured |
+| per-model cross-session tool-error hints | yes (D37) | no (in-session loop guardrails only) | not found |
+| hidden-grader bench built in | yes; also runs other harnesses (`--agent-cmd`) | `evals/` (69 probe scripts, no hidden-grader coding suite found), `batch_runner.py` | no |
+| skins / wallpaper / accent | 4 skins, custom accent, uploaded wallpaper (D36) | skins (`display.skin`, `~/.hermes/skins/*.yaml`) | skins, wallpaper, pet |
+
+**Pass rates: none yet.** No same-model, same-task results exist for Hermes or dsh. Run `bash scripts/h2h.sh --trials 3` (see BENCHMARKING.md). Until that finishes, this repository claims no superiority over either harness.
+
+Sources for harness-failure research used in D33/D37: [An Empirical Study of Harness Design for Coding Agents](https://arxiv.org/html/2609.20804v1), [Model or Harness? An Interaction-Centric Taxonomy](https://arxiv.org/pdf/2607.28802), [The Devil Is in the Interface](https://arxiv.org/pdf/2608.11386), [MCP 2026-07-28 changelog](https://modelcontextprotocol.io/specification/2026-07-28/changelog).
