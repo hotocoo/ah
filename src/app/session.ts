@@ -16,6 +16,10 @@ import { Telemetry } from "../telemetry/index.ts";
 import { ToolRegistry } from "../tools/index.ts";
 import { detectTestCommand } from "../tools/shell.ts";
 import { MemoryStore } from "../memory/store.ts";
+import { McpManager } from "../mcp/client.ts";
+import { discoverExtensions, loadPluginTools, renderSkillIndex, skillViewTool, type Extensions } from "../plugins/index.ts";
+import { ALL_TOOLS } from "../tools/index.ts";
+import type { Tool } from "../tools/types.ts";
 import type { ApprovalFn, MediaServices } from "../tools/types.ts";
 
 // Everything a command needs, assembled from discovery: config, runtimes, providers,
@@ -27,6 +31,36 @@ export interface Environment {
   catalog: ModelCatalog;
   telemetry: Telemetry;
   memory?: MemoryStore;
+  // Plugins, skills and MCP connections per workspace root, loaded on first session.
+  extensions: Map<string, Promise<LoadedExtensions>>;
+}
+
+export interface LoadedExtensions {
+  ext: Extensions;
+  mcp: McpManager;
+  tools: Tool[]; // MCP + plugin tools + skill_view, sorted
+  prompt: string; // skill index, plugin and MCP server instructions
+}
+
+// Discovers and connects extensions for a workspace once per process.
+export function loadExtensions(env: Environment, root: string): Promise<LoadedExtensions> {
+  let p = env.extensions.get(root);
+  if (!p) {
+    p = (async () => {
+      const ext = discoverExtensions(root);
+      const mcp = new McpManager(ext.mcpServers);
+      const [mcpTools, pluginTools] = await Promise.all([mcp.tools(), loadPluginTools(ext)]);
+      const tools = [...mcpTools, ...pluginTools, ...(ext.skills.length ? [skillViewTool(ext.skills)] : [])];
+      const serverNotes = mcp
+        .status()
+        .filter((s) => s.connected)
+        .map((s) => `- MCP server ${s.name}: ${s.tools.length} tools (mcp__${s.name}__*)`);
+      const prompt = [renderSkillIndex(ext.skills), ...ext.instructions, serverNotes.join("\n")].filter(Boolean).join("\n\n");
+      return { ext, mcp, tools, prompt };
+    })();
+    env.extensions.set(root, p);
+  }
+  return p;
 }
 
 export async function buildEnvironment(opts: { cwd?: string; offline?: boolean; live?: boolean; cfg?: AhConfig } = {}): Promise<Environment> {
@@ -39,7 +73,7 @@ export async function buildEnvironment(opts: { cwd?: string; offline?: boolean; 
   const catalog = new ModelCatalog({ store: telemetry.store, registry, offline: opts.offline });
   await catalog.load({ live: opts.live ?? true });
   const memory = cfg.recall.enabled ? new MemoryStore(join(cfg.dataDir, "memory.sqlite")) : undefined;
-  return { cfg, runtimes, registry, catalog, telemetry, memory };
+  return { cfg, runtimes, registry, catalog, telemetry, memory, extensions: new Map() };
 }
 
 // Facts about a runtime-served model: llama.cpp/LM Studio fix n_ctx at load time.
@@ -83,6 +117,7 @@ export interface SessionFeatures {
   recoveries?: boolean; // loop guard, empty-turn nudges, dropped-tool-call fallback (default on)
   evidence?: boolean; // completion gate + post-write syntax check (default on)
   memory?: boolean; // persistent memory recall and lessons (default on; off in benchmarks)
+  extensions?: boolean; // plugins, skills and MCP servers (default on; off in benchmarks)
   toolProtocol?: "auto" | "native" | "text";
 }
 
@@ -195,14 +230,16 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const info = env.catalog.lookup(modelRef);
   const { facts, context } = await resolveModelContext(env, modelRef);
   const gen = await generationSettings(env, modelRef);
-  const tools = new ToolRegistry();
-  // Compact profile when the window is small relative to the prompt + tool definitions.
   const f = o.features ?? {};
+  const loaded = f.extensions === false ? undefined : await loadExtensions(env, o.root);
+  const tools = new ToolRegistry([...ALL_TOOLS, ...(loaded?.tools ?? [])]);
+  // Compact profile when the window is small relative to the prompt + tool definitions.
   const projectInfo = f.projectFacts === false ? undefined : projectFacts(o.root);
   const project = projectInfo ? renderProjectFacts(projectInfo) : undefined;
   const testCommand = projectInfo ? projectInfo.testCommand : detectTestCommand(o.root);
   const memory = f.memory !== false && env.memory ? { store: env.memory, scopes: [o.root, "global"] } : undefined;
-  const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project });
+  const extensionsPrompt = loaded?.prompt || undefined;
+  const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project, extensions: extensionsPrompt });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
   const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;
   // Runtime-reported tool support decides the protocol; unknown means try native (the
@@ -223,7 +260,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const agent = new Agent({
     provider: p,
     model,
-    system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.specs(o.mode ?? env.cfg.permissionMode, toolContext, compactTools).map((t) => t.name), project }),
+    system: o.system ?? buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.specs(o.mode ?? env.cfg.permissionMode, toolContext, compactTools).map((t) => t.name), project, extensions: extensionsPrompt }),
     compactTools,
     toolProtocol,
     tools,

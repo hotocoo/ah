@@ -27,6 +27,7 @@ export interface PromptEnv {
   toolNames: string[];
   date?: string;
   project?: string; // rendered project facts (languages, test command, toolchains)
+  extensions?: string; // skill index, plugin and MCP server instructions
 }
 
 // The system prompt is kept byte-stable within a session (no timestamps below day
@@ -59,6 +60,6 @@ When the task is complete, reply with a short summary: what changed (files), how
 - Date: ${env.date ?? new Date().toISOString().slice(0, 10)}
 - Model: ${env.model}
 - Tools: ${[...env.toolNames].sort().join(", ")}
-${env.project ? `\n# Project\n${env.project}\n` : ""}
+${env.project ? `\n# Project\n${env.project}\n` : ""}${env.extensions ? `\n# Extensions\n${env.extensions}\n` : ""}
 ${instructions ? `\n# Project instructions\nThe repository provides these instructions. Follow them; they override the defaults above where they conflict.\n\n${instructions}\n` : ""}`;
 }

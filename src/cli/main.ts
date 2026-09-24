@@ -21,6 +21,10 @@ Usage:
   ah image "<prompt>" -o file   Generate an image with a discovered image backend
   ah 3d "<prompt>" -o file.glb  Generate a 3D model
   ah serve [--port N]           Local web app (dashboard, chat, models, bench)
+  ah memory [list|search|add|rm] Persistent memory (verified lessons, notes, episodes)
+  ah mcp                        Connect configured MCP servers and list their tools
+  ah plugins                    Plugins and skills that load in this workspace
+  ah trust [dir] [--remove]     Allow a workspace's own MCP servers, plugins and skills
 
 Common options:
   -m, --model provider/model    Model (default: config, else auto-selected local model)
@@ -201,6 +205,13 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     case "image":
     case "3d":
       return (await import("./media-cmd.ts")).cmdMedia(cmd, rest);
+    case "memory":
+    case "mcp":
+    case "plugins":
+    case "trust": {
+      const m = await import("./ext-cmd.ts");
+      return { memory: m.cmdMemory, mcp: m.cmdMcp, plugins: m.cmdPlugins, trust: m.cmdTrust }[cmd](rest);
+    }
     case "serve":
       return (await import("../server/server.ts")).cmdServe(rest);
     case "--version":
