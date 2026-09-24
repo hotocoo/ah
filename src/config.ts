@@ -48,6 +48,8 @@ export interface AhConfig {
   recall: { enabled: boolean; limit: number };
   // Ask a run that changed files to pass a check before finishing (see evidence.ts).
   evidenceGate: boolean;
+  // Rebuild context from task + evidence after this many consecutive failed actions (0 = off).
+  resetAfterFailures: number;
   // Desktop control tools (screenshot, computer): off, ask (approve every action), auto.
   computerUse: "off" | "ask" | "auto";
 }
@@ -80,6 +82,7 @@ export const defaultConfig = (): AhConfig => ({
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
   recall: { enabled: process.env.AH_MEMORY !== "0", limit: 5 },
   evidenceGate: true,
+  resetAfterFailures: 4,
   computerUse: (process.env.AH_COMPUTER as "off" | "ask" | "auto" | undefined) ?? "ask",
 });
 

@@ -48,6 +48,9 @@ export interface AgentOptions {
   // Persistent memory: recalled into each request, written from verified lessons,
   // reinforced by run verdicts. scopes[0] is where new memories are written.
   memory?: { store: MemoryStore; scopes: string[]; recallLimit?: number };
+  // Episodic reset: after this many consecutive failed actions, rebuild the context from
+  // the task and harness evidence (D31). 0 disables.
+  resetAfterFailures?: number;
 }
 
 const sleep = (ms: number, signal?: AbortSignal) =>
@@ -139,7 +142,15 @@ export class Agent {
           outcome = "budget";
           break;
         }
-        await this.maybeCompact(this.truncated);
+        // A streak of failed actions usually means the model is circling inside its own
+        // transcript. Start a fresh episode from the task and the evidence instead.
+        const streakLimit = this.o.resetAfterFailures ?? 0;
+        const reset = streakLimit > 0 && this.ledger.failureStreak >= streakLimit;
+        if (reset) {
+          this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: 1, reason: `${this.ledger.failureStreak} failed actions in a row; context rebuilt from task and evidence`, delayMs: 0, t: Date.now() });
+          this.ledger.failureStreak = 0;
+        }
+        await this.maybeCompact(this.truncated || reset);
         this.truncated = false;
         this.turn++;
         this.emit({ type: "turn_start", runId: this.runId, turn: this.turn, contextTokens: estimateTokens(this.messages, this.o.system), t: Date.now() });

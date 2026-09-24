@@ -55,6 +55,7 @@ export class EvidenceLedger {
   private open = new Map<string, Anomaly>();
   private resolved: Lesson[] = [];
   surprises = 0;
+  failureStreak = 0; // consecutive failed actions
   checksPassed = 0;
   checksFailed = 0;
 
@@ -87,6 +88,7 @@ export class EvidenceLedger {
     }
     // Mutating actions taken while another kind of action is failing are its candidate fix.
     if (!o.isError && o.changedFiles.length) for (const a of this.open.values()) if (a.key !== key && a.between.length < 6) a.between.push(o.summary);
+    this.failureStreak = failed ? this.failureStreak + 1 : 0;
     if (failed) {
       this.surprises++;
       const prev = this.open.get(key);

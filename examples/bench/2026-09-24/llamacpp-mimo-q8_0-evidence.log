@@ -20,3 +20,4 @@ bench llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF · 8 tasks × 3 trials ·
   PASS ts-multifile-rename #1 18.2s · 6 turns · 15 tools
   PASS ts-multifile-rename #2 21.7s · 6 turns · 11 tools
   PASS ts-multifile-rename #3 29.2s · 8 turns · 16 tools
+  PASS ts-write-tests #1 90.6s · 13 turns · 13 tools (3 err)

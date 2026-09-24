@@ -158,3 +158,28 @@ test("forced compaction keeps harness evidence above the model's summary", async
   expect(first.text).toContain("Changed since the last passing check: a.ts");
   expect(first.text.indexOf("<evidence")).toBeLessThan(first.text.indexOf("<notes source=\"model\">"));
 });
+
+test("a streak of failed actions starts a fresh episode from task and evidence", async () => {
+  const root = mkdtempSync(join(tmpdir(), "ah-evidence-"));
+  roots.push(root);
+  const fail = { toolCalls: [{ name: "bash", input: { command: "bun build missing.ts --outdir out" } }] };
+  const events: AgentEvent[] = [];
+  const agent = new Agent({
+    provider: new MockProvider({ script: [fail, fail, fail, { text: "notes: tried building missing.ts three times" }, { text: "Stopping; missing.ts does not exist." }] }),
+    model: "scripted",
+    system: "sys",
+    tools: new ToolRegistry(),
+    toolContext: { root, bashTimeoutMs: 10_000, todos: [], readFiles: new Set(), media: {} },
+    mode: "auto",
+    maxTurns: 10,
+    maxTokens: 1000,
+    resetAfterFailures: 3,
+    onEvent: (e) => events.push(e),
+  });
+  const r = await agent.run("build the project");
+  expect(r.outcome).toBe("completed");
+  expect(events.some((e) => e.type === "compaction" && e.strategy === "summarize")).toBe(true);
+  const head = (agent.messages[0]!.content[0] as { text: string }).text;
+  expect(head).toContain("<task>\nbuild the project\n</task>");
+  expect(head).toContain("Still failing: `$ bun build missing.ts --outdir out`");
+});

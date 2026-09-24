@@ -92,6 +92,10 @@ Recalled memories ride on the user message, not the system prompt, so the cached
 
 Long tasks outgrow the context window. Other harnesses replace old history with a summary the model writes about itself, so every compaction is another round of self-report, and after a few rounds the agent works from its own paraphrase of its past. Here a compaction rebuilds the head of the context from three labelled parts, in this order: `<task>` (the original request, verbatim, so it cannot drift), `<evidence source="harness">` (last check and its result, counts, files changed since the last passing check, actions still failing with their first error line, recent fixes), and `<notes source="model">` (the model's summary). A single long task has only one plain user message, so compaction may cut before an assistant turn, keeping tool calls and results paired; before this change a long single task could only elide tool output and never summarise.
 
+### 6. Episodic reset
+
+After a streak of consecutive failed actions (default 4) the harness does not wait for the window to fill: the next turn starts from the rebuilt context of section 5. Workspace, ledger and run continue; only the model's view of its past is replaced by what the harness knows. This targets the most common long-horizon failure seen in the benchmarks: circling on the same error while the transcript grows.
+
 ## How this compares
 
 | | completion decided by | memory written by | memory write gate | retrieval weighting |

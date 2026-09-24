@@ -167,3 +167,9 @@ Two more robustness features came out of these runs: project facts in the system
 - **Chosen:** summarising compaction produces `<task>` (verbatim) + `<evidence source="harness">` (`EvidenceLedger.snapshot()`) + `<notes source="model">`. When the only plain user message is the task prompt (one long task), the cut falls before an assistant turn instead, so long single tasks can be summarised at all.
 - **Rejected:** model-only summaries (self-report compounding over repeated compactions); keeping the full transcript and relying on elision (overflows on long tasks).
 - **Found by:** writing the test for this change. `safeCutIndex` only cuts at plain user messages, so a single-task run of any length never reached the summarise path.
+
+## D31. Episodic reset on a failure streak
+
+- **Chosen:** after `resetAfterFailures` (default 4) consecutive failed actions, the next turn starts from a rebuilt context (D30: task verbatim, harness evidence, model notes) instead of the growing transcript. The ledger, the workspace and the run continue; only the model's view is reset. Off with `evidence: false` (ablation) or `resetAfterFailures: 0`.
+- **Rejected for now:** rolling the workspace back to the best checkpoint on a stall. It needs snapshots of the real workspace and deletes work, so it belongs behind an explicit opt-in, measured in benchmark sandboxes first.
+- **Why:** in the 2026-09-24 suite run, `ts-feature-lru` failed 3/3 at the turn limit with 4 to 8 failed actions per trial: the model kept editing against its own earlier reasoning. A fresh episode keeps what is true (evidence) and drops the rest.
