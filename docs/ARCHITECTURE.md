@@ -56,3 +56,15 @@ Every step emits an `AgentEvent`; the CLI renderer, the web app (SSE), SQLite, O
 ## Data files
 
 Everything lives under `~/.ah` (override with `AH_HOME`): `telemetry.sqlite` (runs, turns, tool calls, events, caches, learned wire formats, context decisions, bench runs), `events/YYYY-MM-DD.jsonl`, `bench/<run>/` results, `config.json`.
+
+## Evidence, memory and extensions (added 2026-09-24)
+
+| Layer | Files | Responsibility |
+|---|---|---|
+| Evidence | `src/agent/evidence.ts` | Ledger of observed tool outcomes: anomalies (failed actions), checks, files changed since the last passing check; completion gate; run verdict; lesson candidates. See ARCHITECTURE-NEXT.md. |
+| Memory | `src/memory/store.ts`, `src/tools/memory.ts` | FTS5 store (`~/.ah/memory.sqlite`) of lessons, notes and episodes; recall by relevance × trust into each request; trust updated by run verdicts. |
+| MCP | `src/mcp/client.ts` | stdio / Streamable HTTP client; MCP tools wrapped as `Tool`s. |
+| Plugins | `src/plugins/index.ts` | Plugin, skill and MCP server discovery; workspace trust; `skill_view`. |
+| Desktop | `src/tools/computer.ts` | `screenshot` / `computer` tools over OS facilities discovered at runtime. |
+
+Per run: `run()` recalls memories into the user message, `runOneTool()` feeds every outcome to the ledger, the loop consults the ledger before accepting a final reply, and `settleMemory()` writes verified lessons and reinforces recalled memories. Extensions load once per workspace in `loadExtensions()` (`src/app/session.ts`) and join the tool registry at session creation, so the system prompt stays byte-stable.

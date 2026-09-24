@@ -8,7 +8,10 @@
 - Token counts before a request are estimated (≈4 chars/token); exact counts come from the runtime afterwards.
 - `ah chat` has no rich TUI (line-based REPL); the web app is the richer interface.
 - No sandbox container for the agent's shell commands (workspace confinement is path-level; commands run as the user). Benchmarks run in throwaway directories.
-- Windows is untested.
+- Windows is untested; desktop control reports itself unavailable there.
+- Desktop control verified live on macOS (screenshot, cursor, move, scroll through the tool; approval flow in the web console with a scripted model). The Linux xdotool backend is implemented but not verified on a real X11 session. It needs the Screen Recording and Accessibility permissions for the terminal on macOS.
+- MCP client tested against fake stdio and HTTP servers; not yet against a large third-party server catalog.
+- Evidence-loop check detection is heuristic (detected test command + toolchain vocabulary); lessons record what was done, not why.
 
 ## Next
 
@@ -18,4 +21,7 @@
 4. Runtime management: pull/load/unload models from `ah` (Ollama `/api/pull`, LM Studio `/api/v1/models/load`, llama.cpp router mode), with memory-fit checks from Hugging Face GGUF metadata.
 5. Larger benchmark suites (SWE-bench-style repositories via git fixtures) and best-of-n / verifier modes.
 6. OTLP metrics export; Prometheus endpoint.
-7. LSP diagnostics after edits.
+7. LSP diagnostics after edits (today: in-process JS/TS syntax check only).
+8. Calibration-aware autonomy: per-model surprise rates from telemetry shown before enabling `computerUse: "auto"` (ARCHITECTURE-NEXT.md).
+9. Evidence-weighted skill distillation: promote high-trust, repeatedly winning lessons into agentskills.io skills.
+10. Counterfactual replay: re-run failed bench trials with a recalled lesson injected to measure whether lessons cause fixes.
