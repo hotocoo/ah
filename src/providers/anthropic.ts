@@ -9,7 +9,7 @@ import type {
   StreamEvent,
   Usage,
 } from "../core/types.ts";
-import { ProviderError, type Provider, type ProviderCapabilities } from "./provider.ts";
+import { mergeParams, ProviderError, type Provider, type ProviderCapabilities } from "./provider.ts";
 
 type BetaParams = Anthropic.Beta.Messages.MessageCreateParamsStreaming;
 type BetaMessageParam = Anthropic.Beta.Messages.BetaMessageParam;
@@ -181,7 +181,7 @@ export class AnthropicProvider implements Provider {
     const idsByIndex = new Map<number, string>();
     try {
       const stream = this.client.beta.messages.stream(
-        { ...params, ...(betas.length ? { betas } : {}) },
+        mergeParams({ ...params, ...(betas.length ? { betas } : {}) }, req.params) as unknown as typeof params,
         { signal: req.signal },
       );
       for await (const ev of stream) {

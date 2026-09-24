@@ -24,6 +24,7 @@ export interface AgentOptions {
   temperature?: number;
   sampling?: { topP?: number; topK?: number; minP?: number };
   templateKwargs?: Record<string, unknown>;
+  params?: Record<string, unknown>;
   contextWindow?: number;
   maxOutputTokens?: number; // model's hard output cap, from the models registry
   compactTools?: boolean; // offer only core tools (small context windows)
@@ -286,6 +287,7 @@ export class Agent {
           temperature: this.o.temperature,
           ...this.o.sampling,
           templateKwargs: this.o.templateKwargs,
+          params: this.o.params,
           contextWindow: this.o.contextWindow,
           signal: req.signal,
         });

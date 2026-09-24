@@ -111,6 +111,9 @@ export interface ChatRequest {
   // Constrain the reply to JSON matching this schema (grammar-constrained decoding on
   // runtimes that support it). Used for structured outputs, never for tool calling.
   responseSchema?: JsonSchema;
+  // User-supplied request-body fields (config `params`, `--param`), merged last into the
+  // provider's request so any server argument can be set or overridden without code changes.
+  params?: Record<string, unknown>;
   signal?: AbortSignal;
 }
 

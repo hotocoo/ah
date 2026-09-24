@@ -2,12 +2,11 @@
 # Head-to-head: ah vs Hermes Agent vs DeepSeek Harness (dsh) on the same model, tasks and hidden graders.
 # Run it yourself (it starts autonomous agents with full shell access inside bench sandboxes):
 #   bash scripts/h2h.sh [--trials N] [--suite DIR] [--task ID]... [--only ah|hermes|dsh]
-# Needs: a llama.cpp (or other OpenAI-compatible) server; BASE_URL defaults to http://127.0.0.1:8080/v1.
+# Needs: a local OpenAI-compatible runtime that ah discovers (ah doctor); override with MODEL_REF=provider/model.
 # Trials run one after another, never in parallel, so harnesses never share the server's slot.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-BASE_URL="${BASE_URL:-http://127.0.0.1:8080/v1}"
 TRIALS=3
 ONLY=""
 PASS=()
@@ -19,9 +18,21 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-# The model is whatever the server is serving; nothing is hardcoded.
-MODEL="$(curl -sf "$BASE_URL/models" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["data"][0]["id"] if d.get("data") else d["models"][0]["model"])')"
-[ -n "$MODEL" ] || { echo "no model served at $BASE_URL" >&2; exit 2; }
+# Server and model come from ah's own discovery (the model it would auto-select, i.e. one already
+# loaded in a local runtime) unless MODEL_REF=provider/model is given. Nothing is hardcoded.
+read -r BASE_URL MODEL_REF < <(MODEL_REF="${MODEL_REF:-}" bun -e '
+  const { buildEnvironment, autoSelectModel } = await import("./src/app/session.ts");
+  const { parseModelRef } = await import("./src/config.ts");
+  const env = await buildEnvironment({});
+  const ref = process.env.MODEL_REF || env.cfg.defaultModel || autoSelectModel(env);
+  if (!ref) { console.error("no local model found (ah doctor)"); process.exit(2); }
+  const rt = env.registry.runtimes.get(parseModelRef(ref).provider);
+  if (!rt) { console.error(`${ref} is not served by a local runtime`); process.exit(2); }
+  console.log(`${rt.baseURL}/v1 ${ref}`);
+  process.exit(0);
+')
+[ -n "${MODEL_REF:-}" ] || exit 2
+MODEL="${MODEL_REF#*/}"
 STAMP="$(date +%Y-%m-%dT%H-%M-%S)"
 OUT="${OUT:-examples/bench/h2h-$STAMP}"
 mkdir -p "$OUT"
@@ -31,7 +42,7 @@ want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
 # ah: in-process, default features (memory and user extensions are off in every bench trial).
 if want ah; then
-  bun src/cli/main.ts bench run --model "llamacpp/$MODEL" --trials "$TRIALS" --out "$OUT/ah" ${PASS[@]+"${PASS[@]}"} 2>&1 | tee "$OUT/ah.log"
+  bun src/cli/main.ts bench run --model "$MODEL_REF" --trials "$TRIALS" --out "$OUT/ah" ${PASS[@]+"${PASS[@]}"} 2>&1 | tee "$OUT/ah.log"
 fi
 
 # Hermes: isolated HERMES_HOME (no user memory, skills or cloud keys), custom provider at the same server.

@@ -11,6 +11,8 @@ export interface ProviderConfig {
   enabled?: boolean;
   imageGen?: boolean;
   serverFallbacks?: boolean;
+  // Raw request-body fields for every call to this provider (deep-merged, null removes a field).
+  params?: Record<string, unknown>;
 }
 
 export interface AhConfig {
@@ -29,7 +31,7 @@ export interface AhConfig {
   providers: Record<string, ProviderConfig>;
   // Per-model overrides keyed by "provider/model". Unset fields fall back to the model
   // card on Hugging Face (generation_config.json), then to the runtime's defaults.
-  models: Record<string, { temperature?: number; topP?: number; topK?: number; minP?: number; templateKwargs?: Record<string, unknown>; useModelCard?: boolean }>;
+  models: Record<string, { temperature?: number; topP?: number; topK?: number; minP?: number; templateKwargs?: Record<string, unknown>; useModelCard?: boolean; params?: Record<string, unknown> }>;
   telemetry: { enabled: boolean; otlpEndpoint?: string; otlpHeaders?: Record<string, string> };
   dataDir: string;
   bashTimeoutMs: number;
@@ -65,6 +67,7 @@ export interface Preset {
   mode?: "ask" | "auto" | "read-only";
   maxTurns?: number;
   instructions?: string; // appended to the system prompt
+  params?: Record<string, unknown>; // request-body fields, as for providers/models
   features?: Record<string, unknown>;
 }
 

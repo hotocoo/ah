@@ -126,3 +126,13 @@ describe("tool availability", () => {
     expect(compact).toContain("bash");
   });
 });
+
+describe("runtime product name", () => {
+  test("taken from a plain-text banner or the Server header, never guessed", async () => {
+    const { productName } = await import("../src/runtimes/discover.ts");
+    expect(productName(null, "Docker Model Runner\n\nThe service is running.\n")).toBe("Docker Model Runner");
+    expect(productName("llama.cpp", "")).toBe("llama.cpp");
+    expect(productName(null, "<html>")).toBeUndefined();
+    expect(productName(null, "")).toBeUndefined();
+  });
+});

@@ -8,6 +8,7 @@ import {
   type ImageGenRequest,
   type Provider,
   type ProviderCapabilities,
+  mergeParams,
 } from "./provider.ts";
 
 // Native Google Gemini adapter (Generative Language API v1beta).
@@ -111,7 +112,7 @@ export class GeminiProvider implements Provider {
       await streamFetch(`${this.baseURL}/models/${req.model}:streamGenerateContent?alt=sse`, {
         method: "POST",
         headers: this.headers(),
-        body: JSON.stringify(this.buildBody(req)),
+        body: JSON.stringify(mergeParams(this.buildBody(req), req.params)),
         signal: req.signal,
       }),
       this.key,

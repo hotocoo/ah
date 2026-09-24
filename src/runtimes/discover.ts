@@ -5,7 +5,10 @@
 export type RuntimeKind = "ollama" | "llamacpp" | "lmstudio" | "comfyui" | "sdapi" | "openai-compatible";
 
 export interface RuntimeInfo {
-  kind: RuntimeKind;
+  kind: RuntimeKind; // API family the server speaks, not the product
+  // Product name as the server reports it (Server header or root banner), e.g. a server that
+  // speaks Ollama's API but is something else. Undefined when the server says nothing.
+  product?: string;
   baseURL: string; // origin, e.g. http://127.0.0.1:11434
   source: "config" | "env" | "scan";
   version?: string;
@@ -114,18 +117,30 @@ export const PROBES: { kind: RuntimeKind; probe: Probe }[] = [
   },
 ];
 
+// A plain-text root banner's first line ("Docker Model Runner"), else the Server header.
+// Short, printable text only; nothing is matched against a name list.
+export function productName(serverHeader: string | null, rootText: string): string | undefined {
+  const banner = rootText.split("\n").map((l) => l.trim()).find(Boolean);
+  if (banner && banner.length <= 60 && /^[\x20-\x7e]+$/.test(banner) && !/[<{]/.test(banner)) return banner;
+  const h = serverHeader?.trim();
+  if (h && h.length <= 60 && /^[\x20-\x7e]+$/.test(h)) return h;
+  return undefined;
+}
+
 // Runs all probes concurrently and returns the highest-priority match.
 export async function fingerprint(origin: string, timeoutMs = 2500): Promise<Omit<RuntimeInfo, "source"> | null> {
   const clean = origin.replace(/\/+$/, "").replace(/\/v1$/, "");
   // Cheap liveness check first: skip ports that do not speak HTTP at all.
+  let product: string | undefined;
   try {
-    await fetch(clean, { signal: AbortSignal.timeout(timeoutMs), redirect: "manual" });
+    const res = await fetch(clean, { signal: AbortSignal.timeout(timeoutMs), redirect: "manual" });
+    product = productName(res.headers.get("server"), (res.headers.get("content-type") ?? "").includes("text/plain") ? await res.text() : "");
   } catch {
     return null;
   }
   const results = await Promise.all(PROBES.map(({ probe }) => probe(clean, timeoutMs)));
   const hit = results.find((r) => r !== null);
-  return hit ? { ...hit, baseURL: clean } : null;
+  return hit ? { ...hit, ...(product ? { product } : {}), baseURL: clean } : null;
 }
 
 // Two listeners can front the same server (e.g. an app binding several ports).

@@ -12,6 +12,7 @@ import {
   type ImageGenRequest,
   type Provider,
   type ProviderCapabilities,
+  mergeParams,
 } from "./provider.ts";
 
 // Adapter for the OpenAI Chat Completions wire format. Covers OpenAI itself and every
@@ -198,7 +199,7 @@ export class OpenAICompatProvider implements Provider {
     const effort = req.reasoning && req.reasoning !== "off" ? nearestEffort(req.reasoning, wire.supportedEfforts) : undefined;
     if (effort && wire.reasoningParam === "reasoning_effort") body.reasoning_effort = effort;
     if (effort && wire.reasoningParam === "reasoning") body.reasoning = { effort };
-    return body;
+    return mergeParams(body, req.params);
   }
 
   // POSTs a chat request, adapting the wire format up to 3 times when the server

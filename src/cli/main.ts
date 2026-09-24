@@ -28,6 +28,9 @@ Usage:
 
 Common options:
   -m, --model provider/model    Model (default: config, else auto-selected local model)
+  --param KEY=VALUE             Request-body field for every model call, repeatable; KEY may be dotted
+                                (options.num_gpu=40), VALUE is JSON when it parses (top_k=40, stop=["x"]),
+                                null removes a field the harness would send
   -p, --preset NAME             Named bundle from "presets" in config (model, mode, turns, instructions)
   -C, --cwd DIR                 Workspace root (default: current directory)
   --yes                         Auto-approve writes (permission mode "auto")
@@ -52,6 +55,28 @@ function askApproval(): ApprovalFn {
   };
 }
 
+// "a.b=1" -> { a: { b: 1 } }; values are JSON when they parse, else strings.
+export function parseParams(items?: string[]): Record<string, unknown> | undefined {
+  if (!items?.length) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const item of items) {
+    const eq = item.indexOf("=");
+    if (eq <= 0) throw new Error(`--param expects KEY=VALUE, got "${item}"`);
+    const raw = item.slice(eq + 1);
+    let value: unknown = raw;
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      // Plain string.
+    }
+    const path = item.slice(0, eq).split(".");
+    let node = out;
+    for (const k of path.slice(0, -1)) node = (node[k] ??= {}) as Record<string, unknown>;
+    node[path.at(-1)!] = value;
+  }
+  return out;
+}
+
 function common(argv: string[]) {
   return parseArgs({
     args: argv,
@@ -59,6 +84,7 @@ function common(argv: string[]) {
     options: {
       model: { type: "string", short: "m" },
       preset: { type: "string", short: "p" },
+      param: { type: "string", multiple: true },
       cwd: { type: "string", short: "C" },
       yes: { type: "boolean" },
       "read-only": { type: "boolean" },
@@ -82,6 +108,7 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
   const s = await createSession(env, {
     model: v.model as string | undefined,
     preset: v.preset as string | undefined,
+    params: parseParams(v.param as string[] | undefined),
     root,
     mode: v["read-only"] ? "read-only" : v.yes ? "auto" : undefined,
     approve: askApproval(),
@@ -92,7 +119,7 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
   });
   if (!v.json) {
     const g = s.generation;
-    const samp = [g.temperature !== undefined ? `temp ${g.temperature}` : "", g.sampling?.topP !== undefined ? `top_p ${g.sampling.topP}` : "", g.sampling?.topK !== undefined ? `top_k ${g.sampling.topK}` : "", g.templateKwargs ? `template ${JSON.stringify(g.templateKwargs)}` : ""].filter(Boolean).join(" ");
+    const samp = [g.temperature !== undefined ? `temp ${g.temperature}` : "", g.sampling?.topP !== undefined ? `top_p ${g.sampling.topP}` : "", g.sampling?.topK !== undefined ? `top_k ${g.sampling.topK}` : "", g.templateKwargs ? `template ${JSON.stringify(g.templateKwargs)}` : "", g.params ? `params ${JSON.stringify(g.params)}` : ""].filter(Boolean).join(" ");
     process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason}) · tools ${s.toolProtocol}${s.compactTools ? " compact" : ""}\nsampling: ${samp || "runtime defaults"} (${g.source})\n`));
   }
   let code = 0;
@@ -131,7 +158,7 @@ async function cmdDoctor(argv: string[]): Promise<number> {
   out.push(bold("\nRuntimes"));
   if (!env.runtimes.length) out.push(yellow("  none discovered"));
   for (const [key, r] of env.registry.runtimes) {
-    out.push(`  ${green(key)}  ${r.kind} ${r.version ?? ""} ${dim(r.baseURL)} ${dim(`(${r.source})`)}`);
+    out.push(`  ${green(key)}  ${r.product ? `${r.product} ${dim(`(${r.kind} API)`)}` : r.kind} ${r.version ?? ""} ${dim(r.baseURL)} ${dim(`(${r.source})`)}`);
     for (const m of r.models.slice(0, 20)) out.push(`    - ${m}`);
     if (typeof r.meta.nCtx === "number") out.push(dim(`    n_ctx ${r.meta.nCtx} · tool template ${r.meta.hasToolTemplate ? "yes" : "no"}`));
   }

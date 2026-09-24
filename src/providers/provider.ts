@@ -41,6 +41,20 @@ export interface Provider {
   embed?(req: EmbedRequest): Promise<number[][]>;
 }
 
+const isPlain = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
+
+// Deep-merges user params into a request body (objects merge, anything else replaces;
+// null deletes the field). Returns a new object.
+export function mergeParams(body: Record<string, unknown>, params?: Record<string, unknown>): Record<string, unknown> {
+  if (!params) return body;
+  const out: Record<string, unknown> = { ...body };
+  for (const [k, v] of Object.entries(params)) {
+    if (v === null) delete out[k];
+    else out[k] = isPlain(v) && isPlain(out[k]) ? mergeParams(out[k] as Record<string, unknown>, v) : v;
+  }
+  return out;
+}
+
 export class ProviderError extends Error {
   constructor(
     message: string,

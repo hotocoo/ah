@@ -336,3 +336,31 @@ describe("unreachable servers", () => {
     await expect(collect(p.stream({ model: "m", system: "", messages: convo, tools: [], maxTokens: 10 }))).rejects.toMatchObject({ retryable: true, code: "unavailable" });
   });
 });
+
+describe("request params passthrough", () => {
+  test("mergeParams deep-merges, replaces scalars and deletes on null", async () => {
+    const { mergeParams } = await import("../src/providers/provider.ts");
+    const body = { model: "m", temperature: 0.6, options: { num_ctx: 8192, top_k: 20 }, stream_options: { include_usage: true } };
+    expect(mergeParams(body, { temperature: 0.2, options: { num_gpu: 40 }, stream_options: null, cache_prompt: true })).toEqual({
+      model: "m",
+      temperature: 0.2,
+      options: { num_ctx: 8192, top_k: 20, num_gpu: 40 },
+      cache_prompt: true,
+    });
+    expect(body.options).toEqual({ num_ctx: 8192, top_k: 20 }); // input untouched
+  });
+
+  test("openai-compatible body carries user params last", async () => {
+    const { OpenAICompatProvider } = await import("../src/providers/openai-compat.ts");
+    const p = new OpenAICompatProvider("x", { baseURL: "http://127.0.0.1:1/v1" });
+    const b = p.buildBody({ model: "m", system: "s", messages: [], tools: [], maxTokens: 10, temperature: 0.6, params: { temperature: 1, n_probs: 3, max_tokens: null } });
+    expect(b).toMatchObject({ temperature: 1, n_probs: 3 });
+    expect("max_tokens" in b).toBe(false);
+  });
+
+  test("--param parses dotted keys and JSON values", async () => {
+    const { parseParams } = await import("../src/cli/main.ts");
+    expect(parseParams(["options.num_gpu=40", "stop=[\"x\"]", "grammar=root ::= x", "cache_prompt=false"])).toEqual({ options: { num_gpu: 40 }, stop: ["x"], grammar: "root ::= x", cache_prompt: false });
+    expect(() => parseParams(["nokey"])).toThrow(/KEY=VALUE/);
+  });
+});

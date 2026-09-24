@@ -1,5 +1,5 @@
 import type { ChatRequest, ContentBlock, LocalModelFacts, Message, ModelInfo, Modality, RuntimeTimings, StreamEvent, Usage } from "../core/types.ts";
-import { CONTEXT_OVERFLOW, ensureOk, ndjson, ProviderError, streamFetch, type EmbedRequest, type Provider, type ProviderCapabilities } from "./provider.ts";
+import { CONTEXT_OVERFLOW, ensureOk, mergeParams, ndjson, ProviderError, streamFetch, type EmbedRequest, type Provider, type ProviderCapabilities } from "./provider.ts";
 
 // Native Ollama adapter (/api/chat). Local, keyless; also works for remote Ollama hosts.
 interface OllamaMsg {
@@ -87,7 +87,7 @@ export class OllamaProvider implements Provider {
     if (req.reasoning && (await this.capabilitiesOf(req.model, req.signal)).includes("thinking"))
       body.think = req.reasoning !== "off";
     const res = await ensureOk(
-      await streamFetch(this.url("/api/chat"), { method: "POST", body: JSON.stringify(body), signal: req.signal }),
+      await streamFetch(this.url("/api/chat"), { method: "POST", body: JSON.stringify(mergeParams(body, req.params)), signal: req.signal }),
       this.key,
     );
     let text = "";

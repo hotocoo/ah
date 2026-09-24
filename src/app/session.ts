@@ -3,6 +3,7 @@ import { Agent, type AgentOptions } from "../agent/loop.ts";
 import { buildSystemPrompt } from "../agent/prompt.ts";
 import { deferMcpTools, shouldDefer } from "../mcp/deferred.ts";
 import { coachingHints, renderCoaching } from "../agent/coaching.ts";
+import { mergeParams } from "../providers/provider.ts";
 import { projectFacts, renderProjectFacts } from "../agent/project.ts";
 import { getPreset, loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
@@ -173,6 +174,7 @@ export interface GenerationSettings {
   temperature?: number;
   sampling?: { topP?: number; topK?: number; minP?: number };
   templateKwargs?: Record<string, unknown>;
+  params?: Record<string, unknown>; // provider params < model params (request-body passthrough)
   source: string; // where the values came from, for display
 }
 
@@ -195,6 +197,7 @@ export async function generationSettings(env: Environment, modelRef: string): Pr
     temperature: pick(o.temperature, card?.sampling.temperature),
     sampling: Object.values(sampling).some((v) => v !== undefined) ? sampling : undefined,
     templateKwargs: o.templateKwargs ?? (toggle ? { enable_thinking: env.cfg.reasoning !== "off" } : undefined),
+    params: env.cfg.providers[provider]?.params || o.params ? mergeParams(env.cfg.providers[provider]?.params ?? {}, o.params) : undefined,
     source: env.cfg.models[modelRef] ? "config" : card ? `model card ${card.repo}` : "runtime defaults",
   };
 }
@@ -212,6 +215,7 @@ export interface SessionOptions {
   signal?: AbortSignal;
   system?: string;
   preset?: string; // name in cfg.presets; explicit options win over it
+  params?: Record<string, unknown>; // per-invocation request-body fields (e.g. `--param`), merged last
   toolContextExtras?: Partial<AgentOptions["toolContext"]>;
 }
 
@@ -228,7 +232,7 @@ export interface Session {
 export async function createSession(env: Environment, opts: SessionOptions): Promise<Session> {
   const pre = opts.preset ? getPreset(env.cfg, opts.preset) : undefined;
   const o: SessionOptions = pre
-    ? { ...opts, model: opts.model || pre.model, mode: opts.mode ?? pre.mode, maxTurns: opts.maxTurns ?? pre.maxTurns, features: { ...(pre.features as SessionFeatures), ...opts.features } }
+    ? { ...opts, model: opts.model || pre.model, mode: opts.mode ?? pre.mode, maxTurns: opts.maxTurns ?? pre.maxTurns, features: { ...(pre.features as SessionFeatures), ...opts.features }, params: pre.params || opts.params ? mergeParams(pre.params ?? {}, opts.params) : undefined }
     : opts;
   // An empty string (e.g. a UI with nothing selected) means "pick for me".
   const modelRef = o.model || env.cfg.defaultModel || autoSelectModel(env);
@@ -272,6 +276,8 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     media: o.media ?? buildMedia(env.cfg, env.registry, { provider, model, contextWindow: context.window }),
     ...o.toolContextExtras,
   };
+  // provider params < model params < preset params < per-invocation params
+  const params = gen.params || o.params ? mergeParams(gen.params ?? {}, o.params) : undefined;
   const agent = new Agent({
     provider: p,
     model,
@@ -290,6 +296,7 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     temperature: gen.temperature,
     sampling: gen.sampling,
     templateKwargs: gen.templateKwargs,
+    params,
     // Without context sizing the runtime default applies and no compaction happens.
     contextWindow: f.contextSizing === false ? undefined : context.window,
     parseTextToolCalls: f.textToolParsing !== false,
@@ -308,7 +315,7 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     testCommand,
     memory: memory && { ...memory, recallLimit: env.cfg.recall.limit },
   });
-  return { agent, modelRef, info, context, compactTools, toolProtocol, generation: gen };
+  return { agent, modelRef, info, context, compactTools, toolProtocol, generation: { ...gen, params } };
 }
 
 export const dataPath = (env: Environment, ...parts: string[]) => join(env.cfg.dataDir, ...parts);

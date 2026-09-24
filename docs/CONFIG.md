@@ -54,6 +54,16 @@ Repository instructions: `AGENTS.md`, `CLAUDE.md`, `.ah/instructions.md`, `.curs
 
 `"mcpTools": "auto" | "inline" | "deferred"` (default `auto`) sets how MCP tools reach the model. `inline` sends every server's schemas with every request. `deferred` sends one `mcp` tool (`{ tool, arguments }`) plus a one-line index of tool names. A call with missing or invalid arguments gets back that tool's input schema, so a model pays for the schemas of the tools it uses and no others. `auto` defers when the MCP schemas are larger than ah's own tool definitions. Measured with context7 + deepwiki + mcp-server-git + @playwright/mcp (42 tools) and the Qwen3.8 tokenizer: 6,329 tokens inline, 1,348 deferred.
 
+**Request arguments.** `params` sets raw request-body fields and is deep-merged last into what ah sends, so any server argument can be set, overridden or removed (`null`) without a code change. It is accepted in four places, later ones winning: `providers.<key>.params`, `models["provider/model"].params`, `presets.<name>.params`, and per call with `--param KEY=VALUE` (repeatable; dotted keys nest; the value is JSON when it parses):
+
+```bash
+ah run --param cache_prompt=true --param n_probs=0 --param 'stop=["</done>"]' "..."
+ah run --param options.num_gpu=40 -m ollama/<model> "..."       # Ollama options
+ah run --param max_tokens=null "..."                             # drop a field ah would send
+```
+
+The startup line prints the merged `params`. Protocol adapters (`openai-compatible`, `anthropic`, `gemini`, `ollama`) are code because they are wire formats. Endpoints, ports, models, vendors, sampling and arguments all come from discovery or config. A runtime is labelled with the product name the server reports (plain-text banner or `Server` header), so a server that speaks Ollama's API but is something else shows its real name.
+
 `"presets"` defines named run bundles; nothing is built in. `ah run -p review "..."`, `ah chat --preset review`, or the preset picker in the web console (shown once one exists):
 
 ```jsonc
