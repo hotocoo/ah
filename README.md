@@ -144,6 +144,11 @@ Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/b
 | Telemetry | tokens, maybe cost | + TTFT, prefill/decode tok/s, KV reuse, load time, GPU util, memory, energy per turn; OTLP |
 | Benchmarks | none, or external | built in, sandboxed, hidden graders, pass@k/pass^k/Wilson, ablation, throughput |
 | Media | none | image generation + procedural 3D modelling as agent tools |
+| MCP tool cost | every schema in every request | deferred: one `mcp` tool + index (42 tools: 6,329 to 1,348 tokens), schema on first bad call |
+| Repeated tool mistakes | re-made every session | tool-error coaching: a model's recurring error classes become up to 3 prompt hints; zero tokens for a clean model |
+| Edit slips | fail, retry | copied line numbers / `>` markers stripped, "already applied" detected, root-echo paths resolved |
+| Other harnesses | n/a | `ah bench run --agent-cmd` grades them on the same sandbox and hidden tests (`scripts/h2h.sh`) |
+| Look | fixed theme | skins, custom accent, uploaded wallpaper (opacity/blur/dim); user presets (`-p NAME`) |
 
 ## Documentation
 
