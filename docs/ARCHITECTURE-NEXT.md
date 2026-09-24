@@ -2,7 +2,7 @@
 
 **The model is an untrusted witness. The harness is the epistemic authority for completion, memory and working context.**
 
-Every agent harness in use today (Claude Code, Codex, Hermes Agent, Letta/MemGPT) lets the model be both the actor and the only narrator of what happened. The Aletheia loop splits those roles: the model acts; the harness, which sees every tool call and its real result, keeps the account of what is true and decides from it when a run is done, what may be remembered and what the model is told about its own past. Four authority points:
+Every agent harness in use today (Claude Code, Codex, Hermes Agent, Letta/MemGPT) by default lets the model be both the actor and the only narrator of what happened. The Aletheia loop splits those roles: the model acts; the harness, which sees every tool call and its real result, keeps the account of what is true and decides from it when a run is done, what may be remembered and what the model is told about its own past. Four authority points:
 
 | question the agent needs answered | who answers in other harnesses | who answers here |
 |---|---|---|
