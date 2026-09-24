@@ -4,9 +4,28 @@ const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 let energy = 0;
 let target = 0;
 
+// Canvas colours follow the CSS accent (skins, user accent). CSS custom properties can hold
+// oklch(from var(...)) expressions a canvas cannot parse, so each is resolved through a probe
+// element and painted into a 1x1 canvas to read back plain RGB.
 const GOLD = [212, 173, 90];
 const GOLD_HI = [243, 223, 166];
-const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+export const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+function cssRgb(prop) {
+  const probe = document.createElement("i");
+  probe.style.cssText = `position:absolute;visibility:hidden;color:var(${prop})`;
+  document.body.append(probe);
+  const color = getComputedStyle(probe).color;
+  probe.remove();
+  const c = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  c.fillStyle = color;
+  c.fillRect(0, 0, 1, 1);
+  return [...c.getImageData(0, 0, 1, 1).data.slice(0, 3)];
+}
+export const accent = { gold: GOLD, hi: GOLD_HI };
+export function readAccent() {
+  GOLD.splice(0, 3, ...cssRgb("--gold"));
+  GOLD_HI.splice(0, 3, ...cssRgb("--gold-hi"));
+}
 
 // Slow Lissajous paths for the light fields; depth scales pointer parallax.
 const BLOBS = [

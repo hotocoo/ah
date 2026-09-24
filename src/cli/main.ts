@@ -28,6 +28,7 @@ Usage:
 
 Common options:
   -m, --model provider/model    Model (default: config, else auto-selected local model)
+  -p, --preset NAME             Named bundle from "presets" in config (model, mode, turns, instructions)
   -C, --cwd DIR                 Workspace root (default: current directory)
   --yes                         Auto-approve writes (permission mode "auto")
   --read-only                   Only read tools
@@ -57,6 +58,7 @@ function common(argv: string[]) {
     allowPositionals: true,
     options: {
       model: { type: "string", short: "m" },
+      preset: { type: "string", short: "p" },
       cwd: { type: "string", short: "C" },
       yes: { type: "boolean" },
       "read-only": { type: "boolean" },
@@ -79,6 +81,7 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
   process.on("SIGINT", () => ac.abort());
   const s = await createSession(env, {
     model: v.model as string | undefined,
+    preset: v.preset as string | undefined,
     root,
     mode: v["read-only"] ? "read-only" : v.yes ? "auto" : undefined,
     approve: askApproval(),

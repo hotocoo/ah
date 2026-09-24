@@ -253,3 +253,22 @@ describe("project facts", () => {
     expect(text).toContain("do not search the filesystem");
   });
 });
+
+describe("presets", () => {
+  test("a preset supplies model, turns and instructions; explicit options win; unknown names are listed", async () => {
+    const { defaultConfig } = await import("../src/config.ts");
+    const { buildEnvironment, createSession } = await import("../src/app/session.ts");
+    const { mkdtempSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const root = mkdtempSync(join(tmpdir(), "ah-preset-"));
+    const cfg = { ...defaultConfig(), dataDir: root, runtimes: { endpoints: [], scan: false }, hardwareSampling: { enabled: false, intervalMs: 1000 }, presets: { review: { model: "mock/scripted", maxTurns: 3, mode: "read-only" as const, instructions: "Only review; never edit." } } };
+    const env = await buildEnvironment({ cfg, offline: true, live: false });
+    const s = await createSession(env, { root, preset: "review", features: { extensions: false, memory: false } });
+    expect(s.modelRef).toBe("mock/scripted");
+    expect((s.agent as unknown as { o: { system: string } }).o.system).toContain("Only review; never edit.");
+    const s2 = await createSession(env, { root, preset: "review", maxTurns: 9, features: { extensions: false, memory: false } });
+    expect((s2.agent as unknown as { o: { maxTurns: number } }).o.maxTurns).toBe(9);
+    await expect(createSession(env, { root, preset: "nope" })).rejects.toThrow(/unknown preset "nope"; defined: review/);
+  });
+});

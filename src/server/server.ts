@@ -13,6 +13,7 @@ import { sampleHardware } from "../runtimes/hardware.ts";
 import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../telemetry/metrics.ts";
 import { dim, green } from "../cli/render.ts";
 import { assetDir } from "../app/paths.ts";
+import { AppearanceStore, MAX_WALLPAPER_BYTES } from "./appearance.ts";
 import indexHtmlSrc from "./ui/index.html" with { type: "text" };
 import appJs from "./ui/app.js" with { type: "text" };
 import fxJs from "./ui/fx.js" with { type: "text" };
@@ -91,6 +92,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     if (!env.telemetry.store) throw new Error("telemetry disabled");
     return env.telemetry.store.db;
   };
+  const looks = new AppearanceStore(env.cfg.dataDir);
   const indexHtml = () => (indexHtmlSrc as unknown as string).replace("__AH_TOKEN__", token);
 
   const server = Bun.serve({
@@ -161,6 +163,12 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return await image(req);
           case "/api/3d":
             return await model3d(req);
+          case "/api/presets":
+            return json(Object.entries(env.cfg.presets).map(([name, p]) => ({ name, description: p.description ?? "", model: p.model ?? null })));
+          case "/api/appearance":
+            return json(req.method === "POST" ? looks.set(await req.json()) : looks.get());
+          case "/api/wallpaper":
+            return await wallpaper(req);
         }
         if (p.startsWith("/api/telemetry/run/")) return json(runDetail(db(), decodeURIComponent(p.slice("/api/telemetry/run/".length))));
         if (p.startsWith("/api/bench/")) {
@@ -181,7 +189,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   // Streams agent events as Server-Sent Events. One run at a time per chat session.
   async function chat(req: Request): Promise<Response> {
     if (req.method !== "POST") return json({ error: "POST required" }, 405);
-    const body = (await req.json()) as { prompt?: string; model?: string; sessionId?: string };
+    const body = (await req.json()) as { prompt?: string; model?: string; preset?: string; sessionId?: string };
     if (!body.prompt?.trim()) return json({ error: "prompt required" }, 400);
     let id = body.sessionId && chats.has(body.sessionId) ? body.sessionId : undefined;
     let chatSession = id ? chats.get(id)! : undefined;
@@ -215,7 +223,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
         approvalSink({ type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 2000) });
       });
     if (!chatSession) {
-      const s = await createSession(env, { model: body.model, root: opts.root, mode: env.cfg.permissionMode, approve: (t, i, sm) => approveFn(t, i, sm), onEvent: (e) => listener?.(e), signal: ac.signal });
+      const s = await createSession(env, { model: body.model, preset: body.preset || undefined, root: opts.root, mode: env.cfg.permissionMode, approve: (t, i, sm) => approveFn(t, i, sm), onEvent: (e) => listener?.(e), signal: ac.signal });
       id = s.agent.sessionId;
       chatSession = { session: s, busy: false, alwaysAllow: new Set() };
       chats.set(id, chatSession);
@@ -264,6 +272,26 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     }
     const text = q.get("q");
     return json({ enabled: true, memories: text ? env.memory.search(text, scopes, 50, 0) : env.memory.list(scopes, 200) });
+  }
+
+  async function wallpaper(req: Request): Promise<Response> {
+    if (req.method === "DELETE") {
+      looks.removeWallpaper();
+      return json(looks.get());
+    }
+    if (req.method === "POST") {
+      // Reject by declared size before buffering; the buffered size is checked again in saveWallpaper.
+      if (Number(req.headers.get("content-length") ?? 0) > MAX_WALLPAPER_BYTES) return json({ error: "wallpaper too large" }, 413);
+      try {
+        looks.saveWallpaper(new Uint8Array(await req.arrayBuffer()));
+      } catch (err) {
+        return json({ error: (err as Error).message }, 400);
+      }
+      return json(looks.get());
+    }
+    const w = looks.wallpaper();
+    if (!w) return json({ error: "no wallpaper" }, 404);
+    return new Response(w.body, { headers: { "content-type": w.type, "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
   async function extensions(req: Request): Promise<Response> {

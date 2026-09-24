@@ -1,5 +1,5 @@
 // web app. Vanilla JS; all dynamic text is escaped (model output is untrusted).
-import { fx } from "/fx.js";
+import { fx, accent, readAccent, rgba } from "/fx.js";
 const TOKEN = document.querySelector('meta[name="ah-token"]').content;
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
@@ -177,7 +177,7 @@ function barChart(el, points) {
       return `<rect class="bar" style="--i:${i}" rx="2" x="${P + i * bw + (bw - w) / 2}" y="${H - P - h}" width="${w}" height="${h}"><title>${esc(new Date(p.bucket).toLocaleString())}: ${p.runs} runs, ${num(p.tokens)} tokens</title></rect>`;
     })
     .join("");
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Runs per hour, peak ${max}"><defs><linearGradient id="bar-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="oklch(91% 0.075 92)"/><stop offset="0.45" stop-color="oklch(80% 0.115 84)"/><stop offset="1" stop-color="oklch(60% 0.105 70 / 0.5)"/></linearGradient></defs>${grid}<line class="axis" x1="${P}" y1="${H - P}" x2="${W - P}" y2="${H - P}"/>${bars}<text x="${P}" y="${H - 8}">${esc(new Date(points[0].bucket).toLocaleString())}</text><text x="${W - P}" y="${H - 8}" text-anchor="end">${esc(new Date(points.at(-1).bucket).toLocaleString())}</text><text x="${P}" y="14">peak ${max}/h</text></svg>`;
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Runs per hour, peak ${max}"><defs><linearGradient id="bar-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: var(--gold-hi)"/><stop offset="0.45" style="stop-color: var(--gold)"/><stop offset="1" style="stop-color: var(--gold-lo); stop-opacity: 0.5"/></linearGradient></defs>${grid}<line class="axis" x1="${P}" y1="${H - P}" x2="${W - P}" y2="${H - P}"/>${bars}<text x="${P}" y="${H - 8}">${esc(new Date(points[0].bucket).toLocaleString())}</text><text x="${W - P}" y="${H - 8}" text-anchor="end">${esc(new Date(points.at(-1).bucket).toLocaleString())}</text><text x="${P}" y="14">peak ${max}/h</text></svg>`;
 }
 function distRows(el, rows) {
   const max = Math.max(...rows.map((r) => r.d?.p95 ?? 0), 1);
@@ -358,7 +358,18 @@ async function fillModels() {
     ? ms_.map((m) => { const ref = `${m.provider}/${m.id}`; return `<option ${(modelsFilled ? ref === prev : ref === doc.defaultModel) ? "selected" : ""}>${esc(ref)}</option>`; }).join("")
     : `<option value="">no local chat model found</option>`;
   modelsFilled = true;
+  const presets = await api("/api/presets", undefined, true).catch(() => []);
+  $("#preset-pick").hidden = !presets.length;
+  const cur = $("#chat-preset").value;
+  $("#chat-preset").innerHTML = `<option value="">no preset</option>${presets.map((p) => `<option value="${esc(p.name)}" title="${esc(p.description)}" ${p.name === cur ? "selected" : ""}>${esc(p.name)}</option>`).join("")}`;
 }
+// A preset that names a model selects it (the model picker stays the explicit override).
+$("#chat-preset").addEventListener("change", async () => {
+  const presets = await api("/api/presets", undefined, true).catch(() => []);
+  const p = presets.find((x) => x.name === $("#chat-preset").value);
+  if (p?.model && [...$("#chat-model").options].some((o) => o.value === p.model)) $("#chat-model").value = p.model;
+  sessionId = null;
+});
 loaders.chat = () => fillModels();
 
 const inst = {
@@ -446,7 +457,7 @@ $("#chat-form").addEventListener("submit", async (e) => {
   inst.trace("task submitted", "gold");
   $("#run-tools").textContent = "0";
   try {
-    const res = await fetch("/api/chat", { method: "POST", headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ prompt, model: $("#chat-model").value, sessionId }) });
+    const res = await fetch("/api/chat", { method: "POST", headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ prompt, model: $("#chat-model").value, preset: $("#chat-preset").value, sessionId }) });
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `${res.status} ${res.statusText}`);
     const reader = res.body.getReader();
     const dec = new TextDecoder();
@@ -716,8 +727,8 @@ function drawSpark() {
   const N = 60, step = W / (N - 1), off = N - gpuHist.length;
   const pts = gpuHist.map((v, i) => [(off + i) * step, H - 3 - (H - 6) * clamp01(v / 100)]);
   const fill = g.createLinearGradient(0, 0, 0, H);
-  fill.addColorStop(0, "rgba(212,173,90,0.35)");
-  fill.addColorStop(1, "rgba(212,173,90,0)");
+  fill.addColorStop(0, rgba(accent.gold, 0.35));
+  fill.addColorStop(1, rgba(accent.gold, 0));
   g.beginPath();
   pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
   g.lineTo(pts.at(-1)[0], H);
@@ -726,14 +737,14 @@ function drawSpark() {
   g.fill();
   g.beginPath();
   pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-  g.strokeStyle = "#e6c77f";
+  g.strokeStyle = rgba(accent.hi, 0.9);
   g.lineWidth = 1.5;
-  g.shadowColor = "rgba(230,199,127,0.8)";
+  g.shadowColor = rgba(accent.hi, 0.8);
   g.shadowBlur = 6;
   g.stroke();
   g.shadowBlur = 0;
   const [lx, ly] = pts.at(-1);
-  g.fillStyle = "#f3dfa6";
+  g.fillStyle = rgba(accent.hi, 1);
   g.beginPath();
   g.arc(lx - 2, ly, 2.5, 0, Math.PI * 2);
   g.fill();
@@ -757,6 +768,83 @@ async function pollHw() {
     $("#hw-meter").style.setProperty("--v", 0);
   }
 }
+// Appearance: skin, accent, wallpaper (System tab). Applied before the ambient layer starts.
+const SKIN_DOTS = { obsidian: "oklch(80% 0.115 84)", graphite: "oklch(74% 0.13 252)", forest: "oklch(84% 0.11 118)", ember: "oklch(76% 0.14 58)" };
+let wallUrl = null;
+async function applyAppearance(ap) {
+  const r = document.documentElement;
+  r.dataset.skin = ap.skin;
+  if (ap.accent) {
+    r.dataset.accent = "";
+    r.style.setProperty("--user-accent", ap.accent);
+  } else delete r.dataset.accent;
+  r.style.setProperty("--wall-opacity", ap.wallpaper.opacity);
+  r.style.setProperty("--wall-blur", `${ap.wallpaper.blur}px`);
+  r.style.setProperty("--wall-dim", ap.wallpaper.dim);
+  if (ap.hasWallpaper && ap.wallpaper.enabled) {
+    if (!wallUrl) {
+      // Fetched with the token and shown from a blob: URL, so the image route stays authenticated.
+      const res = await fetch("/api/wallpaper", { headers: { "x-ah-token": TOKEN } });
+      if (res.ok) wallUrl = URL.createObjectURL(await res.blob());
+    }
+    if (wallUrl) r.style.setProperty("--wall", `url("${wallUrl}")`);
+    r.dataset.wallpaper = "";
+  } else {
+    delete r.dataset.wallpaper;
+    r.style.removeProperty("--wall");
+  }
+  readAccent();
+  drawSpark();
+  renderAppearance(ap);
+}
+function renderAppearance(ap) {
+  $("#skins").innerHTML = Object.entries(SKIN_DOTS)
+    .map(([k, c]) => `<button type="button" class="skin-chip" data-skin="${k}" aria-pressed="${k === ap.skin}"><span class="skin-dot" style="--dot:${c}"></span>${esc(k[0].toUpperCase() + k.slice(1))}</button>`)
+    .join("");
+  $("#ap-accent").value = ap.accent ?? rgbHex(accent.gold);
+  for (const k of ["opacity", "blur", "dim"]) {
+    $(`#ap-${k}`).value = ap.wallpaper[k];
+    $(`#ap-${k}-v`).textContent = k === "blur" ? `${ap.wallpaper[k]}px` : `${Math.round(ap.wallpaper[k] * 100)}%`;
+  }
+  $("#ap-preview").textContent = ap.hasWallpaper ? "" : "No wallpaper";
+  $("#ap-preview").style.setProperty("--wall", ap.hasWallpaper && wallUrl ? `url("${wallUrl}")` : "none");
+  $("#ap-remove").disabled = !ap.hasWallpaper;
+}
+const rgbHex = (c) => `#${c.map((x) => x.toString(16).padStart(2, "0")).join("")}`;
+const saveAppearance = async (patch) => applyAppearance(await api("/api/appearance", patch, true)).catch((e) => ($("#ap-msg").textContent = e.message));
+$("#skins").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-skin]");
+  if (b) saveAppearance({ skin: b.dataset.skin });
+});
+$("#ap-accent").addEventListener("change", (e) => saveAppearance({ accent: e.target.value }));
+$("#ap-accent-reset").addEventListener("click", () => saveAppearance({ accent: null }));
+for (const k of ["opacity", "blur", "dim"]) {
+  const el = $(`#ap-${k}`);
+  // Live preview while dragging, persisted on release.
+  el.addEventListener("input", () => document.documentElement.style.setProperty(`--wall-${k}`, k === "blur" ? `${el.value}px` : el.value));
+  el.addEventListener("change", () => saveAppearance({ wallpaper: { [k]: Number(el.value) } }));
+}
+$("#ap-file").addEventListener("change", async (e) => {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  $("#ap-msg").textContent = "Uploading...";
+  const res = await fetch("/api/wallpaper", { method: "POST", headers: { "x-ah-token": TOKEN }, body: f });
+  const j = await res.json().catch(() => ({ error: `${res.status}` }));
+  $("#ap-msg").textContent = res.ok ? "" : j.error;
+  e.target.value = "";
+  if (!res.ok) return;
+  if (wallUrl) URL.revokeObjectURL(wallUrl);
+  wallUrl = null;
+  applyAppearance(j);
+});
+$("#ap-remove").addEventListener("click", async () => {
+  const res = await fetch("/api/wallpaper", { method: "DELETE", headers: { "x-ah-token": TOKEN } });
+  if (wallUrl) URL.revokeObjectURL(wallUrl);
+  wallUrl = null;
+  if (res.ok) applyAppearance(await res.json());
+});
+await api("/api/appearance", undefined, true).then(applyAppearance).catch(() => {});
+
 fx.init();
 pollHw();
 setInterval(pollHw, 2000);

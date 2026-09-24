@@ -55,6 +55,23 @@ export interface AhConfig {
   // MCP tool exposure: inline (every schema in every request), deferred (one `mcp` tool plus an
   // index), auto (deferred when MCP schemas outweigh ah's own tools).
   mcpTools: "auto" | "inline" | "deferred";
+  // Named run bundles chosen with --preset (CLI) or the console's preset picker. Nothing built in.
+  presets: Record<string, Preset>;
+}
+
+export interface Preset {
+  description?: string;
+  model?: string;
+  mode?: "ask" | "auto" | "read-only";
+  maxTurns?: number;
+  instructions?: string; // appended to the system prompt
+  features?: Record<string, unknown>;
+}
+
+export function getPreset(cfg: AhConfig, name: string): Preset {
+  const p = cfg.presets[name];
+  if (!p) throw new Error(`unknown preset "${name}"; defined: ${Object.keys(cfg.presets).sort().join(", ") || "none (add \"presets\" to ~/.ah/config.json)"}`);
+  return p;
 }
 
 export const AH_HOME = process.env.AH_HOME ?? join(homedir(), ".ah");
@@ -88,6 +105,7 @@ export const defaultConfig = (): AhConfig => ({
   resetAfterFailures: 4,
   computerUse: (process.env.AH_COMPUTER as "off" | "ask" | "auto" | undefined) ?? "ask",
   mcpTools: "auto",
+  presets: {},
 });
 
 function readJson(path: string): Partial<AhConfig> {
@@ -112,6 +130,7 @@ export function loadConfig(cwd = process.cwd()): AhConfig {
     models: { ...base.models, ...user.models, ...project.models },
     telemetry: { ...base.telemetry, ...user.telemetry, ...project.telemetry },
     runtimes: { ...base.runtimes, ...user.runtimes, ...project.runtimes },
+    presets: { ...base.presets, ...user.presets, ...project.presets },
     image: { ...base.image, ...user.image, ...project.image },
     recall: { ...base.recall, ...user.recall, ...project.recall },
   };

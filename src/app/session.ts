@@ -3,7 +3,7 @@ import { Agent, type AgentOptions } from "../agent/loop.ts";
 import { buildSystemPrompt } from "../agent/prompt.ts";
 import { deferMcpTools, shouldDefer } from "../mcp/deferred.ts";
 import { projectFacts, renderProjectFacts } from "../agent/project.ts";
-import { loadConfig, parseModelRef, type AhConfig } from "../config.ts";
+import { getPreset, loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
 import { hubRepoFrom, modelArchFacts, modelCardDefaults } from "../models/hf.ts";
@@ -210,6 +210,7 @@ export interface SessionOptions {
   onEvent?: AgentOptions["onEvent"];
   signal?: AbortSignal;
   system?: string;
+  preset?: string; // name in cfg.presets; explicit options win over it
   toolContextExtras?: Partial<AgentOptions["toolContext"]>;
 }
 
@@ -223,7 +224,11 @@ export interface Session {
   context: ContextDecision;
 }
 
-export async function createSession(env: Environment, o: SessionOptions): Promise<Session> {
+export async function createSession(env: Environment, opts: SessionOptions): Promise<Session> {
+  const pre = opts.preset ? getPreset(env.cfg, opts.preset) : undefined;
+  const o: SessionOptions = pre
+    ? { ...opts, model: opts.model || pre.model, mode: opts.mode ?? pre.mode, maxTurns: opts.maxTurns ?? pre.maxTurns, features: { ...(pre.features as SessionFeatures), ...opts.features } }
+    : opts;
   // An empty string (e.g. a UI with nothing selected) means "pick for me".
   const modelRef = o.model || env.cfg.defaultModel || autoSelectModel(env);
   if (!modelRef) {
@@ -243,7 +248,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const project = projectInfo ? renderProjectFacts(projectInfo) : undefined;
   const testCommand = projectInfo ? projectInfo.testCommand : detectTestCommand(o.root);
   const memory = f.memory !== false && env.memory ? { store: env.memory, scopes: [o.root, "global"] } : undefined;
-  const extensionsPrompt = loaded?.prompt || undefined;
+  const extensionsPrompt = [loaded?.prompt, pre?.instructions].filter(Boolean).join("\n\n") || undefined;
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project, extensions: extensionsPrompt });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
   const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;

@@ -16,11 +16,12 @@
     <div class="progress" aria-hidden="true"></div>
     <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
       <defs>
-        <radialGradient id="core-glow"><stop offset="0" stop-color="#f3dfa6" stop-opacity=".9" /><stop offset=".5" stop-color="#d4ad5a" stop-opacity=".35" /><stop offset="1" stop-color="#d4ad5a" stop-opacity="0" /></radialGradient>
-        <linearGradient id="core-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7e7b8" /><stop offset=".4" stop-color="#d9b25f" /><stop offset=".75" stop-color="#8f6a27" /><stop offset="1" stop-color="#d4ad5a" /></linearGradient>
-        <linearGradient id="core-stroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3dfa6" /><stop offset=".5" stop-color="#d4ad5a" stop-opacity=".25" /><stop offset="1" stop-color="#f3dfa6" /></linearGradient>
+        <radialGradient id="core-glow"><stop offset="0" style="stop-color: var(--gold-hi); stop-opacity: .9" /><stop offset=".5" style="stop-color: var(--gold); stop-opacity: .35" /><stop offset="1" style="stop-color: var(--gold); stop-opacity: 0" /></radialGradient>
+        <linearGradient id="core-metal" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--gold-hi)" /><stop offset=".4" style="stop-color: var(--gold)" /><stop offset=".75" style="stop-color: var(--gold-lo)" /><stop offset="1" style="stop-color: var(--gold)" /></linearGradient>
+        <linearGradient id="core-stroke" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color: var(--gold-hi)" /><stop offset=".5" style="stop-color: var(--gold); stop-opacity: .25" /><stop offset="1" style="stop-color: var(--gold-hi)" /></linearGradient>
       </defs>
     </svg>
+    <div class="wallpaper" aria-hidden="true"></div>
     <a class="skip" href="#main">Skip to content</a>
     <div class="shell">
       <aside class="rail">
@@ -60,6 +61,10 @@
                 <label class="model-pick">
                   <span class="sr">Model</span>
                   <select id="chat-model"><option>discovering models</option></select>
+                </label>
+                <label class="model-pick" id="preset-pick" hidden>
+                  <span class="sr">Preset</span>
+                  <select id="chat-preset"><option value="">no preset</option></select>
                 </label>
                 <span id="chat-meta" class="meta"></span>
                 <button id="chat-new" class="ghost" type="button">New session</button>
@@ -251,6 +256,32 @@
             <article class="cell"><h2>Runtimes</h2><div id="runtimes"></div></article>
             <article class="cell"><h2>Hardware</h2><div id="hardware"></div></article>
           </div>
+          <article class="cell appearance-cell">
+            <h2>Appearance</h2>
+            <div class="appearance">
+              <div>
+                <p class="field-row">Skin</p>
+                <div class="skins" id="skins" role="group" aria-label="Skin"></div>
+                <div class="field-row">
+                  <label for="ap-accent">Accent</label>
+                  <input type="color" id="ap-accent" />
+                  <button class="ghost" id="ap-accent-reset" type="button">Use skin accent</button>
+                </div>
+              </div>
+              <div>
+                <div class="wall-preview" id="ap-preview">No wallpaper</div>
+                <div class="field-row">
+                  <label for="ap-file">Wallpaper</label>
+                  <input type="file" id="ap-file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" />
+                  <button class="ghost" id="ap-remove" type="button">Remove</button>
+                </div>
+                <div class="field-row"><label for="ap-opacity">Opacity</label><input type="range" id="ap-opacity" min="0" max="1" step="0.05" /><output for="ap-opacity" id="ap-opacity-v"></output></div>
+                <div class="field-row"><label for="ap-blur">Blur</label><input type="range" id="ap-blur" min="0" max="40" step="1" /><output for="ap-blur" id="ap-blur-v"></output></div>
+                <div class="field-row"><label for="ap-dim">Dim</label><input type="range" id="ap-dim" min="0" max="0.9" step="0.05" /><output for="ap-dim" id="ap-dim-v"></output></div>
+                <p class="field-row" id="ap-msg" role="status"></p>
+              </div>
+            </div>
+          </article>
         </section>
       </main>
     </div>

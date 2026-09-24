@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildEnvironment } from "../src/app/session.ts";
@@ -112,5 +112,30 @@ describe("memory, extensions and approvals API", () => {
 
   test("unknown approval id is 404", async () => {
     expect((await fetch(`${base}/api/approve`, { method: "POST", headers: h, body: JSON.stringify({ id: "nope", allow: true }) })).status).toBe(404);
+  });
+});
+
+describe("appearance", () => {
+  const H = { "x-ah-token": "t0k" };
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+
+  test("skin, accent and wallpaper settings are validated and persisted", async () => {
+    const post = (b: unknown) => fetch(`${base}/api/appearance`, { method: "POST", headers: { ...H, "content-type": "application/json" }, body: JSON.stringify(b) }).then((r) => r.json());
+    expect(await post({ skin: "forest", accent: "#22AA66", wallpaper: { opacity: 5, blur: -1 } })).toMatchObject({ skin: "forest", accent: "#22aa66", wallpaper: { opacity: 1, blur: 0 } });
+    // Invalid values keep the stored ones; CSS injection through accent is impossible.
+    expect(await post({ skin: "../x", accent: "red;}body{display:none" })).toMatchObject({ skin: "forest", accent: "#22aa66" });
+    expect(JSON.parse(readFileSync(join(home, "appearance.json"), "utf8")).skin).toBe("forest");
+  });
+
+  test("wallpaper upload sniffs magic bytes, needs the token, and round-trips", async () => {
+    expect((await fetch(`${base}/api/wallpaper`, { method: "POST", body: PNG })).status).toBe(401);
+    const bad = await fetch(`${base}/api/wallpaper`, { method: "POST", headers: H, body: new TextEncoder().encode("<svg onload=alert(1)>") });
+    expect(bad.status).toBe(400);
+    const ok = await fetch(`${base}/api/wallpaper`, { method: "POST", headers: H, body: PNG });
+    expect(await ok.json()).toMatchObject({ hasWallpaper: true, wallpaper: { enabled: true } });
+    const img = await fetch(`${base}/api/wallpaper`, { headers: H });
+    expect(img.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await img.arrayBuffer())).toEqual(PNG);
+    expect(await (await fetch(`${base}/api/wallpaper`, { method: "DELETE", headers: H })).json()).toMatchObject({ hasWallpaper: false });
   });
 });
