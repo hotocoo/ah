@@ -277,3 +277,26 @@ describe("process hygiene", () => {
     delete process.env.AH_TEST_PLAIN;
   });
 });
+
+describe("workspace-only shell", () => {
+  test.if(process.platform === "darwin")("sandboxed shell writes inside the workspace and tmp, not elsewhere in home", async () => {
+    const { shellPrefix } = await import("../src/tools/sandbox.ts");
+    const { exec } = await import("../src/tools/shell.ts");
+    const { homedir } = await import("node:os");
+    const ws = mkdtempSync(join(homedir(), ".ah-sbx-ws-"));
+    const outside = join(homedir(), `.ah-sbx-outside-${process.pid}`);
+    try {
+      const prefix = shellPrefix(ws);
+      expect(prefix?.[0]).toBe("sandbox-exec");
+      const ok = await exec("echo hi > inside.txt && echo t > \"${TMPDIR:-/tmp}/ah-sbx-$$\" && cat inside.txt", { root: ws, shellPrefix: prefix }, 10_000);
+      expect(ok.code).toBe(0);
+      expect(ok.stdout.trim()).toBe("hi");
+      const bad = await exec(`echo x > ${JSON.stringify(outside)}`, { root: ws, shellPrefix: prefix }, 10_000);
+      expect(bad.code).not.toBe(0);
+      expect(bad.stderr).toMatch(/not permitted/);
+    } finally {
+      rmSync(ws, { recursive: true, force: true });
+      rmSync(outside, { force: true });
+    }
+  });
+});

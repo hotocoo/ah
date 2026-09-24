@@ -139,7 +139,9 @@ export const bashTool: Tool = {
   async run(input, ctx) {
     const command = str(input, "command");
     const r = await exec(command, ctx, num(input, "timeout_ms", ctx.bashTimeoutMs));
-    return { content: formatExec(r), isError: r.timedOut || r.code !== 0 };
+    // Name the cause, so the model does not retry a write the sandbox will always refuse.
+    const note = ctx.shellPrefix && /Operation not permitted/.test(r.stderr) ? "\n[workspace-only shell: writes are allowed only inside the workspace, temp dirs and tool caches]" : "";
+    return { content: formatExec(r) + note, isError: r.timedOut || r.code !== 0 };
   },
 };
 

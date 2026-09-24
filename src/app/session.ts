@@ -4,6 +4,7 @@ import { buildSystemPrompt } from "../agent/prompt.ts";
 import { deferMcpTools, shouldDefer } from "../mcp/deferred.ts";
 import { coachingHints, renderCoaching } from "../agent/coaching.ts";
 import { mergeParams } from "../providers/provider.ts";
+import { shellPrefix } from "../tools/sandbox.ts";
 import { projectFacts, renderProjectFacts } from "../agent/project.ts";
 import { getPreset, loadConfig, parseModelRef, type AhConfig } from "../config.ts";
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
@@ -270,6 +271,7 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     todos: [],
     readFiles: new Set<string>(),
     exactEdits: f.tolerantEdits === false,
+    shellPrefix: env.cfg.shellSandbox === "off" ? undefined : shellPrefix(o.root, env.cfg.writablePaths),
     syntaxCheck: f.evidence !== false,
     computer: env.cfg.computerUse,
     memory,

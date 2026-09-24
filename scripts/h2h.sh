@@ -46,6 +46,7 @@ if want ah; then
 fi
 
 # Hermes: isolated HERMES_HOME (no user memory, skills or cloud keys), custom provider at the same server.
+# TERMINAL_CWD pins its shell to the sandbox (`--in` does not; Hermes otherwise starts in ~).
 if want hermes; then
   HH="$OUT/hermes-home"; mkdir -p "$HH"
   cat > "$HH/config.yaml" <<EOF
@@ -58,7 +59,7 @@ toolsets:
   - hermes-cli
 EOF
   bun src/cli/main.ts bench run --label hermes --trials "$TRIALS" --out "$OUT/hermes" ${PASS[@]+"${PASS[@]}"} \
-    --agent-cmd "HERMES_HOME='$PWD/$HH' hermes -z {prompt} --in {dir} --yolo" 2>&1 | tee "$OUT/hermes.log"
+    --agent-cmd "cd {dir} && TERMINAL_CWD={dir} HERMES_HOME='$PWD/$HH' hermes -z {prompt} --yolo" 2>&1 | tee "$OUT/hermes.log"
 fi
 
 # dsh: headless profile with the user's own settings (its default model must be the same server's model).

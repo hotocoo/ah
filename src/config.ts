@@ -57,6 +57,10 @@ export interface AhConfig {
   // MCP tool exposure: inline (every schema in every request), deferred (one `mcp` tool plus an
   // index), auto (deferred when MCP schemas outweigh ah's own tools).
   mcpTools: "auto" | "inline" | "deferred";
+  // Workspace-only shell: bash/run_tests may write only inside the workspace, temp dirs, tool caches
+  // and writablePaths ("auto": OS sandbox when one is found; "off": unconfined).
+  shellSandbox: "auto" | "off";
+  writablePaths: string[];
   // Named run bundles chosen with --preset (CLI) or the console's preset picker. Nothing built in.
   presets: Record<string, Preset>;
 }
@@ -88,7 +92,9 @@ export const defaultConfig = (): AhConfig => ({
   maxTokens: 32_000,
   maxTurns: 60,
   reasoning: "high",
-  permissionMode: "ask",
+  // Auto by default: work proceeds without prompts, confined to the workspace (file tools always,
+  // the shell through shellSandbox). Dangerous commands and actions outside the workspace still ask.
+  permissionMode: "auto",
   providers: {},
   models: {},
   telemetry: {
@@ -108,6 +114,8 @@ export const defaultConfig = (): AhConfig => ({
   resetAfterFailures: 4,
   computerUse: (process.env.AH_COMPUTER as "off" | "ask" | "auto" | undefined) ?? "ask",
   mcpTools: "auto",
+  shellSandbox: (process.env.AH_SANDBOX as "auto" | "off" | undefined) ?? "auto",
+  writablePaths: [],
   presets: {},
 });
 

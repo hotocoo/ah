@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { sandboxKind } from "../tools/sandbox.ts";
 import { parseArgs } from "node:util";
 import { createInterface } from "node:readline/promises";
 import { buildEnvironment, createSession, autoSelectModel, type Environment } from "../app/session.ts";
@@ -120,7 +121,7 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
   if (!v.json) {
     const g = s.generation;
     const samp = [g.temperature !== undefined ? `temp ${g.temperature}` : "", g.sampling?.topP !== undefined ? `top_p ${g.sampling.topP}` : "", g.sampling?.topK !== undefined ? `top_k ${g.sampling.topK}` : "", g.templateKwargs ? `template ${JSON.stringify(g.templateKwargs)}` : "", g.params ? `params ${JSON.stringify(g.params)}` : ""].filter(Boolean).join(" ");
-    process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason}) · tools ${s.toolProtocol}${s.compactTools ? " compact" : ""}\nsampling: ${samp || "runtime defaults"} (${g.source})\n`));
+    process.stderr.write(dim(`context window ${s.context.window} (${s.context.reason}) · tools ${s.toolProtocol}${s.compactTools ? " compact" : ""} · mode ${v["read-only"] ? "read-only" : v.yes ? "auto" : env.cfg.permissionMode} · shell ${env.cfg.shellSandbox === "off" ? "unconfined (shellSandbox off)" : (sandboxKind() ?? "unconfined (no OS sandbox found)")}\nsampling: ${samp || "runtime defaults"} (${g.source})\n`));
   }
   let code = 0;
   if (!interactive) {
