@@ -145,6 +145,9 @@ export const bashTool: Tool = {
   },
 };
 
+// The Python interpreter on PATH: macOS and many Linux images ship only python3.
+export const pythonBin = () => (Bun.which("python") ? "python" : Bun.which("python3") ? "python3" : "python");
+
 // Detects the project's test command from manifest files.
 export function detectTestCommand(root: string): string | null {
   const has = (f: string) => existsSync(join(root, f));
@@ -161,13 +164,13 @@ export function detectTestCommand(root: string): string | null {
   }
   if (has("Cargo.toml")) return "cargo test";
   if (has("go.mod")) return "go test ./...";
-  if (has("pyproject.toml") || has("pytest.ini") || has("setup.py")) return "python -m pytest -q";
+  if (has("pyproject.toml") || has("pytest.ini") || has("setup.py")) return `${pythonBin()} -m pytest -q`;
   if (has("Makefile")) return "make test";
   // No manifest: infer from test files present and runners installed.
   const files = new Bun.Glob("**/*.{test,spec}.{ts,tsx,js,mjs}").scanSync({ cwd: root, onlyFiles: true });
   if (!files.next().done && Bun.which("bun")) return "bun test";
   const py = new Bun.Glob("**/test_*.py").scanSync({ cwd: root, onlyFiles: true });
-  if (!py.next().done) return "python -m pytest -q";
+  if (!py.next().done) return `${pythonBin()} -m pytest -q`;
   if (has("pom.xml")) return "mvn -q test";
   if (has("build.gradle") || has("build.gradle.kts")) return "./gradlew test";
   return null;

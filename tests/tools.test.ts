@@ -300,3 +300,15 @@ describe("workspace-only shell", () => {
     }
   });
 });
+
+describe("python test command", () => {
+  test("uses an interpreter that exists on PATH", async () => {
+    const { detectTestCommand, pythonBin } = await import("../src/tools/shell.ts");
+    const d = mkdtempSync(join(tmpdir(), "ah-py-"));
+    writeFileSync(join(d, "test_x.py"), "def test_x():\n    assert True\n");
+    const cmd = detectTestCommand(d)!;
+    expect(cmd).toBe(`${pythonBin()} -m pytest -q`);
+    expect(Bun.which(cmd.split(" ")[0]!)).not.toBeNull();
+    rmSync(d, { recursive: true, force: true });
+  });
+});
