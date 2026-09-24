@@ -1,0 +1,28 @@
+bench external/hermes · 8 tasks × 3 trials · {} · /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-24-t3/hermes
+  PASS ts-bugfix-pagination #1 214.6s · 0 turns · 0 tools
+  PASS ts-bugfix-pagination #2 330.4s · 0 turns · 0 tools
+  PASS ts-bugfix-pagination #3 244.2s · 0 turns · 0 tools
+  PASS go-feature-stack #1 247.8s · 0 turns · 0 tools
+  PASS go-feature-stack #2 476.4s · 0 turns · 0 tools
+  PASS go-feature-stack #3 169.5s · 0 turns · 0 tools
+  PASS py-bugfix-duration #1 135.3s · 0 turns · 0 tools
+  PASS py-bugfix-duration #2 219.2s · 0 turns · 0 tools
+  PASS py-bugfix-duration #3 195.9s · 0 turns · 0 tools
+  PASS rust-fix-compile-and-logic #1 219.5s · 0 turns · 0 tools
+  PASS rust-fix-compile-and-logic #2 220.0s · 0 turns · 0 tools
+  PASS rust-fix-compile-and-logic #3 231.6s · 0 turns · 0 tools
+  PASS ts-debug-cross-file #1 221.7s · 0 turns · 0 tools
+  PASS ts-debug-cross-file #2 215.1s · 0 turns · 0 tools
+  PASS ts-debug-cross-file #3 239.1s · 0 turns · 0 tools
+  PASS ts-feature-lru #1 362.5s · 0 turns · 0 tools
+  PASS ts-feature-lru #2 836.0s · 0 turns · 0 tools
+  PASS ts-feature-lru #3 411.3s · 0 turns · 0 tools
+  PASS ts-multifile-rename #1 263.8s · 0 turns · 0 tools
+  PASS ts-multifile-rename #2 267.8s · 0 turns · 0 tools
+  PASS ts-multifile-rename #3 250.4s · 0 turns · 0 tools
+  FAIL ts-write-tests #1 600.0s · 0 turns · 0 tools · timeout
+  PASS ts-write-tests #2 472.2s · 0 turns · 0 tools
+  PASS ts-write-tests #3 319.6s · 0 turns · 0 tools
+
+result 23/24 trials · pass@1 96% · pass^3 88% · 8/8 tasks solved
+report: /Users/acotech/workspace/ah/examples/bench/h2h-2026-09-24-t3/hermes/report.md

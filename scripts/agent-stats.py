@@ -18,11 +18,13 @@ import sys
 def hermes(home: str, cwd: str) -> dict:
     db = sqlite3.connect(f"file:{os.path.join(home, 'state.db')}?mode=ro", uri=True)
     row = db.execute(
-        "SELECT id, api_call_count, tool_call_count, input_tokens, output_tokens FROM sessions WHERE cwd = ? ORDER BY started_at DESC LIMIT 1",
+        "SELECT id, api_call_count, tool_call_count, input_tokens + COALESCE(cache_read_tokens, 0), output_tokens FROM sessions WHERE cwd = ? ORDER BY started_at DESC LIMIT 1",
         (cwd,),
     ).fetchone()
     if not row:
         return {}
+    # Hermes stores uncached and cache-read prompt tokens separately; ah counts all prompt tokens
+    # (cache hits included), so the sum is the like-for-like figure.
     sid, calls, tools, tin, tout = row
     return {"turns": calls or 0, "toolCalls": tools or 0, "inputTokens": tin or 0, "outputTokens": tout or 0}
 
