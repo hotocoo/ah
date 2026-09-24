@@ -71,7 +71,7 @@ export class AppearanceStore {
     return this.get();
   }
 
-  wallpaper(): { body: Uint8Array; type: string } | null {
+  wallpaper(): { body: Uint8Array<ArrayBuffer>; type: string } | null {
     if (!existsSync(this.image)) return null;
     const body = new Uint8Array(readFileSync(this.image));
     const type = sniffImage(body);
