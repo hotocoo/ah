@@ -253,6 +253,7 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     readFiles: new Set<string>(),
     exactEdits: f.tolerantEdits === false,
     syntaxCheck: f.evidence !== false,
+    computer: env.cfg.computerUse,
     memory,
     media: o.media ?? buildMedia(env.cfg, env.registry, { provider, model, contextWindow: context.window }),
     ...o.toolContextExtras,

@@ -111,6 +111,7 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
     signal,
     // Trials must be independent and comparable: no memory, no user extensions.
     features: { ...o.features, memory: false, extensions: false },
+    toolContextExtras: { computer: "off" },
     onEvent: (e) => {
       if (e.type === "tool_calls_recovered") recovered += e.count;
       o.onEvent?.(e);

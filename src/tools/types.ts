@@ -35,6 +35,8 @@ export interface ToolContext {
   env?: Record<string, string>;
   // Optional container runner: when set, shell commands execute through it (bench docker sandbox).
   shellPrefix?: string[];
+  // Desktop control: off (tools hidden), ask (every action approved), auto.
+  computer?: "off" | "ask" | "auto";
   // Persistent memory; scopes[0] is where new memories are written.
   memory?: { store: MemoryStore; scopes: string[] };
 }
@@ -50,6 +52,8 @@ export interface Tool {
   available?(ctx: ToolContext): boolean;
   // Omitted from the compact tool profile used for small context windows.
   optional?: boolean;
+  // Approval required regardless of permission mode (e.g. actions outside the workspace).
+  needsApproval?(input: Record<string, unknown>, ctx: ToolContext): boolean;
 }
 
 export class ToolError extends Error {}

@@ -1,6 +1,7 @@
 import type { ToolSpec } from "../core/types.ts";
 import { editFileTool, listDirTool, multiEditTool, readFileTool, writeFileTool } from "./fs.ts";
 import { generate3dTool, generateImageTool, gitTool, repoMapTool, todoTool, webFetchTool } from "./misc.ts";
+import { computerTool, screenshotTool } from "./computer.ts";
 import { memorySaveTool, memorySearchTool } from "./memory.ts";
 import { validate } from "./schema.ts";
 import { globTool, grepTool } from "./search.ts";
@@ -25,6 +26,8 @@ export const ALL_TOOLS: Tool[] = [
   generate3dTool,
   memorySearchTool,
   memorySaveTool,
+  screenshotTool,
+  computerTool,
 ];
 
 export type PermissionMode = "ask" | "auto" | "read-only";
@@ -60,7 +63,8 @@ export class ToolRegistry {
   }
 
   // Needs approval when: mode is ask and tool writes, or the command is dangerous in any mode.
-  needsApproval(tool: Tool, input: Record<string, unknown>, mode: PermissionMode): boolean {
+  needsApproval(tool: Tool, input: Record<string, unknown>, mode: PermissionMode, ctx?: ToolContext): boolean {
+    if (ctx && tool.needsApproval?.(input, ctx)) return true;
     if (tool.spec.name === "bash" && typeof input.command === "string" && isDangerousCommand(input.command)) return true;
     return mode === "ask" && !tool.readOnly;
   }
@@ -80,7 +84,7 @@ export class ToolRegistry {
     if (tool.available && !tool.available(ctx)) return done({ content: `${name} is not available here (no backend or precondition)`, isError: true });
     const errors = validate(tool.spec.inputSchema, input);
     if (errors.length) return done({ content: `invalid input for ${name}:\n${errors.join("\n")}`, isError: true });
-    if (this.needsApproval(tool, input, mode)) {
+    if (this.needsApproval(tool, input, mode, ctx)) {
       const summary = tool.summarize?.(input) ?? name;
       const ok = approve ? await approve(name, input, summary) : false;
       if (!ok) return done({ content: `user denied: ${summary}`, isError: true, denied: true });

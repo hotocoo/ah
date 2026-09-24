@@ -48,6 +48,8 @@ export interface AhConfig {
   recall: { enabled: boolean; limit: number };
   // Ask a run that changed files to pass a check before finishing (see evidence.ts).
   evidenceGate: boolean;
+  // Desktop control tools (screenshot, computer): off, ask (approve every action), auto.
+  computerUse: "off" | "ask" | "auto";
 }
 
 export const AH_HOME = process.env.AH_HOME ?? join(homedir(), ".ah");
@@ -78,6 +80,7 @@ export const defaultConfig = (): AhConfig => ({
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
   recall: { enabled: process.env.AH_MEMORY !== "0", limit: 5 },
   evidenceGate: true,
+  computerUse: (process.env.AH_COMPUTER as "off" | "ask" | "auto" | undefined) ?? "ask",
 });
 
 function readJson(path: string): Partial<AhConfig> {

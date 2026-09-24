@@ -37,13 +37,17 @@ Common options:
   --json                        Emit events as JSON lines
 `;
 
+// "a" allows the tool for the rest of the session (e.g. a run of desktop actions).
 function askApproval(): ApprovalFn {
-  return async (_tool, _input, summary) => {
+  const always = new Set<string>();
+  return async (tool, _input, summary) => {
+    if (always.has(tool)) return true;
     if (!process.stdin.isTTY) return false;
     const rl = createInterface({ input: process.stdin, output: process.stderr });
-    const a = (await rl.question(yellow(`  allow ${summary}? [y/N] `))).trim().toLowerCase();
+    const a = (await rl.question(yellow(`  allow ${summary}? [y/N/a=always ${tool}] `))).trim().toLowerCase();
     rl.close();
-    return a === "y" || a === "yes";
+    if (a === "a" || a === "always") always.add(tool);
+    return a === "y" || a === "yes" || always.has(tool);
   };
 }
 
