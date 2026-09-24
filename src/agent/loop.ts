@@ -7,6 +7,8 @@ import { RepetitionGuard } from "./repetition.ts";
 import { recoverToolCalls, textProtocolInstructions, toTextProtocol } from "./toolcall-parser.ts";
 import { COMPACTION_PROMPT, elideOldToolResults, estimateTokens, renderTranscript, safeCutIndex, stripThinking } from "./context.ts";
 import type { AgentEvent, AgentEventHandler, RunOutcome, RunSummary } from "./events.ts";
+import { EvidenceLedger } from "./evidence.ts";
+import type { MemoryStore } from "../memory/store.ts";
 
 export interface AgentOptions {
   provider: Provider;
@@ -39,6 +41,13 @@ export interface AgentOptions {
   onEvent?: AgentEventHandler;
   signal?: AbortSignal;
   runId?: string;
+  // Completion gate: a run that changed files is asked once to pass a check before it
+  // may end (default on). testCommand is the project's detected test command.
+  evidenceGate?: boolean;
+  testCommand?: string | null;
+  // Persistent memory: recalled into each request, written from verified lessons,
+  // reinforced by run verdicts. scopes[0] is where new memories are written.
+  memory?: { store: MemoryStore; scopes: string[]; recallLimit?: number };
 }
 
 const sleep = (ms: number, signal?: AbortSignal) =>
@@ -94,9 +103,14 @@ export class Agent {
     this.toolErrors = 0;
     this.firstTtft = null;
     this.changed = new Set();
+    this.ledger = new EvidenceLedger(this.o.testCommand ?? null);
     const content: ContentBlock[] = typeof prompt === "string" ? [{ type: "text", text: prompt }] : prompt;
-    this.messages.push({ role: "user", content });
-    this.emit({ type: "run_start", runId: this.runId, sessionId: this.sessionId, model: this.o.model, provider: this.o.provider.key, prompt: textOf({ role: "user", content }), t: Date.now() });
+    const promptText = textOf({ role: "user", content });
+    this.emit({ type: "run_start", runId: this.runId, sessionId: this.sessionId, model: this.o.model, provider: this.o.provider.key, prompt: promptText, t: Date.now() });
+    // Recalled memory rides on the user message, not the system prompt, so the cached
+    // system prefix stays byte-stable (D4).
+    const recalled = this.recall(promptText);
+    this.messages.push({ role: "user", content: recalled.block ? [recalled.block, ...content] : content });
     const startTurn = this.turn;
     let outcome: RunOutcome = "completed";
     let error: string | undefined;
@@ -106,6 +120,7 @@ export class Agent {
     let truncationRetries = 0;
     let overflowRetried = false;
     let nudges = 0;
+    let gated = false;
 
     try {
       while (true) {
@@ -170,6 +185,19 @@ export class Agent {
           this.messages.push({ role: "user", content: [{ type: "text", text: "You ended your turn without a tool call or a reply. Continue the task: use the tools to make the change and verify it, then reply with a short summary." }] });
           continue;
         }
+        // Evidence gate: the model wants to finish, but files changed and no check has
+        // passed since. Ask once; the verdict records what happened either way.
+        const debt = !calls.length && res.stopReason !== "max_tokens" && this.o.evidenceGate !== false && !gated ? this.ledger.unverified() : null;
+        if (debt) {
+          gated = true;
+          this.emit({ type: "evidence_gate", runId: this.runId, turn: this.turn, files: debt.files, lastFailed: debt.lastFailed, t: Date.now() });
+          const how = this.o.testCommand ? `\`${this.o.testCommand}\` (run_tests) or the build/type check` : "the project's tests, build or type check";
+          const text = debt.lastFailed
+            ? `[ah] The last check failed and ${debt.files.join(", ")} changed without a passing check since. Fix the failure and re-run ${how}. If it cannot pass, say exactly why in your final reply.`
+            : `[ah] You changed ${debt.files.join(", ")} but no check has passed since. Run ${how} now and fix any failure. If no check applies, say so explicitly in your final reply.`;
+          this.messages.push({ role: "user", content: [{ type: "text", text }] });
+          continue;
+        }
         if (!calls.length) {
           finalText = textOf(res.message);
           if (res.stopReason === "max_tokens") outcome = "max_tokens";
@@ -185,7 +213,10 @@ export class Agent {
       this.emit({ type: "error", runId: this.runId, turn: this.turn, message: msg, t: Date.now() });
     }
 
+    const verdict = this.ledger.verdict(outcome === "completed");
+    this.settleMemory(verdict, recalled.ids);
     const summary: RunSummary = {
+      verdict,
       runId: this.runId,
       outcome,
       finalText,
@@ -338,6 +369,7 @@ export class Agent {
     this.toolCalls++;
     if (out.isError) this.toolErrors++;
     out.changedFiles?.forEach((f) => this.changed.add(f));
+    this.ledger.observe({ name: c.name, input: c.input, summary, isError: Boolean(out.isError), denied: Boolean(out.denied), content: out.content, changedFiles: out.changedFiles ?? [], turn: this.turn });
     this.emit({
       type: "tool_end",
       runId: this.runId,
@@ -367,6 +399,35 @@ export class Agent {
     // Tool results first (provider requirement), then any images.
     const flat = results.flat();
     return [...flat.filter((b) => b.type === "tool_result"), ...flat.filter((b) => b.type !== "tool_result")];
+  }
+
+  private ledger = new EvidenceLedger();
+
+  private recall(prompt: string): { block: ContentBlock | null; ids: number[] } {
+    const m = this.o.memory;
+    if (!m) return { block: null, ids: [] };
+    const hits = m.store.search(prompt, m.scopes, m.recallLimit ?? 5);
+    if (!hits.length) return { block: null, ids: [] };
+    this.emit({ type: "memory_recall", runId: this.runId, turn: this.turn, memories: hits.map((h) => ({ id: h.id, kind: h.kind, trust: h.trust, text: h.text.slice(0, 300) })), t: Date.now() });
+    const lines = hits.map((h) => `- [${h.kind}, trust ${h.trust.toFixed(2)}] ${h.text}`);
+    return {
+      ids: hits.map((h) => h.id),
+      block: { type: "text", text: `<memory>\nFrom earlier sessions (lessons are harness-verified; notes are unverified claims; check before relying on them):\n${lines.join("\n")}\n</memory>` },
+    };
+  }
+
+  private settleMemory(verdict: ReturnType<EvidenceLedger["verdict"]>, recalled: number[]) {
+    const lessons = this.ledger.lessons(verdict);
+    const m = this.o.memory;
+    if (m) {
+      try {
+        for (const l of lessons) m.store.save({ scope: m.scopes[0]!, kind: "lesson", text: l.text, sourceRun: this.runId });
+        if (recalled.length) m.store.reinforce(recalled, verdict === "verified" ? "verified" : verdict === "failed" ? "failed" : "unverified");
+      } catch {
+        /* memory is best-effort */
+      }
+    }
+    this.emit({ type: "evidence", runId: this.runId, verdict, surprises: this.ledger.surprises, checksPassed: this.ledger.checksPassed, checksFailed: this.ledger.checksFailed, lessons: lessons.map((l) => l.text), t: Date.now() });
   }
 
   // Keeps the context under budget: first elide old tool output, then summarise.
@@ -408,6 +469,14 @@ export class Agent {
       { role: "assistant", content: [{ type: "text", text: "Understood. Continuing from these notes." }] },
       ...tail,
     ]);
+    // A compaction summary is a faithful record of the session so far: keep it as an episode.
+    if (summary.trim() && this.o.memory) {
+      try {
+        this.o.memory.store.save({ scope: this.o.memory.scopes[0]!, kind: "episode", text: summary, sourceRun: this.runId });
+      } catch {
+        /* memory is best-effort; never fail a run on it */
+      }
+    }
     const after = estimateTokens(this.messages, this.o.system);
     this.emit({ type: "compaction", runId: this.runId, turn: this.turn, beforeTokens: before, afterTokens: after, strategy: "summarize", t: Date.now() });
   }

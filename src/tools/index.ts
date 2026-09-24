@@ -1,6 +1,7 @@
 import type { ToolSpec } from "../core/types.ts";
 import { editFileTool, listDirTool, multiEditTool, readFileTool, writeFileTool } from "./fs.ts";
 import { generate3dTool, generateImageTool, gitTool, repoMapTool, todoTool, webFetchTool } from "./misc.ts";
+import { memorySaveTool, memorySearchTool } from "./memory.ts";
 import { validate } from "./schema.ts";
 import { globTool, grepTool } from "./search.ts";
 import { bashTool, isDangerousCommand, runTestsTool } from "./shell.ts";
@@ -22,6 +23,8 @@ export const ALL_TOOLS: Tool[] = [
   webFetchTool,
   generateImageTool,
   generate3dTool,
+  memorySearchTool,
+  memorySaveTool,
 ];
 
 export type PermissionMode = "ask" | "auto" | "read-only";

@@ -1,4 +1,5 @@
 import type { RuntimeTimings, StopReason, Usage } from "../core/types.ts";
+import type { Verdict } from "./evidence.ts";
 
 // Every observable step of an agent run. Timestamps are epoch ms (Date.now()) and
 // monotonic offsets are measured with performance.now() inside the loop, so
@@ -44,6 +45,9 @@ export type AgentEvent =
     }
   | { type: "compaction"; runId: string; turn: number; beforeTokens: number; afterTokens: number; strategy: "elide" | "summarize"; t: number }
   | { type: "error"; runId: string; turn: number; message: string; t: number }
+  | { type: "memory_recall"; runId: string; turn: number; memories: { id: number; kind: string; trust: number; text: string }[]; t: number }
+  | { type: "evidence_gate"; runId: string; turn: number; files: string[]; lastFailed: boolean; t: number }
+  | { type: "evidence"; runId: string; verdict: Verdict; surprises: number; checksPassed: number; checksFailed: number; lessons: string[]; t: number }
   | { type: "run_end"; runId: string; result: RunSummary; t: number };
 
 export type RunOutcome = "completed" | "max_turns" | "max_tokens" | "refusal" | "budget" | "aborted" | "error";
@@ -60,6 +64,8 @@ export interface RunSummary {
   wallMs: number;
   ttftMs: number | null; // first turn
   changedFiles: string[];
+  // What the harness observed, independent of the model's account (see evidence.ts).
+  verdict?: Verdict;
   error?: string;
 }
 

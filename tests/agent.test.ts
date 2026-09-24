@@ -33,6 +33,7 @@ function setup(script: MockTurn[], extra: Partial<ConstructorParameters<typeof A
     pricing: { input: 3, output: 15 },
     onEvent: (e) => events.push(e),
     maxRetries: 2,
+    evidenceGate: false,
     ...extra,
   });
   return { root, agent, events };

@@ -44,6 +44,10 @@ export interface AhConfig {
   // Image generation defaults for local diffusion backends (ComfyUI, sdapi).
   image: { width: number; height: number; steps: number; cfg: number; sampler: string; scheduler: string; negative: string };
   hardwareSampling: { enabled: boolean; intervalMs: number };
+  // Persistent memory (~/.ah/memory.sqlite): recalled into each request, fed by verified lessons.
+  recall: { enabled: boolean; limit: number };
+  // Ask a run that changed files to pass a check before finishing (see evidence.ts).
+  evidenceGate: boolean;
 }
 
 export const AH_HOME = process.env.AH_HOME ?? join(homedir(), ".ah");
@@ -72,6 +76,8 @@ export const defaultConfig = (): AhConfig => ({
   image: { width: 1024, height: 1024, steps: 20, cfg: 7, sampler: "euler", scheduler: "normal", negative: "blurry, low quality, watermark, text" },
   toolProtocol: (process.env.AH_TOOL_PROTOCOL as "auto" | "native" | "text" | undefined) ?? "auto",
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
+  recall: { enabled: process.env.AH_MEMORY !== "0", limit: 5 },
+  evidenceGate: true,
 });
 
 function readJson(path: string): Partial<AhConfig> {
@@ -97,6 +103,7 @@ export function loadConfig(cwd = process.cwd()): AhConfig {
     telemetry: { ...base.telemetry, ...user.telemetry, ...project.telemetry },
     runtimes: { ...base.runtimes, ...user.runtimes, ...project.runtimes },
     image: { ...base.image, ...user.image, ...project.image },
+    recall: { ...base.recall, ...user.recall, ...project.recall },
   };
   mkdirSync(merged.dataDir, { recursive: true });
   return merged;

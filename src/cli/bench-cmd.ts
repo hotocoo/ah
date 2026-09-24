@@ -104,7 +104,7 @@ export async function cmdBench(argv: string[]): Promise<number> {
 
     const tasks = loadSuite(suiteDir, { ids: v.task as string[] | undefined, tags: v.tag as string[] | undefined });
     const features: SessionFeatures = v.baseline
-      ? { contextSizing: false, textToolParsing: false, compactTools: false, toolProtocol: "native", projectFacts: false, tolerantEdits: false, recoveries: false }
+      ? { contextSizing: false, textToolParsing: false, compactTools: false, toolProtocol: "native", projectFacts: false, tolerantEdits: false, recoveries: false, evidence: false }
       : {
           ...(v["no-context-sizing"] ? { contextSizing: false } : {}),
           ...(v["no-text-tools"] ? { textToolParsing: false } : {}),

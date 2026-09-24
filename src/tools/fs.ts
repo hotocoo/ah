@@ -17,6 +17,21 @@ export const IGNORED_DIRS = new Set([".git", "node_modules", "dist", "build", ".
 
 const isBinary = (buf: Buffer) => buf.subarray(0, 8000).includes(0);
 
+const TRANSPILE_LOADERS: Record<string, "ts" | "tsx" | "js" | "jsx"> = { ".ts": "ts", ".mts": "ts", ".cts": "ts", ".tsx": "tsx", ".js": "js", ".mjs": "js", ".cjs": "js", ".jsx": "jsx" };
+
+// In-process syntax check after a write (no subprocess, microseconds): a broken edit is
+// reported in the same tool result instead of surfacing turns later in a test run.
+export function syntaxNote(abs: string, text: string): string {
+  const loader = TRANSPILE_LOADERS[extname(abs).toLowerCase()];
+  if (!loader) return "";
+  try {
+    new Bun.Transpiler({ loader }).transformSync(text);
+    return "";
+  } catch (err) {
+    return `\nWARNING: the file now has a syntax error: ${(err as Error).message ?? String(err)}. Fix it before continuing.`;
+  }
+}
+
 export const readFileTool: Tool = {
   readOnly: true,
   spec: {
@@ -74,7 +89,7 @@ export const writeFileTool: Tool = {
     mkdirSync(dirname(abs), { recursive: true });
     writeFileSync(abs, content);
     ctx.readFiles.add(abs);
-    return { content: `wrote ${rel(ctx.root, abs)} (${content.split("\n").length} lines)`, changedFiles: [rel(ctx.root, abs)] };
+    return { content: `wrote ${rel(ctx.root, abs)} (${content.split("\n").length} lines)${(ctx.syntaxCheck === false ? "" : syntaxNote(abs, content))}`, changedFiles: [rel(ctx.root, abs)] };
   },
 };
 
@@ -109,7 +124,7 @@ export const editFileTool: Tool = {
     const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits);
     writeFileSync(abs, r.text);
     const note = r.strategy === "whitespace" ? " (old_string matched ignoring indentation; new_string re-indented to the file)" : "";
-    return { content: `edited ${rel(ctx.root, abs)}${note}`, changedFiles: [rel(ctx.root, abs)] };
+    return { content: `edited ${rel(ctx.root, abs)}${note}${(ctx.syntaxCheck === false ? "" : syntaxNote(abs, r.text))}`, changedFiles: [rel(ctx.root, abs)] };
   },
 };
 
@@ -150,7 +165,7 @@ export const multiEditTool: Tool = {
       }
     });
     writeFileSync(abs, text);
-    return { content: `applied ${edits.length} edits to ${rel(ctx.root, abs)}`, changedFiles: [rel(ctx.root, abs)] };
+    return { content: `applied ${edits.length} edits to ${rel(ctx.root, abs)}${(ctx.syntaxCheck === false ? "" : syntaxNote(abs, text))}`, changedFiles: [rel(ctx.root, abs)] };
   },
 };
 

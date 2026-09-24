@@ -109,7 +109,8 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
     maxTurns: task.limits.maxTurns,
     budgetUsd: task.limits.maxCostUsd,
     signal,
-    features: o.features,
+    // Trials must be independent: no memory carried between them.
+    features: { ...o.features, memory: false },
     onEvent: (e) => {
       if (e.type === "tool_calls_recovered") recovered += e.count;
       o.onEvent?.(e);

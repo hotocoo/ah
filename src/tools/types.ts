@@ -1,6 +1,7 @@
 import { realpathSync } from "node:fs";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { ImageBlock, ToolSpec } from "../core/types.ts";
+import type { MemoryStore } from "../memory/store.ts";
 
 export interface ToolOutput {
   content: string;
@@ -30,9 +31,12 @@ export interface ToolContext {
   readFiles: Set<string>; // absolute paths read this session (edit-before-read guard)
   media: MediaServices;
   exactEdits?: boolean; // disable indentation-tolerant matching (ablation)
+  syntaxCheck?: boolean; // in-process syntax check after writes (default on)
   env?: Record<string, string>;
   // Optional container runner: when set, shell commands execute through it (bench docker sandbox).
   shellPrefix?: string[];
+  // Persistent memory; scopes[0] is where new memories are written.
+  memory?: { store: MemoryStore; scopes: string[] };
 }
 
 export interface Tool {

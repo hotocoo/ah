@@ -14,6 +14,8 @@ import { discoverRuntimes, type RuntimeInfo } from "../runtimes/discover.ts";
 import { sampleHardware } from "../runtimes/hardware.ts";
 import { Telemetry } from "../telemetry/index.ts";
 import { ToolRegistry } from "../tools/index.ts";
+import { detectTestCommand } from "../tools/shell.ts";
+import { MemoryStore } from "../memory/store.ts";
 import type { ApprovalFn, MediaServices } from "../tools/types.ts";
 
 // Everything a command needs, assembled from discovery: config, runtimes, providers,
@@ -24,6 +26,7 @@ export interface Environment {
   registry: ProviderRegistry;
   catalog: ModelCatalog;
   telemetry: Telemetry;
+  memory?: MemoryStore;
 }
 
 export async function buildEnvironment(opts: { cwd?: string; offline?: boolean; live?: boolean; cfg?: AhConfig } = {}): Promise<Environment> {
@@ -35,7 +38,8 @@ export async function buildEnvironment(opts: { cwd?: string; offline?: boolean; 
   const registry = ProviderRegistry.build({ cfg, runtimes, catalog: mdRaw ? JSON.parse(mdRaw) : null, store: telemetry.store });
   const catalog = new ModelCatalog({ store: telemetry.store, registry, offline: opts.offline });
   await catalog.load({ live: opts.live ?? true });
-  return { cfg, runtimes, registry, catalog, telemetry };
+  const memory = cfg.recall.enabled ? new MemoryStore(join(cfg.dataDir, "memory.sqlite")) : undefined;
+  return { cfg, runtimes, registry, catalog, telemetry, memory };
 }
 
 // Facts about a runtime-served model: llama.cpp/LM Studio fix n_ctx at load time.
@@ -77,6 +81,8 @@ export interface SessionFeatures {
   projectFacts?: boolean; // languages/test command/toolchains in the system prompt (default on)
   tolerantEdits?: boolean; // indentation-tolerant edit matching (default on)
   recoveries?: boolean; // loop guard, empty-turn nudges, dropped-tool-call fallback (default on)
+  evidence?: boolean; // completion gate + post-write syntax check (default on)
+  memory?: boolean; // persistent memory recall and lessons (default on; off in benchmarks)
   toolProtocol?: "auto" | "native" | "text";
 }
 
@@ -192,7 +198,10 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
   const tools = new ToolRegistry();
   // Compact profile when the window is small relative to the prompt + tool definitions.
   const f = o.features ?? {};
-  const project = f.projectFacts === false ? undefined : renderProjectFacts(projectFacts(o.root));
+  const projectInfo = f.projectFacts === false ? undefined : projectFacts(o.root);
+  const project = projectInfo ? renderProjectFacts(projectInfo) : undefined;
+  const testCommand = projectInfo ? projectInfo.testCommand : detectTestCommand(o.root);
+  const memory = f.memory !== false && env.memory ? { store: env.memory, scopes: [o.root, "global"] } : undefined;
   const fullPrompt = buildSystemPrompt({ root: o.root, model: modelRef, toolNames: tools.names(), project });
   const overheadTokens = Math.ceil((fullPrompt.length + JSON.stringify(tools.specs()).length) / 4);
   const compactTools = f.compactTools !== false && context.window < overheadTokens * env.cfg.compactToolsRatio;
@@ -206,6 +215,8 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
     todos: [],
     readFiles: new Set<string>(),
     exactEdits: f.tolerantEdits === false,
+    syntaxCheck: f.evidence !== false,
+    memory,
     media: o.media ?? buildMedia(env.cfg, env.registry, { provider, model, contextWindow: context.window }),
     ...o.toolContextExtras,
   };
@@ -240,6 +251,9 @@ export async function createSession(env: Environment, o: SessionOptions): Promis
       o.onEvent?.(e);
     },
     signal: o.signal,
+    evidenceGate: f.evidence !== false && env.cfg.evidenceGate,
+    testCommand,
+    memory: memory && { ...memory, recallLimit: env.cfg.recall.limit },
   });
   return { agent, modelRef, info, context, compactTools, toolProtocol, generation: gen };
 }

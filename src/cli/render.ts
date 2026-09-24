@@ -69,12 +69,18 @@ export function terminalRenderer(opts: { verbose?: boolean; json?: boolean } = {
       case "error":
         err(red(`  error: ${e.message}`));
         break;
+      case "memory_recall":
+        err(dim(`  ◆ recalled ${e.memories.length} memor${e.memories.length === 1 ? "y" : "ies"} (${e.memories.map((m) => `${m.kind} ${m.trust.toFixed(2)}`).join(", ")})`));
+        break;
+      case "evidence_gate":
+        err(yellow(`  ⚑ ${e.lastFailed ? "last check failed" : "no check passed"} after changing ${e.files.join(", ")}; asking to verify`));
+        break;
       case "run_end": {
         const r = e.result;
         const status = r.outcome === "completed" ? green(r.outcome) : yellow(r.outcome);
         err(
           dim(
-            `\n■ ${status} · ${r.turns} turns · ${r.toolCalls} tools (${r.toolErrors} err) · ${fmtMs(r.wallMs)} · in ${r.usage.inputTokens} out ${r.usage.outputTokens}` +
+            `\n■ ${status}${r.verdict && r.verdict !== "none" ? ` (${r.verdict})` : ""} · ${r.turns} turns · ${r.toolCalls} tools (${r.toolErrors} err) · ${fmtMs(r.wallMs)} · in ${r.usage.inputTokens} out ${r.usage.outputTokens}` +
               (r.costUsd ? ` · $${r.costUsd.toFixed(4)}` : "") +
               (r.changedFiles.length ? `\n  changed: ${r.changedFiles.join(", ")}` : ""),
           ),
