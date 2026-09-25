@@ -268,6 +268,12 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       for (const s of cs.subs) s.write(e);
       return;
     }
+    // Screenshots are large and only shown live: keep a stub in the log (and on disk).
+    if (e.type === "tool_image") {
+      for (const s of cs.subs) s.write(e);
+      if (cs.log.length < MAX_SESSION_EVENTS) cs.log.push({ ...e, data: "" });
+      return;
+    }
     const last = cs.log.at(-1);
     if ((e.type === "text_delta" || e.type === "thinking_delta") && last?.type === e.type && last.turn === e.turn) cs.log[cs.log.length - 1] = { ...last, text: last.text + e.text };
     else if (cs.log.length < MAX_SESSION_EVENTS) cs.log.push(e);
@@ -285,7 +291,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     if (!chatSession) {
       // A session from an earlier server process continues where it stopped: same model,
       // its transcript for replay, and the agent's messages as the conversation so far.
-      const saved = body.sessionId ? store.load(body.sessionId) : null;
+      const stored = body.sessionId ? store.load(body.sessionId) : null;
+      const saved = stored?.root === opts.root ? stored : null;
       const m = mode ?? (saved?.mode as PermissionMode | undefined) ?? env.cfg.permissionMode;
       let cs!: ChatSession;
       const s = await createSession(env, { model: saved?.model ?? body.model, preset: saved ? undefined : body.preset || undefined, root: opts.root, mode: m, approve: () => Promise.resolve(false), onEvent: (e) => publish(cs, e) });
