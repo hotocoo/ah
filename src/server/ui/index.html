@@ -264,6 +264,19 @@
             <article class="cell"><h2>Skills</h2><div id="ext-skills"></div></article>
             <article class="cell"><h2>Plugins</h2><div id="ext-plugins"></div></article>
           </div>
+          <article class="cell market" style="margin-top: var(--s-4)">
+            <div class="market-head">
+              <h2>Marketplace</h2>
+              <div class="seg" role="tablist" aria-label="Marketplace source">
+                <button type="button" role="tab" aria-selected="true" data-src="mcp">MCP servers</button>
+                <button type="button" role="tab" aria-selected="false" data-src="skills">Skills</button>
+              </div>
+              <label class="search"><span class="sr">Search</span><input id="mk-q" type="search" placeholder="Search the registry: github, postgres, browser, pdf" autocomplete="off" /></label>
+            </div>
+            <p class="help" id="mk-note">Live from the official MCP registry (registry.modelcontextprotocol.io). Installing adds the server to ~/.ah/config.json; it runs with your permissions, so check the source first.</p>
+            <div id="mk-list" class="mk-list"></div>
+            <button type="button" class="ghost" id="mk-more" hidden>Load more</button>
+          </article>
         </section>
 
         <section id="tab-system" class="tab" role="tabpanel" aria-labelledby="h-system" hidden>

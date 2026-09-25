@@ -449,6 +449,83 @@ $("#set-raw-save").addEventListener("click", async () => {
   }
 });
 
+// ---------- marketplace: live registry search, install into the user config ----------
+const market = { src: "mcp", next: null, seq: 0 };
+const MK_NOTES = {
+  mcp: "Live from the official MCP registry (registry.modelcontextprotocol.io). Installing adds the server to ~/.ah/config.json; it runs with your permissions, so check the source first.",
+  skills: "Live from skills.sh; installs download the skill folder from its GitHub repository into ~/.ah/skills. A skill's instructions and scripts run with the agent's permissions: review the source.",
+};
+function mcpCard(x) {
+  const env = x.install?.env ?? [];
+  const run = x.install ? (x.install.kind === "remote" ? x.install.config.url : [x.install.config.command, ...(x.install.config.args ?? [])].join(" ")) : "no installable package listed";
+  return `<form class="mk" data-name="${esc(x.name)}" data-key="${esc(x.key)}"><div class="mk-main"><strong>${esc(x.name)}</strong><span class="meta">v${esc(x.version)}${x.repository ? ` · <a href="${esc(x.repository)}" target="_blank" rel="noopener noreferrer">source</a>` : ""}</span><p>${esc(x.description)}</p><code class="mk-run">${esc(run)}</code>${
+    env.length && !x.installed ? `<div class="mk-env">${env.map((e) => `<label title="${esc(e.description)}"><span>${esc(e.name)}${e.required ? " *" : ""}</span><input name="${esc(e.name)}" type="${e.secret ? "password" : "text"}" autocomplete="off" placeholder="${esc(e.description.slice(0, 60))}" ${e.required ? "required" : ""} /></label>`).join("")}</div>` : ""
+  }</div><div class="mk-act">${x.installed ? `<span class="tag ok">installed</span><button type="button" class="ghost sm" data-uninstall>Remove</button>` : x.install ? `<button type="submit" class="sm">Install</button>` : ""}</div></form>`;
+}
+function skillCard(x) {
+  return `<form class="mk" data-source="${esc(x.source)}" data-skill="${esc(x.skillId)}"><div class="mk-main"><strong>${esc(x.name)}</strong><span class="meta"><a href="https://github.com/${esc(x.source)}" target="_blank" rel="noopener noreferrer">${esc(x.source)}</a> · ${num(x.installs)} installs</span></div><div class="mk-act">${x.installed ? `<span class="tag ok">installed</span><button type="button" class="ghost sm" data-uninstall>Remove</button>` : `<button type="submit" class="sm">Install</button>`}</div></form>`;
+}
+async function searchMarket(append = false) {
+  const seq = ++market.seq;
+  const q = $("#mk-q").value.trim();
+  if (!append) $("#mk-list").innerHTML = `<div class="sk sk-block"></div>`;
+  try {
+    const url = market.src === "mcp" ? `/api/market/mcp?q=${encodeURIComponent(q)}${append && market.next ? `&cursor=${encodeURIComponent(market.next)}` : ""}` : `/api/market/skills?q=${encodeURIComponent(q)}`;
+    const d = await api(url, undefined, true);
+    if (seq !== market.seq) return;
+    const items = market.src === "mcp" ? d.servers : d;
+    market.next = market.src === "mcp" ? d.next : null;
+    const html_ = items.map(market.src === "mcp" ? mcpCard : skillCard).join("");
+    if (append) $("#mk-list").insertAdjacentHTML("beforeend", html_);
+    else $("#mk-list").innerHTML = html_ || `<p class="empty-note">Nothing found.</p>`;
+    $("#mk-more").hidden = !market.next;
+  } catch (err) {
+    $("#mk-list").replaceChildren(alertBox("Registry lookup failed", err.message, () => searchMarket()));
+  }
+}
+let mkTimer;
+$("#mk-q").addEventListener("input", () => (clearTimeout(mkTimer), (mkTimer = setTimeout(() => searchMarket(), 300))));
+$("#mk-more").addEventListener("click", () => searchMarket(true));
+$(".market .seg").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-src]");
+  if (!b) return;
+  market.src = b.dataset.src;
+  $$(".market .seg [data-src]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  $("#mk-note").textContent = MK_NOTES[market.src];
+  searchMarket();
+});
+async function marketCall(method, body) {
+  const res = await fetch(`/api/market/${market.src}`, { method, headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify(body) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error ?? res.statusText);
+  return j;
+}
+$("#mk-list").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target.closest("form");
+  const btn = f.querySelector("button[type=submit]");
+  btn.disabled = true;
+  btn.textContent = "Installing…";
+  try {
+    if (market.src === "mcp") await marketCall("POST", { name: f.dataset.name, env: Object.fromEntries([...f.querySelectorAll(".mk-env input")].map((i) => [i.name, i.value.trim()])) });
+    else await marketCall("POST", { source: f.dataset.source, skillId: f.dataset.skill });
+    await searchMarket();
+    loaders.ext();
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = "Install";
+    f.append(alertBox("Install failed", err.message));
+  }
+});
+$("#mk-list").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-uninstall]");
+  if (!b) return;
+  const f = b.closest("form");
+  await marketCall("DELETE", market.src === "mcp" ? { key: f.dataset.key } : { skillId: f.dataset.skill }).catch((err) => f.append(alertBox("Remove failed", err.message)));
+  await searchMarket();
+  loaders.ext();
+});
+
 loaders.chat = loadConsole;
 
 // ---------- studio ----------
@@ -545,6 +622,7 @@ function renderExt(x) {
     : empty("No plugins installed.", "A plugin is a folder in ~/.ah/plugins with a plugin.json.");
 }
 loaders.ext = async () => {
+  if (!$("#mk-list").dataset.loaded) ($("#mk-list").dataset.loaded = "1"), searchMarket();
   shimmer("#ext-mcp", "#ext-computer", "#ext-skills", "#ext-plugins");
   renderExt(await api("/api/extensions"));
   loaded("#ext-mcp", "#ext-computer", "#ext-skills", "#ext-plugins");

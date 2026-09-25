@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -9,6 +9,8 @@ import type { PermissionMode } from "../tools/index.ts";
 import { confine } from "../tools/types.ts";
 import { adapterForNpm } from "../providers/registry.ts";
 import { saveCredential } from "../app/credentials.ts";
+import { installSkill, searchMcp, searchSkills } from "../plugins/market.ts";
+import type { McpServerConfig } from "../mcp/client.ts";
 import { walkFiles } from "../tools/search.ts";
 import { discoverBackend } from "../tools/computer.ts";
 import { checkSetting, defaultConfig, getPath, parseModelRef, SETTINGS } from "../config.ts";
@@ -195,6 +197,10 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return await credentials(req);
           case "/api/config":
             return await configRoute(req);
+          case "/api/market/mcp":
+            return await marketMcp(req, q);
+          case "/api/market/skills":
+            return await marketSkills(req, q);
           case "/api/telemetry/summary":
             return json(summary(db(), filter));
           case "/api/telemetry/runs":
@@ -481,6 +487,66 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       raw: JSON.stringify(user, null, 2),
       fields: SETTINGS.map((spec) => ({ ...spec, value: getPath(env.cfg, spec.key) ?? null, user: getPath(user, spec.key) ?? null, default: getPath(defaultConfig(), spec.key) ?? null })),
     });
+  }
+
+  // Marketplace. Listings come live from the MCP registry and skills.sh; installs write the
+  // same files a user would (config.json mcpServers, ~/.ah/skills/<name>), then extensions reload.
+  const userConfigFile = () => join(env.cfg.dataDir, "config.json");
+  const readUser = (): Record<string, unknown> => {
+    try {
+      return JSON.parse(readFileSync(userConfigFile(), "utf8")) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  };
+  const reloadExtensions = async () => {
+    (await env.extensions.get(opts.root))?.mcp.close();
+    env.extensions.delete(opts.root);
+  };
+  const serverKey = (name: string) => name.split("/").at(-1)!.replace(/[^\w-]/g, "-").slice(0, 60);
+
+  async function marketMcp(req: Request, q: URLSearchParams): Promise<Response> {
+    const user = readUser();
+    const servers = (user.mcpServers ?? {}) as Record<string, McpServerConfig>;
+    if (req.method === "GET") {
+      const r = await searchMcp(q.get("q") ?? "", q.get("cursor") ?? undefined);
+      return json({ next: r.next, servers: r.servers.map((x) => ({ ...x, key: serverKey(x.name), installed: serverKey(x.name) in servers })) });
+    }
+    const b = (await req.json()) as { name?: string; key?: string; env?: Record<string, string> };
+    if (req.method === "DELETE") {
+      delete servers[String(b.key)];
+    } else {
+      // Rebuild the entry from the registry itself; the page only supplies variable values.
+      const hit = (await searchMcp(String(b.name))).servers.find((x) => x.name === b.name);
+      if (!hit?.install) return json({ error: `${b.name} has no installable package or remote in the registry` }, 400);
+      const values = Object.fromEntries(Object.entries(b.env ?? {}).filter(([k, v]) => hit.install!.env.some((e) => e.name === k) && typeof v === "string" && v));
+      const missing = hit.install.env.filter((e) => e.required && !values[e.name]).map((e) => e.name);
+      if (missing.length) return json({ error: `required: ${missing.join(", ")}` }, 400);
+      servers[serverKey(hit.name)] = { ...hit.install.config, ...(Object.keys(values).length ? (hit.install.kind === "remote" ? { headers: values } : { env: values }) : {}) };
+    }
+    user.mcpServers = servers;
+    writeFileSync(userConfigFile(), `${JSON.stringify(user, null, 2)}\n`);
+    await reloadExtensions();
+    return json({ ok: true, installed: Object.keys(servers) });
+  }
+
+  async function marketSkills(req: Request, q: URLSearchParams): Promise<Response> {
+    const dir = join(env.cfg.dataDir, "skills");
+    if (req.method === "GET") {
+      const skills = await searchSkills(q.get("q") ?? "");
+      return json(skills.map((s) => ({ ...s, installed: existsSync(join(dir, s.skillId, "SKILL.md")) })));
+    }
+    const b = (await req.json()) as { source?: string; skillId?: string };
+    if (req.method === "DELETE") {
+      if (!/^[\w.-]+$/.test(String(b.skillId))) return json({ error: "invalid skill" }, 400);
+      rmSync(join(dir, String(b.skillId)), { recursive: true, force: true });
+    } else {
+      const r = await installSkill(String(b.source), String(b.skillId), dir);
+      await reloadExtensions();
+      return json({ ok: true, ...r });
+    }
+    await reloadExtensions();
+    return json({ ok: true });
   }
 
   // Uncommitted changes in the workspace (optionally only some files), for review in the console.
