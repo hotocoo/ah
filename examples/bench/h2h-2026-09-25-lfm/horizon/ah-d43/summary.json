@@ -1,0 +1,90 @@
+{
+  "model": "llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0",
+  "benchRunId": "bench_2026-09-25T15-51-26_llamacpp_DavidAU_LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF_Q8_",
+  "k": 2,
+  "tasks": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "language": "python",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 539891.9357710001,
+      "p95WallMs": 759356.7462652,
+      "meanTurns": 35,
+      "meanToolErrors": 7,
+      "meanTokens": 648864.5,
+      "decodeTps": 113.60861800391227,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "language": "typescript",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 1894882.2286665002,
+      "p95WallMs": 2006884.58292885,
+      "meanTurns": 82,
+      "meanToolErrors": 18,
+      "meanTokens": 3762955.5,
+      "decodeTps": 101.06864995050672,
+      "failReasons": {
+        "grader": 2
+      }
+    }
+  ],
+  "overall": {
+    "trials": 4,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.48990002040399916
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "meanScore": 0.11206896551724138,
+    "verdictAgreement": {
+      "agree": 0,
+      "judged": 4
+    },
+    "totalWallMs": 4905771.789498,
+    "p50WallMs": 1277088.446792,
+    "p95WallMs": 1981995.17087055,
+    "meanTtftMs": 1082.0707290000244,
+    "meanPrefillTps": 1516.6188752481544,
+    "meanDecodeTps": 107.3386339772095,
+    "inputTokens": 8349250,
+    "outputTokens": 474390,
+    "costUsd": 0,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.2145922746781116
+  }
+}

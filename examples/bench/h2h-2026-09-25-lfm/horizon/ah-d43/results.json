@@ -1,0 +1,266 @@
+{
+  "benchRunId": "bench_2026-09-25T15-51-26_llamacpp_DavidAU_LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF_Q8_",
+  "model": "llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0",
+  "startedAt": "2026-09-25T15:51:26.051Z",
+  "finishedAt": "2026-09-25T17:13:12.552Z",
+  "trials": 2,
+  "features": {},
+  "noTurnLimit": true,
+  "hardware": {
+    "t": 1790351486051,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 10213015552,
+    "load1": 29.68505859375,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 7795900416,
+    "gpuInUseBytes": 698695680,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "llamacpp",
+    "version": "b10621-c1d0e7a00",
+    "baseURL": "http://127.0.0.1:8080"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "accffd1",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "tags": [
+        "python",
+        "algorithm",
+        "long-horizon"
+      ],
+      "id": "py-optimal-scheduler",
+      "language": "python",
+      "prompt": "Implement schedule() in scheduler.py as specified in SPEC.md. The makespan must be optimal, not approximate. Hidden tests check optimality against known optima, plan validity, error handling and a 5 s time limit per call.",
+      "grader": {
+        "cmd": "python3 grade.py",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 60,
+        "timeoutMs": 2700000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-accffd1/bench/suites/horizon/py-optimal-scheduler",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-accffd1/bench/suites/horizon/py-optimal-scheduler/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-accffd1/bench/suites/horizon/py-optimal-scheduler/hidden"
+    },
+    {
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "tags": [
+        "bun",
+        "typescript",
+        "project",
+        "long-horizon"
+      ],
+      "id": "ts-sql-engine",
+      "language": "typescript",
+      "prompt": "Build the in-memory SQL engine specified in SPEC.md, starting from the stub in src/db.ts. It must match SQLite's answers for the whole subset in the spec: parser, joins, grouping, aggregates, NULL semantics, ordering, writes and error messages. Hidden tests compare your engine with SQLite on many queries, including 5,000-row tables. db.test.ts is only a starting point; add your own tests.",
+      "grader": {
+        "cmd": "bun grade.ts",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 120,
+        "timeoutMs": 3600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-accffd1/bench/suites/horizon/ts-sql-engine",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-accffd1/bench/suites/horizon/ts-sql-engine/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-accffd1/bench/suites/horizon/ts-sql-engine/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0.1724137931034483,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_muh51rzo_5g5h0t",
+      "turns": 52,
+      "toolCalls": 51,
+      "toolErrors": 12,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 1050819,
+        "outputTokens": 83871,
+        "cacheReadTokens": 1017334,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 783741.725209,
+      "ttftMs": 1067.3701250000004,
+      "graderMs": 30190.746958000003,
+      "graderTail": "FAIL case 14: AssertionError: bad slot for t2\nFAIL case 15: over 5 s\nFAIL case 16: AssertionError: bad slot for t0\nFAIL case 17: over 5 s\nFAIL case 18: AssertionError: bad slot for t3\nFAIL case 19: AssertionError: bad slot for t3\nFAIL case 20: over 5 s\nFAIL case 21: AssertionError: bad slot for t3\nFAIL case 22: AssertionError: bad slot for t2\nFAIL case 23: AssertionError: bad slot for t0\nFAIL case 24: over 5 s\nAH_SCORE 5 29",
+      "changedFiles": [
+        "scheduler.py"
+      ],
+      "diffStat": "3 files changed, 104 insertions(+), 2 deletions(-)",
+      "prefillTps": 1648.8750628343141,
+      "decodeTps": 109.78892199991074,
+      "gpuUtilAvg": 92.19642857142857,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 2,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0.27586206896551724,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_muh5j83w_h9b14j",
+      "turns": 18,
+      "toolCalls": 19,
+      "toolErrors": 2,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 129164,
+        "outputTokens": 33875,
+        "cacheReadTokens": 116864,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 296042.14633300004,
+      "ttftMs": 1056.71883300005,
+      "graderMs": 6012.347165999934,
+      "graderTail": "FAIL case 12: AssertionError: makespan inf, optimum 19\nFAIL case 13: AssertionError: makespan inf, optimum 25\nFAIL case 14: AssertionError: makespan inf, optimum 48\nFAIL case 15: over 5 s\nFAIL case 17: AssertionError: makespan inf, optimum 10\nFAIL case 18: AssertionError: makespan 29, optimum 16\nFAIL case 19: AssertionError: makespan inf, optimum 17\nFAIL case 20: AssertionError: makespan 50, optimum 17\nFAIL case 22: AssertionError: makespan inf, optimum 56\nFAIL case 23: AssertionError: makespan inf, optimum 33\nFAIL case 24: AssertionError: makespan 35, optimum 12\nAH_SCORE 8 29",
+      "changedFiles": [
+        "scheduler.py"
+      ],
+      "diffStat": "3 files changed, 107 insertions(+), 2 deletions(-)",
+      "prefillTps": 1809.0766146583783,
+      "decodeTps": 117.4283140079138,
+      "gpuUtilAvg": 92.08783783783784,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_muh5ppdq_tqz4kg",
+      "turns": 92,
+      "toolCalls": 92,
+      "toolErrors": 19,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 4607534,
+        "outputTokens": 161195,
+        "cacheReadTokens": 4436010,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 1770435.1683750001,
+      "ttftMs": 1044.3357079999987,
+      "graderMs": 10.741666000336409,
+      "graderTail": "FAIL import: 3 errors building \"/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-z4rUFz/ts-sql-engine/src/db.ts\"\nAH_SCORE 0 1",
+      "changedFiles": [
+        "db.ts",
+        "src/db.ts"
+      ],
+      "diffStat": "2 files changed, 807 insertions(+), 5 deletions(-)",
+      "prefillTps": 1187.037911340841,
+      "decodeTps": 99.34962181462092,
+      "gpuUtilAvg": 92.6647823629169,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 2,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_muh6rnmf_22nbzm",
+      "turns": 72,
+      "toolCalls": 71,
+      "toolErrors": 17,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 2561733,
+        "outputTokens": 195449,
+        "cacheReadTokens": 2448675,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 2019329.288958,
+      "ttftMs": 1159.8582500000484,
+      "graderMs": 9.624832999892533,
+      "graderTail": "FAIL import: 5 errors building \"/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-eQP4nX/ts-sql-engine/src/db.ts\"\nAH_SCORE 0 1",
+      "changedFiles": [
+        "src/db.ts"
+      ],
+      "diffStat": "1 file changed, 347 insertions(+), 3 deletions(-)",
+      "prefillTps": 1421.4859121590844,
+      "decodeTps": 102.78767808639253,
+      "gpuUtilAvg": 90.91712158808933,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    }
+  ]
+}

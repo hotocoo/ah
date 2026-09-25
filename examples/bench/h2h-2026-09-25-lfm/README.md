@@ -75,6 +75,12 @@ Same model, server, suite and turn caps as the `85cc190` run above (`bash script
 - ah used the budget. It kept working for up to 145 turns: 2.4× Hermes' wall time and about 2× its prompt tokens. On these tasks that bought partial credit on the scheduler and nothing on the SQL engine.
 - dsh's SQL-engine trials ended when llama-server's tool-call parser rejected the model's output ([log](horizon/dsh-ts-sql-engine-2.agent.log): "The model produced output that does not match the expected peg-native format"; the message comes from llama.cpp's `libllama-common`). ah never hit this error with this model, but checking showed it would have ended an ah run the same way: three retries, then `agent_error`. Since D41, ah switches the session to its own text tool protocol when the server cannot parse the model's tool calls.
 
+### Horizon rerun with D43 (ah `accffd1`)
+
+Same tasks, budget and server ([`horizon/ah-d43/`](horizon/ah-d43/report.md)). Scheduler checks were 5/29 and 8/29 (13/58, the same total as before), and the SQL engine scored 0/61 twice. The SQL trials worked 30 and 34 minutes, where the earlier finishing trial had stopped after 14.
+
+All four trials ended `verified` while failing the grader. That exposed D44: the model wrote files through shell heredocs, and a heredoc containing the word "test" counted as a passing check. The verdict numbers from this rerun are therefore wrong. D44 fixes the check detection and makes `bash` report the files it writes; it came after this run and is not measured here.
+
 ## Caveats
 
 - n = 3 per task on a 2.6B model: the intervals are wide.
