@@ -85,6 +85,18 @@ function misplacedAbsolute(absRoot: string, p: string): string | null {
   return null;
 }
 
+// For an absolute path near the root (sharing its parent directories), say where tool paths
+// start and that the file is not there either, so the model stops retrying variants of it.
+function escapeHint(absRoot: string, target: string): string {
+  const a = absRoot.split(sep);
+  const b = target.split(sep);
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  const tail = b.slice(i).join("/");
+  if (i < 3 || !tail) return "";
+  return `. Tool paths are relative to the workspace root ${absRoot}, and "${tail}" does not exist there either; use list_dir or glob to find the file.`;
+}
+
 export function confine(root: string, p: unknown): string {
   if (typeof p !== "string" || p === "") throw new ToolError("path must be a non-empty string");
   const absRoot = resolve(root);
@@ -92,7 +104,7 @@ export function confine(root: string, p: unknown): string {
   if (recovered !== null) return confine(root, recovered);
   const target = resolve(absRoot, p);
   const rel = relative(absRoot, target);
-  if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) throw new ToolError(`path escapes workspace: ${p}`);
+  if (rel === ".." || rel.startsWith(`..${sep}`) || isAbsolute(rel)) throw new ToolError(`path escapes workspace: ${p}${escapeHint(absRoot, target)}`);
   // Canonicalise the deepest existing ancestor to catch symlink escapes.
   let probe = target;
   for (;;) {

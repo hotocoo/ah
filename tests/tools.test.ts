@@ -41,7 +41,7 @@ describe("path confinement", () => {
     // The model dropped the root's last segment (".../task/1/src/a.ts" written as ".../task/src/a.ts").
     expect(confine(root, join(dirname(root), "src", "a.ts"))).toBe(join(root, "src", "a.ts"));
     expect(confine(root, "/elsewhere/project/src/a.ts")).toBe(join(root, "src", "a.ts"));
-    expect(() => confine(root, join(dirname(root), "src", "missing.ts"))).toThrow(/escapes/);
+    expect(() => confine(root, join(dirname(root), "src", "missing.ts"))).toThrow(/relative to the workspace root .*"src\/missing.ts" does not exist there either/);
   });
 
   test("read_file on a directory returns its listing", async () => {
