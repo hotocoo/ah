@@ -81,6 +81,10 @@ Same tasks, budget and server ([`horizon/ah-d43/`](horizon/ah-d43/report.md)). S
 
 All four trials ended `verified` while failing the grader. That exposed D44: the model wrote files through shell heredocs, and a heredoc containing the word "test" counted as a passing check. The verdict numbers from this rerun are therefore wrong. D44 fixes the check detection and makes `bash` report the files it writes; it came after this run and is not measured here.
 
+### Latest: ah `8cf94ee` (D38 to D44), time limit only
+
+[`ah-d44/report.md`](ah-d44/report.md): **14/24 (39%–76%), 5/8 tasks**. The verdict agrees with the grader on 21/24 trials, and all 14 passing trials were called `verified`. Against Hermes' 7/24 (15%–49%) the intervals now barely overlap, so it is still not a significant lead at n=3. The prompt tokens (8.12M) are higher than at `0eb3f99`: D43 keeps the model working after a failed check, so more turns are spent on hard tasks. The run found D45 (test filters) and D46 (new files beside the root), which are not in this build.
+
 ## Caveats
 
 - n = 3 per task on a 2.6B model: the intervals are wide.

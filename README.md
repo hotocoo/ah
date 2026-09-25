@@ -164,11 +164,12 @@ Same model (`DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF
 
 | harness | trials passed (95% CI) | tasks solved ≥1 | prompt tokens |
 |---|---|---|---|
+| ah `8cf94ee` | 14/24 (39%–76%) | 5/8 | 8.12M |
 | ah `0eb3f99` | 12/24 (31%–69%) | 5/8 | 3.84M |
 | dsh 0.1.1-rc.2 | 9/24 (21%–57%) | 4/8 | not recorded |
 | Hermes Agent 0.21.3 | 7/24 (15%–49%) | 3/8 | 12.30M |
 
-ah is highest and 3.2× cheaper than Hermes in prompt tokens, but the intervals overlap: no lead is proven. On the horizon suite nobody passed a trial at this model size, and ah earned the most partial credit (13 of 58 scheduler checks, against 5 for Hermes and 0 for dsh). The fixes this run led to (D39 to D42), the before/after numbers and every raw result are in [`examples/bench/h2h-2026-09-25-lfm/`](examples/bench/h2h-2026-09-25-lfm/README.md). An earlier head-to-head on Qwen3.8-27B was a three-way tie on the core suite (ah 24/24, dsh 24/24, Hermes 23/24).
+ah is highest (14/24 at `8cf94ee`, 12/24 at `0eb3f99` with 3.2× fewer prompt tokens than Hermes), but the intervals still overlap: no lead is proven at 3 trials per task. On the horizon suite nobody passed a trial at this model size, and ah earned the most partial credit (13 of 58 scheduler checks, against 5 for Hermes and 0 for dsh). The fixes this run led to (D39 to D42), the before/after numbers and every raw result are in [`examples/bench/h2h-2026-09-25-lfm/`](examples/bench/h2h-2026-09-25-lfm/README.md). An earlier head-to-head on Qwen3.8-27B was a three-way tie on the core suite (ah 24/24, dsh 24/24, Hermes 23/24).
 
 **Comparison with other harnesses:** Claude Code, Codex, OpenCode, Aider and Pi have not been run here; `ah` is not shown to be better than them. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
 
