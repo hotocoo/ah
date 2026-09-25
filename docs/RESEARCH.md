@@ -8,7 +8,7 @@ What was investigated before and during the build, with the conclusions that sha
 |---|---|---|
 | `earendil-works/pi` (pi-mono) | ~108k | Unified LLM API + agent loop + TUI in one toolkit. Confirms the provider-neutral core + thin adapters architecture. |
 | `anomalyco/opencode` | ~209k | Uses models.dev as its model catalog. Adopted the same catalog for pricing and limits. |
-| `Aider-AI/aider` | ~49k | Repo map (symbol outline) is the cheapest orientation tool for a coding agent. Implemented `repo_map`. |
+| `Aider-AI/aider` | ~49k | Repo map (symbol outline) is the cheapest orientation tool for a coding agent. Implemented as `repo_map`, since D38 the `graph` tool. |
 | `SWE-agent/mini-swe-agent` | ~8k | "100-line agent" scoring >74% on SWE-bench Verified: the loop can be simple if tools and prompt are good. Kept the loop small and put effort into tools, validation and error feedback. |
 | `harbor-framework/terminal-bench` | ~2.6k | Tasks = container + instruction + test script. Adopted the "grader is a shell command in a sandbox" model for `ah bench`. |
 
