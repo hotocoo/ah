@@ -247,6 +247,7 @@ function showRun(r) {
       { label: "ok", html: (t) => (t.is_error ? `<span class="bad">✗ error</span>` : `<span class="ok">✓ ok</span>`) },
       { label: "time", get: (t) => ms(t.duration_ms), num: 1 },
       { label: "input", get: (t) => (t.input ?? "").slice(0, 80), clip: 1 },
+      { label: "error", html: (t) => (t.error ? `<span class="bad" title="${esc(t.error)}">${esc(t.error.split("\n")[0].slice(0, 90))}</span>` : ""), clip: 1 },
     ], d.tools, null, "This run made no tool calls."));
     mount("#run-detail", el);
   });

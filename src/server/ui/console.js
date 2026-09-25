@@ -142,7 +142,7 @@ function createView(log) {
   let renderQueued = false;
   const tools = new Map();
   const cards = new Map();
-  const run = { turns: 0, tools: 0, input: 0, output: 0, cacheRead: 0, tps: null, start: 0, end: 0, ctxWindow: 0 };
+  const run = { turns: 0, tools: 0, input: 0, output: 0, cacheRead: 0, tps: null, start: 0, end: 0, ctxWindow: 0, ctxUsed: 0 };
 
   const stick = () => log.scrollHeight - log.scrollTop - log.clientHeight < 160;
   const scroll = (was) => was && (log.scrollTop = log.scrollHeight);
@@ -212,7 +212,7 @@ function createView(log) {
     const cache = run.input ? run.cacheRead / run.input : null;
     const wall = (run.end || performance.now()) - run.start;
     $("#chat-stats").innerHTML = run.start
-      ? [plural(run.turns, "turn"), plural(run.tools, "tool"), run.tps ? `${num(run.tps, 1)} tok/s` : "", `${compact(run.input + run.output)} tok`, cache !== null && run.cacheRead ? `cache ${num(cache * 100)}%` : "", ms(wall)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("")
+      ? [plural(run.turns, "turn"), plural(run.tools, "tool"), run.tps ? `${num(run.tps, 1)} tok/s` : "", `${compact(run.input + run.output)} tok`, cache !== null && run.cacheRead ? `cache ${num(cache * 100)}%` : "", run.ctxWindow && run.ctxUsed ? `context ${num((100 * run.ctxUsed) / run.ctxWindow)}%` : "", ms(wall)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("")
       : "";
   }
 
@@ -268,6 +268,7 @@ function createView(log) {
         break;
       case "turn_start":
         run.turns++;
+        run.ctxUsed = ev.contextTokens;
         if (!replay) {
           $("#run-turn").textContent = String(ev.turn);
           inst.ctx(ev.contextTokens, run.ctxWindow);
@@ -350,7 +351,7 @@ function createView(log) {
       case "approval_request": {
         const card = approvalCard(ev);
         (step ? step.body : agentMsg()).append(card);
-        if (!replay) card.querySelector("button").focus({ preventScroll: true }), inst.set("waiting"), inst.trace(`waiting for approval · ${ev.summary}`, "gold");
+        if (!replay) card.querySelector("button").focus({ preventScroll: true }), inst.set("waiting"), inst.trace(`waiting for approval · ${ev.summary}`, "gold"), notify("Approval needed", ev.summary);
         break;
       }
       case "approval_result": {
@@ -389,7 +390,7 @@ function createView(log) {
         const chip = (v, cls = "") => `<span class="chip ${cls}">${esc(v)}</span>`;
         const verdict = r.verdict && r.verdict !== "unverified" ? chip(r.verdict, r.verdict === "verified" ? "ok" : "bad") : "";
         agentMsg().insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "ok" : "bad")}${verdict}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${compact(r.usage.inputTokens)} in · ${compact(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
-        if (!replay) inst.set(r.outcome === "completed" ? "done" : "error"), inst.trace(`run ${r.outcome} · ${ms(r.wallMs)}`, r.outcome === "completed" ? "ok" : "bad");
+        if (!replay) inst.set(r.outcome === "completed" ? "done" : "error"), inst.trace(`run ${r.outcome} · ${ms(r.wallMs)}`, r.outcome === "completed" ? "ok" : "bad"), notify(`Run ${r.outcome}`, `${state.title} · ${plural(r.turns, "turn")} · ${ms(r.wallMs)}`);
         msg = null;
         break;
       }
@@ -402,6 +403,12 @@ function createView(log) {
     scroll(was);
   }
   return { handle, tick: stats, finish: () => (endThinking(), endStep(), endText()) };
+}
+
+// A desktop notification when a run ends or needs approval while the tab is in the background.
+function notify(title, body) {
+  if (document.visibilityState === "visible" || !("Notification" in window) || Notification.permission !== "granted") return;
+  new Notification(`ah · ${title}`, { body, tag: "ah-run" });
 }
 
 function showScreen(ev) {
@@ -511,6 +518,8 @@ async function openSession(id) {
 
 async function send(prompt) {
   if (state.busy) return steer(prompt);
+  // Asked once, on the first task (a user gesture), so long runs can report back.
+  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
   const ac = new AbortController();
   state.follow?.abort();
   state.follow = ac;

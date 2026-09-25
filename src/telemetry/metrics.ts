@@ -144,7 +144,13 @@ export function runDetail(db: Database, runId: string) {
   return {
     run: db.query("SELECT * FROM runs WHERE run_id = ?").get(runId),
     turns: db.query("SELECT * FROM turns WHERE run_id = ? ORDER BY turn, attempt").all(runId),
-    tools: db.query("SELECT * FROM tool_calls WHERE run_id = ? ORDER BY started_at").all(runId),
+    // Failed calls carry the start of their output (kept in the event log) so failures read on their own.
+    tools: db
+      .query(
+        `SELECT c.*, CASE WHEN c.is_error = 1 THEN (SELECT json_extract(e.data, '$.preview') FROM events e WHERE e.run_id = c.run_id AND e.type = 'tool_end' AND json_extract(e.data, '$.id') = c.call_id LIMIT 1) END AS error
+         FROM tool_calls c WHERE c.run_id = ? ORDER BY c.started_at`,
+      )
+      .all(runId),
     events: db.query("SELECT seq, type, t, data FROM events WHERE run_id = ? ORDER BY seq").all(runId),
   };
 }
