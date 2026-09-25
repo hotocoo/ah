@@ -321,12 +321,13 @@ export class Agent {
         // Goal gate: the model wants to stop; an independent judge decides whether the goal holds.
         if (!calls.length && this.goal && res.stopReason !== "max_tokens") {
           const j = await this.verify(this.goal);
-          this.emit({ type: "goal", runId: this.runId, turn: this.turn, goal: this.goal, status: j.met ? "met" : "not_met", reason: j.reason, t: Date.now() });
-          if (!j.met) {
+          this.emit({ type: "goal", runId: this.runId, turn: this.turn, goal: this.goal, status: j.met ? "met" : j.blocked ? "blocked" : "not_met", reason: j.reason, t: Date.now() });
+          // Blocked on the user: end the run with the goal kept, instead of spending turns.
+          if (!j.met && !j.blocked) {
             this.messages.push({ role: "user", content: [{ type: "text", text: `[ah] Goal not met yet, per an independent check: ${j.reason}\n\nKeep working toward the goal: ${this.goal}` }] });
             continue;
           }
-          this.goal = null;
+          if (j.met) this.goal = null;
         }
         if (!calls.length) {
           finalText = textOf(res.message);

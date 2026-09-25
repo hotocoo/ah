@@ -174,7 +174,7 @@ Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/b
 | Benchmarks | none, or external | built in, sandboxed, hidden graders, pass@k/pass^k/Wilson, ablation, throughput |
 | Media | none | image generation + procedural 3D modelling as agent tools |
 | MCP tool cost | often every schema in every request (Hermes has lazy `tool_search`) | deferred: one `mcp` tool + index (42 tools: 6,329 to 1,348 tokens), schema on first bad call |
-| Stopping | model decides it is done (Claude Code `/goal` asks a model about the transcript) | `/goal` judge re-runs the check and reads the diff; a failing check always means "not met" |
+| Stopping on a goal | the model marks it done (dsh, Codex), or a judge reads its last reply (Hermes; Claude Code's `/goal` asks a model about the conversation) | `/goal` judge re-runs the detected check and reads the diff by default; a failing check always means "not met"; BLOCKED ends the run instead of spending turns |
 | Repeated tool mistakes | re-made every session | tool-error coaching: a model's recurring error classes become up to 3 prompt hints; zero tokens for a clean model (gain not yet measured) |
 | Edit slips | fail, retry | copied line numbers / `>` markers stripped, "already applied" detected, root-echo paths resolved |
 | Other harnesses | n/a | `ah bench run --agent-cmd` grades them on the same sandbox and hidden tests (`scripts/h2h.sh`) |

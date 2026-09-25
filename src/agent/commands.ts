@@ -54,7 +54,7 @@ export async function runCommand(line: string, h: CommandHost): Promise<boolean>
       break;
     case "verify": {
       const j = await h.agent.verify(arg || undefined);
-      h.print(`${j.met ? "MET" : "NOT MET"}${j.check ? ` (\`${j.check.command}\` ${j.check.passed ? "passes" : "fails"})` : ""}\n${j.reason}`);
+      h.print(`${j.met ? "MET" : j.blocked ? "BLOCKED" : "NOT MET"}${j.check ? ` (\`${j.check.command}\` ${j.check.passed ? "passes" : "fails"})` : ""}\n${j.reason}`);
       break;
     }
     case "advisor": {

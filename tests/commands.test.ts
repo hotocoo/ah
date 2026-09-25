@@ -76,6 +76,14 @@ describe("session commands", () => {
     expect(s.prompts[0]).toContain("<goal>\na.txt and b.txt exist\n</goal>");
   });
 
+  test("a BLOCKED verdict ends the run and keeps the goal", async () => {
+    const s = setup([{ text: "I need the API key to continue." }], ["BLOCKED\nneeds the user's API key"]);
+    await runCommand("/goal the deploy script runs", s.host);
+    expect(s.events.filter((e) => e.type === "run_end")).toHaveLength(1);
+    expect(s.events.some((e) => e.type === "goal" && e.status === "blocked")).toBe(true);
+    expect(s.agent.goal).toBe("the deploy script runs");
+  });
+
   test("a failing check overrides a MET verdict", async () => {
     const s = setup([{ text: "All done." }], ["MET"], "exit 3");
     await s.agent.run("do nothing");

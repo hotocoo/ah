@@ -22,13 +22,14 @@ export interface ReviewContext {
 
 export interface Judgement {
   met: boolean;
+  blocked?: boolean; // cannot progress without the user (a decision, credentials, missing resource)
   reason: string;
   check?: { command: string; passed: boolean };
 }
 
 const ADVISOR_SYSTEM = `You are a senior engineer advising a coding agent mid-task. You see its transcript and the harness's evidence (real tool results, checks run). Evidence is ground truth; the agent's own claims are not. Give short, concrete, prioritised advice: what is wrong or risky, what it has missed, the next step. Under 200 words. No preamble.`;
 
-const JUDGE_SYSTEM = `You are an independent verifier. Decide whether a coding goal is actually met, from the evidence given: check output, the diff, and the agent's transcript. Do not trust the agent's claims of success; only what the diff and check output show. Answer on the first line with exactly MET or NOT MET. Then, if NOT MET, list what is missing or wrong, concretely (file, behaviour), in under 150 words.`;
+const JUDGE_SYSTEM = `You are an independent verifier. Decide whether a coding goal is actually met, from the evidence given: check output, the diff, and the agent's transcript. Do not trust the agent's claims of success; only what the diff and check output show. Answer on the first line with exactly MET, NOT MET or BLOCKED. BLOCKED only when the agent cannot make progress without the user (a decision, credentials, a missing external resource). Then, unless MET, say what is missing, wrong or needed, concretely (file, behaviour), in under 150 words.`;
 
 // Keep the end of a long text: recent work matters most.
 const tail = (s: string, max: number) => (s.length > max ? `[... ${s.length - max} earlier characters omitted]\n${s.slice(-max)}` : s);
@@ -64,8 +65,8 @@ export async function judge(r: Reviewer, c: ReviewContext, criterion: string, ws
   const status = await exec("git status --short 2>/dev/null; git diff HEAD 2>/dev/null", ctx, 30_000);
   const prompt = [`<goal>\n${criterion}\n</goal>`, `<check>\n${checkText}\n</check>`, `<evidence source="harness">\n${c.evidence}\n</evidence>`, `<diff>\n${tail(status.stdout || "(no git repository or no changes)", Math.floor(b / 2))}\n</diff>`, `<transcript>\n${tail(c.transcript, Math.floor(b / 4))}\n</transcript>`].join("\n\n");
   const verdict = await ask(r, JUDGE_SYSTEM, prompt, signal);
-  const said = /^\W*(NOT\s+MET|MET)\b/i.exec(verdict)?.[1]?.toUpperCase().replace(/\s+/, " ");
-  const reason = verdict.replace(/^\W*(NOT\s+MET|MET)\b[:.\s-]*/i, "").trim();
+  const said = /^\W*(NOT\s+MET|MET|BLOCKED)\b/i.exec(verdict)?.[1]?.toUpperCase().replace(/\s+/, " ");
+  const reason = verdict.replace(/^\W*(NOT\s+MET|MET|BLOCKED)\b[:.\s-]*/i, "").trim();
   if (check && !check.passed) return { met: false, reason: `\`${check.command}\` fails. ${reason}`.trim(), check };
-  return { met: said === "MET", reason: said ? reason || "(no reason given)" : `verifier gave no MET/NOT MET verdict: ${verdict.slice(0, 300)}`, check };
+  return { met: said === "MET", ...(said === "BLOCKED" ? { blocked: true } : {}), reason: said ? reason || "(no reason given)" : `verifier gave no MET/NOT MET verdict: ${verdict.slice(0, 300)}`, check };
 }

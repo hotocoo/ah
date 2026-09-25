@@ -9,6 +9,7 @@ Every agent harness in use today (Claude Code, Codex, Hermes Agent, Letta/MemGPT
 | Am I done? | the model stops calling tools | the evidence ledger: changed files need a passing check; the verdict is computed, not reported |
 | What should I remember? | the model writes memory (or a timer does) | only failures that verified evidence resolved become lessons; model notes are low-trust claims |
 | Which memories can I rely on? | whatever was stored | trust moves with the outcomes of the runs that recalled each memory |
+| Is the goal met? | the model says so (Claude Code's `/goal` asks a model about the conversation) | a judge with a fresh context re-runs the check and reads the diff; a failing check cannot be overruled (`/goal`, `/verify`, D38) |
 | What happened earlier in this task? | a model-written compaction summary | the task verbatim, then harness evidence (last check, still-failing actions, changed files, fixes), then the model's notes, labelled as such |
 
 `ah` is named for *aletheia*, unconcealment: what is actually the case, as opposed to what is said. The rest of this document explains why this matters, how each point works, what is measured, and what is not done.
