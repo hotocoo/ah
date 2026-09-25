@@ -130,7 +130,8 @@ export const bashTool: Tool = {
       type: "object",
       properties: {
         command: { type: "string" },
-        timeout_ms: { type: "integer", minimum: 1000, maximum: 600000 },
+        // Small models often pass seconds here; values under 1000 are read as seconds.
+        timeout_ms: { type: "integer", minimum: 1, maximum: 600000 },
       },
       required: ["command"],
     },
@@ -138,7 +139,8 @@ export const bashTool: Tool = {
   summarize: (i) => `$ ${i.command}`,
   async run(input, ctx) {
     const command = str(input, "command");
-    const r = await exec(command, ctx, num(input, "timeout_ms", ctx.bashTimeoutMs));
+    const t = num(input, "timeout_ms", ctx.bashTimeoutMs);
+    const r = await exec(command, ctx, t < 1000 ? t * 1000 : t);
     // Name the cause, so the model does not retry a write the sandbox will always refuse.
     const note = ctx.shellPrefix && /Operation not permitted/.test(r.stderr) ? "\n[workspace-only shell: writes are allowed only inside the workspace, temp dirs and tool caches]" : "";
     return { content: formatExec(r) + note + (r.code === 127 ? missingCommandHint(r.stderr) : ""), isError: r.timedOut || r.code !== 0 };

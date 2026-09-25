@@ -94,7 +94,11 @@ export const readFileTool: Tool = {
   async run(input, ctx) {
     const abs = confine(ctx.root, input.path);
     if (!existsSync(abs)) notFound(ctx.root, input.path);
-    if (statSync(abs).isDirectory()) throw new ToolError(`${input.path} is a directory; use list_dir`);
+    // A directory gets its listing rather than an error: that is what the model wanted to see.
+    if (statSync(abs).isDirectory()) {
+      const listing = await listDirTool.run({ path: input.path, depth: 1 }, ctx);
+      return { content: `${input.path} is a directory; its entries (list_dir):\n${listing.content}` };
+    }
     const imageType = IMAGE_TYPES[extname(abs).toLowerCase()];
     const buf = readFileSync(abs);
     ctx.readFiles.add(abs);

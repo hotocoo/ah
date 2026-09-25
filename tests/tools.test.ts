@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { ToolRegistry } from "../src/tools/index.ts";
 import { isPrivateHost } from "../src/tools/misc.ts";
 import { validate } from "../src/tools/schema.ts";
@@ -35,6 +35,25 @@ describe("path confinement", () => {
     expect(() => confine(root, "../x")).toThrow(/escapes/);
     expect(() => confine(root, "/etc/passwd")).toThrow(/escapes/);
     expect(confine(root, "src/a.ts")).toBe(join(root, "src", "a.ts"));
+  });
+
+  test("an absolute path that rebuilt the root wrong resolves to the file inside it", () => {
+    // The model dropped the root's last segment (".../task/1/src/a.ts" written as ".../task/src/a.ts").
+    expect(confine(root, join(dirname(root), "src", "a.ts"))).toBe(join(root, "src", "a.ts"));
+    expect(confine(root, "/elsewhere/project/src/a.ts")).toBe(join(root, "src", "a.ts"));
+    expect(() => confine(root, join(dirname(root), "src", "missing.ts"))).toThrow(/escapes/);
+  });
+
+  test("read_file on a directory returns its listing", async () => {
+    const r = await run("read_file", { path: "src" });
+    expect(r.isError).toBeFalsy();
+    expect(r.content).toContain("a.ts");
+  });
+
+  test("bash reads a timeout under 1000 as seconds", async () => {
+    const r = await run("bash", { command: "echo ok", timeout_ms: 30 });
+    expect(r.isError).toBeFalsy();
+    expect(r.content).toContain("ok");
   });
 
   test("rejects symlinks pointing outside the root", () => {

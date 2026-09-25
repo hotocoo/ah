@@ -74,10 +74,21 @@ function stripRootEcho(absRoot: string, p: string): string | null {
   return null;
 }
 
+// An absolute path outside the root whose tail exists inside it: the model rebuilt the root
+// wrong (dropped a trailing segment, mixed in a sibling directory). Use the longest such tail.
+function misplacedAbsolute(absRoot: string, p: string): string | null {
+  if (!isAbsolute(p)) return null;
+  const r = relative(absRoot, resolve(p));
+  if (!(r === ".." || r.startsWith(`..${sep}`) || isAbsolute(r))) return null;
+  const segs = p.split(/[\\/]+/).filter(Boolean);
+  for (let k = 1; k < segs.length; k++) if (existsSync(join(absRoot, ...segs.slice(k)))) return segs.slice(k).join("/");
+  return null;
+}
+
 export function confine(root: string, p: unknown): string {
   if (typeof p !== "string" || p === "") throw new ToolError("path must be a non-empty string");
   const absRoot = resolve(root);
-  const recovered = stripRootEcho(absRoot, p);
+  const recovered = stripRootEcho(absRoot, p) ?? misplacedAbsolute(absRoot, p);
   if (recovered !== null) return confine(root, recovered);
   const target = resolve(absRoot, p);
   const rel = relative(absRoot, target);

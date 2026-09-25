@@ -214,3 +214,8 @@ Two more robustness features came out of these runs: project facts in the system
   - **`/loop`** is a few lines over `agent.run`: fixed interval until stopped (or N runs), or back to back until the judge says done.
 - **Rejected:** a separate verifier agent with its own tool loop (a second loop to maintain; the check plus the diff carries the signal), a persistent graph database (the scan is fast enough for repositories of a few thousand files; `ponytail:` note in `graph.ts`).
 - **Found while benchmarking:** a llama-server connection dropped mid-stream ("socket connection was closed unexpectedly") ended a trial as `agent_error`, because only connect-time failures were retryable. Stream read errors are now retryable `unavailable` errors too (`sseData`, `ndjson`).
+
+## D39. Three more small-model slips (LFM2.5-2.6B bench)
+
+- **Found by:** tool errors in the 2026-09-25 LFM2.5-2.6B core-suite run: 13 of 26 `bash` errors were `timeout_ms` under the 1000 ms minimum (the model passed seconds); 17 file-tool errors were absolute paths that rebuilt the workspace root wrong (dropped the trial directory, `.../rust-fix-compile-and-logic/Cargo.toml` for root `.../rust-fix-compile-and-logic/1`, or mixed in the suite directory); several `read_file` calls named a directory.
+- **Chosen:** `timeout_ms` under 1000 is read as seconds. An absolute path outside the root whose tail exists inside it resolves to that file (longest tail first; still confined, and a tail that does not exist still errors). `read_file` on a directory returns its listing. Each turns a wasted turn into the result the model wanted.
