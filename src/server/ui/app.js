@@ -209,12 +209,12 @@ loaders.runs = async () => {
   const runs = await api("/api/telemetry/runs?limit=200");
   mount("#runs", table([
     { label: "started", get: (r) => ago(r.started_at) },
-    { label: "model", get: (r) => r.model, clip: 1 },
+    { label: "task", get: (r) => (r.bench_task_id ? `${r.bench_task_id} #${r.bench_trial}` : (r.prompt ?? "").split("\n")[0]), clip: 1 },
     { label: "outcome", html: (r) => outcome(r.outcome) },
     { label: "turns", get: (r) => r.turns, num: 1 },
     { label: "tools", get: (r) => r.tool_calls, num: 1 },
     { label: "wall", get: (r) => ms(r.wall_ms), num: 1 },
-    { label: "bench", html: (r) => (r.bench_task_id ? `<span class="tag">${esc(r.bench_task_id)}#${esc(r.bench_trial)}</span>` : "") },
+    { label: "model", get: (r) => String(r.model ?? "").split("/").pop(), clip: 1 },
   ], runs, showRun, "No runs yet. Tasks from the console land here."));
   loaded("#runs");
 };
