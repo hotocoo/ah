@@ -73,6 +73,20 @@ describe("path confinement", () => {
     expect(withFilter("cargo test", "top")).toBe('cargo test "top"');
   });
 
+  test("a recursive delete of the workspace root needs approval, even in auto mode", async () => {
+    const { deletesRoot } = await import("../src/tools/shell.ts");
+    const r = "/tmp/t/task";
+    expect(deletesRoot("rm -rf /tmp/t/task", r)).toBe(true);
+    expect(deletesRoot("cd x && rm -rf . && mkdir y", r)).toBe(true);
+    expect(deletesRoot("rm -rf ..", r)).toBe(true);
+    expect(deletesRoot("rm -rf build node_modules", r)).toBe(false);
+    expect(deletesRoot("rm -f .", r)).toBe(false);
+    expect(deletesRoot("echo rm -rf .", r)).toBe(false);
+    const denied = await reg.execute("bash", { command: "rm -rf ." }, ctx, "auto", async () => false);
+    expect(denied.denied).toBe(true);
+    expect(readFileSync(join(root, "src", "a.ts"), "utf8")).toContain("add");
+  });
+
   test("bash reads a timeout under 1000 as seconds", async () => {
     const r = await run("bash", { command: "echo ok", timeout_ms: 30 });
     expect(r.isError).toBeFalsy();

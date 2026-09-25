@@ -67,7 +67,7 @@ export class ToolRegistry {
   // Needs approval when: mode is ask and tool writes, or the command is dangerous in any mode.
   needsApproval(tool: Tool, input: Record<string, unknown>, mode: PermissionMode, ctx?: ToolContext): boolean {
     if (ctx && tool.needsApproval?.(input, ctx)) return true;
-    if (tool.spec.name === "bash" && typeof input.command === "string" && isDangerousCommand(input.command)) return true;
+    if (tool.spec.name === "bash" && typeof input.command === "string" && isDangerousCommand(input.command, ctx?.root)) return true;
     return mode === "ask" && !tool.readOnly;
   }
 

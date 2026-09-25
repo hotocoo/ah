@@ -262,3 +262,8 @@ Two more robustness features came out of these runs: project facts in the system
 
 - **Found by:** the D44 core run. In a `ts-feature-lru` trial the model wrote `…/ah-trial-X/src/lru.ts` for the root `…/ah-trial-X/ts-feature-lru` 30 times. The error hint named the root, but the file did not exist yet, so D39's tail rule could not apply, and the model kept retrying.
 - **Chosen:** a path under the root's own parent directory, whose directory part exists inside the root, is placed in the root (`src/lru.ts`). Paths further away, or into directories the root does not have, still error with the hint. The path stays confined to the workspace.
+
+## D47. Deleting the workspace needs approval
+
+- **Found by:** the 5-trial head-to-head at `9700548`. In a `go-feature-stack` trial the model ran `rm -rf <workspace root>` in auto mode, deleting `go.mod` and the task. It then spent the rest of the trial writing files into a directory that no longer existed.
+- **Chosen:** a recursive `rm` whose target is the workspace root or one of its ancestors (`.`, `..`, the absolute root) is dangerous: it needs approval in every mode, like `rm -rf /`. `rm` must be the program, not an argument to `echo`; deleting subdirectories (`build`, `node_modules`) is unaffected. In a benchmark trial, approval is never granted, so the model gets a denial instead of an empty workspace.

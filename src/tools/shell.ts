@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { delimiter, join } from "node:path";
+import { delimiter, join, resolve, sep } from "node:path";
 import { num, str, ToolError, truncate, type Tool, type ToolContext } from "./types.ts";
 
 // Commands that are never run without explicit approval, even in auto mode.
@@ -16,7 +16,26 @@ const DANGEROUS = [
   /\bsudo\b/,
 ];
 
-export const isDangerousCommand = (cmd: string): boolean => DANGEROUS.some((r) => r.test(cmd));
+export const isDangerousCommand = (cmd: string, root?: string): boolean => DANGEROUS.some((r) => r.test(cmd)) || (root !== undefined && deletesRoot(cmd, root));
+
+// A recursive delete whose target is the workspace root or one of its ancestors (`rm -rf .`,
+// `rm -rf /abs/root`, `rm -rf ..`): it would destroy the whole workspace. Found when a small model
+// ran `rm -rf <root>` mid-task and then wrote files into nothing.
+export function deletesRoot(cmd: string, root: string): boolean {
+  const abs = resolve(root);
+  for (const seg of cmd.split(/&&|\|\||[;|\n]/)) {
+    const words = seg.trim().split(/\s+/).filter((w) => !/^[A-Z_][A-Z0-9_]*=/.test(w));
+    // rm must be the program (optionally after sudo/command/xargs), not an argument to echo.
+    const at = words.findIndex((w, i) => (w === "rm" || w.endsWith("/rm")) && (i === 0 || ["sudo", "command", "xargs", "exec"].includes(words[i - 1]!)));
+    if (at < 0 || !words.slice(at + 1).some((w) => /^-[a-z]*r/i.test(w) || w === "--recursive")) continue;
+    for (const w of words.slice(at + 1)) {
+      if (w.startsWith("-")) continue;
+      const target = resolve(abs, w.replace(/^["']|["']$/g, "").replace(/\/+$/, "") || "/");
+      if (abs === target || abs.startsWith(`${target}${sep}`)) return true;
+    }
+  }
+  return false;
+}
 
 export interface ExecResult {
   stdout: string;
