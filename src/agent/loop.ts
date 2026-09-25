@@ -161,7 +161,8 @@ export class Agent {
     const attached = mentionedFiles(this.o.toolContext.root, promptText);
     for (const a of attached) this.o.toolContext.readFiles.add(a.abs);
     if (attached.length) this.emit({ type: "attachments", runId: this.runId, turn: this.turn, files: attached.map((a) => a.path), t: Date.now() });
-    const files: ContentBlock[] = attached.map((a) => ({ type: "text", text: `<file path="${a.path}">\n${a.text}\n</file>` }));
+    // Say plainly that these count as read, or models spend a turn re-reading them.
+    const files: ContentBlock[] = attached.length ? [{ type: "text", text: `The user attached ${attached.map((a) => a.path).join(", ")} (current content below, with line numbers as read_file shows them). These files are already read in this session: edit them directly without calling read_file.\n\n${attached.map((a) => `<file path="${a.path}">\n${a.text}\n</file>`).join("\n\n")}` }] : [];
     this.messages.push({ role: "user", content: [...(recalled.block ? [recalled.block] : []), ...content, ...files] });
     const startTurn = this.turn;
     let outcome: RunOutcome = "completed";
