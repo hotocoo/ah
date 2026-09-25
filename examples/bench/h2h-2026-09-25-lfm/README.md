@@ -58,7 +58,7 @@ Same model, server, suite and turn caps as the `85cc190` run above (`bash script
 
 - At 2.6B, nobody solves either task. That is the grounding working: the naive baselines fail these graders too, so the suite does not hand out passes.
 - On partial credit, ah earned 13 of 58 scheduler checks, Hermes 5 and dsh 0. With two trials each this is a small signal, not a ranking.
-- ah used the budget. It kept working for up to 145 turns, twice Hermes' wall time and tokens. On these tasks that bought partial credit on the scheduler and nothing on the SQL engine.
+- ah used the budget. It kept working for up to 145 turns: 2.4× Hermes' wall time and about 2× its prompt tokens. On these tasks that bought partial credit on the scheduler and nothing on the SQL engine.
 - dsh's SQL-engine trials ended when llama-server's tool-call parser rejected the model's output ([log](horizon/dsh-ts-sql-engine-2.agent.log): "The model produced output that does not match the expected peg-native format"; the message comes from llama.cpp's `libllama-common`). ah never hit this error with this model, but checking showed it would have ended an ah run the same way: three retries, then `agent_error`. Since D41, ah switches the session to its own text tool protocol when the server cannot parse the model's tool calls.
 
 ## Caveats
