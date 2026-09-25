@@ -346,7 +346,7 @@ export class Agent {
         for await (const ev of stream) {
           if (ev.type === "thinking_delta") out.thinking += ev.text.length;
           else if (ev.type === "text_delta") out.text += ev.text.length;
-          else if (ev.type === "tool_call_start") writing = { id: ev.id, name: ev.name, chars: 0, at: 0 };
+          else if (ev.type === "tool_call_start") writing = { id: ev.id, name: ev.name, chars: 0, at: Number.NEGATIVE_INFINITY };
           else if (ev.type === "tool_call_delta") {
             out.toolArgs += ev.partialJson.length;
             if (writing) {

@@ -156,6 +156,30 @@ describe("chat sessions", () => {
     expect(ev.find((e) => e.type === "attachments")?.files).toEqual(["a.txt"]);
   });
 
+  test("sessions survive a server restart and continue the conversation", async () => {
+    (srv.env.registry.get("mock") as MockProvider).setScript([{ text: "remembered" }], "scripted");
+    const one = await chat({ prompt: "keep this", model: "mock/scripted" });
+    const sessionId = one[1]!.sessionId!;
+    const again = await startServer({ port: 0, root, env: srv.env, token: "t0k" });
+    try {
+      const b = `http://127.0.0.1:${again.server.port}`;
+      const list = (await (await fetch(`${b}/api/sessions`, { headers: h })).json()) as { id: string; runs: number }[];
+      expect(list.find((x) => x.id === sessionId)).toMatchObject({ runs: 1 });
+      const replay = await (await fetch(`${b}/api/sessions/${sessionId}`, { headers: h })).text();
+      expect(replay).toContain('"text":"keep this"');
+      const res = await fetch(`${b}/api/chat`, { method: "POST", headers: h, body: JSON.stringify({ prompt: "and now?", sessionId }) });
+      const ev = (await res.text()).split("\n\n").filter(Boolean).map((l) => JSON.parse(l.replace(/^data: /, "")) as { type: string; sessionId?: string; result?: { outcome: string } });
+      expect(ev[1]!.sessionId).toBe(sessionId);
+      expect(ev.at(-1)!.result!.outcome).toBe("completed");
+      const after = (await (await fetch(`${b}/api/sessions`, { headers: h })).json()) as { id: string; runs: number }[];
+      expect(after.find((x) => x.id === sessionId)).toMatchObject({ runs: 2 });
+      expect((await fetch(`${b}/api/sessions/${sessionId}`, { method: "DELETE", headers: h })).status).toBe(200);
+      expect((await fetch(`${b}/api/sessions/../../etc`, { headers: h })).status).toBe(404);
+    } finally {
+      again.server.stop(true);
+    }
+  });
+
   test("stop and steer need a busy session", async () => {
     const post = (p: string, b: unknown) => fetch(`${base}${p}`, { method: "POST", headers: h, body: JSON.stringify(b) });
     expect((await post("/api/stop", { sessionId: "nope" })).status).toBe(404);

@@ -62,7 +62,7 @@ In the console:
 - The permission picker sets what the agent may do without asking (`ask`, `auto`, `read-only`). **Changes** (and **Review changes** after a run) shows the uncommitted git diff.
 - The right panel traces every turn: TTFT, decode speed, context use, GPU load, retries, compactions. `⌘K` opens the command palette.
 
-Sessions are kept in memory and listed in the sidebar until the server stops.
+Sessions are saved under `~/.ah/sessions` per workspace: they survive a restart, and sending a message to an old session continues its conversation.
 
 Example `ah run` on MiMo-V2.6-Distill-Qwen-9B (Q8_0 GGUF, served with `llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`):
 

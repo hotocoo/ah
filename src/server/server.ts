@@ -17,6 +17,7 @@ import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../
 import { dim, green } from "../cli/render.ts";
 import { assetDir } from "../app/paths.ts";
 import { AppearanceStore, MAX_WALLPAPER_BYTES } from "./appearance.ts";
+import { SessionStore } from "./session-store.ts";
 import indexHtmlSrc from "./ui/index.html" with { type: "text" };
 import appJs from "./ui/app.js" with { type: "text" };
 import fxJs from "./ui/fx.js" with { type: "text" };
@@ -43,6 +44,7 @@ const EXAMPLES_DIR = assetDir("examples/bench") ?? "";
 
 const PERMISSION_MODES: PermissionMode[] = ["ask", "auto", "read-only"];
 interface ChatSession {
+  id: string;
   session: Session;
   busy: boolean;
   alwaysAllow: Set<string>;
@@ -118,6 +120,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     return env.telemetry.store.db;
   };
   const looks = new AppearanceStore(env.cfg.dataDir);
+  const store = new SessionStore(join(env.cfg.dataDir, "sessions"));
   const indexHtml = () => (indexHtmlSrc as unknown as string).replace("__AH_TOKEN__", token);
 
   const server = Bun.serve({
@@ -280,17 +283,22 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     let chatSession = body.sessionId ? chats.get(body.sessionId) : undefined;
     if (chatSession?.busy) return json({ error: "session busy" }, 409);
     if (!chatSession) {
+      // A session from an earlier server process continues where it stopped: same model,
+      // its transcript for replay, and the agent's messages as the conversation so far.
+      const saved = body.sessionId ? store.load(body.sessionId) : null;
+      const m = mode ?? (saved?.mode as PermissionMode | undefined) ?? env.cfg.permissionMode;
       let cs!: ChatSession;
-      const s = await createSession(env, { model: body.model, preset: body.preset || undefined, root: opts.root, mode: mode ?? env.cfg.permissionMode, approve: () => Promise.resolve(false), onEvent: (e) => publish(cs, e) });
-      cs = { session: s, busy: false, alwaysAllow: new Set(), subs: new Set(), log: [], ac: null, title: prompt.slice(0, 80), createdAt: Date.now(), updatedAt: Date.now(), runs: 0, mode: mode ?? env.cfg.permissionMode, lastOutcome: null };
-      chats.set(s.agent.sessionId, cs);
+      const s = await createSession(env, { model: saved?.model ?? body.model, preset: saved ? undefined : body.preset || undefined, root: opts.root, mode: m, approve: () => Promise.resolve(false), onEvent: (e) => publish(cs, e) });
+      if (saved) s.agent.messages.push(...(saved.messages as typeof s.agent.messages));
+      cs = { id: saved?.id ?? s.agent.sessionId, session: s, busy: false, alwaysAllow: new Set(), subs: new Set(), log: (saved?.log as StreamEvent[]) ?? [], ac: null, title: saved?.title ?? prompt.slice(0, 80), createdAt: saved?.createdAt ?? Date.now(), updatedAt: Date.now(), runs: saved?.runs ?? 0, mode: m, lastOutcome: saved?.lastOutcome ?? null };
+      chats.set(cs.id, cs);
       chatSession = cs;
     } else if (mode && mode !== chatSession.mode) {
       chatSession.session.agent.setMode(mode);
       chatSession.mode = mode;
     }
     const cs = chatSession;
-    const id = cs.session.agent.sessionId;
+    const id = cs.id;
     const agent = cs.session.agent;
     // Approvals travel to the page as SSE events and come back through /api/approve.
     agent.setApprover(
@@ -332,6 +340,11 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
         }
         for (const s of cs.subs) s.close();
         cs.subs.clear();
+        try {
+          store.save({ id, root: opts.root, title: cs.title, model: cs.session.modelRef, mode: cs.mode, createdAt: cs.createdAt, updatedAt: cs.updatedAt, runs: cs.runs, lastOutcome: cs.lastOutcome, log: cs.log, messages: agent.messages });
+        } catch (err) {
+          process.stderr.write(`[ah] could not save session ${id}: ${(err as Error).message}\n`);
+        }
       });
     return res;
   }
@@ -353,11 +366,12 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   }
 
   function sessions(): Response {
-    return json(
-      [...chats.entries()]
-        .map(([id, c]) => ({ id, title: c.title, model: c.session.modelRef, busy: c.busy, runs: c.runs, mode: c.mode, createdAt: c.createdAt, updatedAt: c.updatedAt, lastOutcome: c.lastOutcome }))
-        .sort((a, b) => b.updatedAt - a.updatedAt),
-    );
+    const live = [...chats.values()].map((c) => ({ id: c.id, title: c.title, model: c.session.modelRef, busy: c.busy, runs: c.runs, mode: c.mode, createdAt: c.createdAt, updatedAt: c.updatedAt, lastOutcome: c.lastOutcome }));
+    const saved = store
+      .list(opts.root)
+      .filter((m) => !chats.has(m.id))
+      .map((m) => ({ ...m, busy: false }));
+    return json([...live, ...saved].sort((a, b) => b.updatedAt - a.updatedAt));
   }
 
   // Uncommitted changes in the workspace (optionally only some files), for review in the console.
@@ -378,13 +392,17 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   // GET replays a session's events (and follows a live run); DELETE forgets an idle session.
   function sessionRoute(req: Request, id: string): Response {
     const cs = chats.get(id);
-    if (!cs) return json({ error: "no such session" }, 404);
     if (req.method === "DELETE") {
-      if (cs.busy) return json({ error: "session is busy" }, 409);
+      if (cs?.busy) return json({ error: "session is busy" }, 409);
       chats.delete(id);
+      store.remove(id);
       return json({ ok: true });
     }
-    return subscribe(cs, req, true);
+    if (cs) return subscribe(cs, req, true);
+    const saved = store.load(id);
+    if (!saved || saved.root !== opts.root) return json({ error: "no such session" }, 404);
+    const body = saved.log.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("");
+    return new Response(body, { headers: sseHeaders });
   }
 
   async function approve(req: Request): Promise<Response> {
