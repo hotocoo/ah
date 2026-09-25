@@ -38,13 +38,23 @@ ah bench throughput --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF
 ah telemetry                                # latency / TTFT / tok/s / cache / tool health
 ah image "isometric server rack" -o rack.png
 ah 3d "a wooden desk with a lamp" -o desk.glb
-ah serve                                    # local web app
+ah serve                                    # web app on http://127.0.0.1:4747/ (opens your browser)
 ah memory search "build error"              # persistent memory (lessons, notes, episodes)
 ah mcp                                      # connect MCP servers from ~/.ah/config.json, list tools
 ah plugins                                  # plugins and skills that load here
 ah trust                                    # allow this workspace's own .mcp.json / plugins / skills
 AH_COMPUTER=auto ah run --yes "open Safari and search for bun release notes"   # desktop control without prompts
 ```
+
+### Web app
+
+```bash
+cd your-project && ah serve          # or: bun run dev   (from a checkout: bun src/cli/main.ts serve)
+```
+
+Opens `http://127.0.0.1:4747/` in your browser; if 4747 is taken it picks a free port and prints the URL. The app works on the directory you started it in (`-C <dir>` to choose another). `--port N` fixes the port, `--no-open` skips the browser. It listens on loopback only, and every API call needs the per-launch token embedded in the page, so other sites and other machines cannot drive the agent.
+
+In the console: `Enter` sends, `Shift+Enter` adds a line, and while a task runs `Enter` steers it (your message joins before the next model call) and `Esc` or the stop button cancels it. The permission picker next to the model sets what the agent may do without asking (`ask`, `auto`, `read-only`). `⌘K` opens the command palette. Sessions stay in the sidebar until the server stops.
 
 Example `ah run` on MiMo-V2.6-Distill-Qwen-9B (Q8_0 GGUF, served with `llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`):
 

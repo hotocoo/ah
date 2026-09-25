@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import type { AgentEvent } from "../agent/events.ts";
 import { autoSelectModel, buildEnvironment, createSession, loadExtensions, resolveModelContext, type Environment, type Session } from "../app/session.ts";
 import { isTrusted, setTrusted } from "../plugins/index.ts";
+import type { PermissionMode } from "../tools/index.ts";
 import { discoverBackend } from "../tools/computer.ts";
 import { parseModelRef } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
@@ -34,11 +35,22 @@ const UI: Record<string, { body: string | Blob; type: string; cache?: string }> 
 const CSP = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self'; connect-src 'self'";
 const EXAMPLES_DIR = assetDir("examples/bench") ?? "";
 
+const PERMISSION_MODES: PermissionMode[] = ["ask", "auto", "read-only"];
 interface ChatSession {
   session: Session;
   busy: boolean;
   alwaysAllow: Set<string>;
+  // Where the current run's events go (the open SSE stream), and how to stop it.
+  sink: ((e: AgentEvent) => void) | null;
+  ac: AbortController | null;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  runs: number;
+  mode: PermissionMode;
+  lastOutcome: string | null;
 }
+type SessionEvent = { type: "session"; sessionId: string; model: string; contextWindow: number; mode: PermissionMode };
 
 // A tool call waiting for the user in the web UI.
 interface PendingApproval {
@@ -153,7 +165,13 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return json(listBenchRuns(env));
           case "/api/chat":
             return await chat(req);
-          case "/api/approve":
+          case "/api/stop":
+          return await control(req, "stop");
+        case "/api/steer":
+          return await control(req, "steer");
+        case "/api/sessions":
+          return sessions();
+        case "/api/approve":
             return await approve(req);
           case "/api/memory":
             return await memory(req, q);
@@ -187,17 +205,20 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   });
 
   // Streams agent events as Server-Sent Events. One run at a time per chat session.
+  // Each request re-points the session's event sink, approver and abort signal at itself,
+  // so the second and later runs of a session stream exactly like the first.
   async function chat(req: Request): Promise<Response> {
     if (req.method !== "POST") return json({ error: "POST required" }, 405);
-    const body = (await req.json()) as { prompt?: string; model?: string; preset?: string; sessionId?: string };
-    if (!body.prompt?.trim()) return json({ error: "prompt required" }, 400);
-    let id = body.sessionId && chats.has(body.sessionId) ? body.sessionId : undefined;
-    let chatSession = id ? chats.get(id)! : undefined;
+    const body = (await req.json()) as { prompt?: string; model?: string; preset?: string; sessionId?: string; mode?: string };
+    const prompt = body.prompt?.trim();
+    if (!prompt) return json({ error: "prompt required" }, 400);
+    const mode = PERMISSION_MODES.includes(body.mode as PermissionMode) ? (body.mode as PermissionMode) : undefined;
+    let chatSession = body.sessionId ? chats.get(body.sessionId) : undefined;
     if (chatSession?.busy) return json({ error: "session busy" }, 409);
     const encoder = new TextEncoder();
     let controller!: ReadableStreamDefaultController<Uint8Array>;
     const stream = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
-    const send = (e: AgentEvent | ApprovalEvent | { type: "session"; sessionId: string; model: string; contextWindow: number }) => {
+    const send = (e: AgentEvent | ApprovalEvent | SessionEvent) => {
       try {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
       } catch {
@@ -206,47 +227,81 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     };
     const ac = new AbortController();
     req.signal.addEventListener("abort", () => ac.abort());
-    let listener: ((e: AgentEvent) => void) | null = send;
+    if (!chatSession) {
+      let cs!: ChatSession;
+      const s = await createSession(env, { model: body.model, preset: body.preset || undefined, root: opts.root, mode: mode ?? env.cfg.permissionMode, approve: () => Promise.resolve(false), onEvent: (e) => cs.sink?.(e) });
+      cs = { session: s, busy: false, alwaysAllow: new Set(), sink: null, ac: null, title: prompt.slice(0, 80), createdAt: Date.now(), updatedAt: Date.now(), runs: 0, mode: mode ?? env.cfg.permissionMode, lastOutcome: null };
+      chats.set(s.agent.sessionId, cs);
+      chatSession = cs;
+    } else if (mode && mode !== chatSession.mode) {
+      chatSession.session.agent.setMode(mode);
+      chatSession.mode = mode;
+    }
+    const cs = chatSession;
+    const id = cs.session.agent.sessionId;
     // Approvals travel to the page as SSE events and come back through /api/approve.
-    let approvalSink: ((e: ApprovalEvent) => void) | null = send;
     const approveFn = (tool: string, input: Record<string, unknown>, summary: string) =>
       new Promise<boolean>((resolve) => {
-        const cs = chats.get(id!);
-        if (cs?.alwaysAllow.has(tool)) return resolve(true);
-        if (!approvalSink) return resolve(false);
+        if (cs.alwaysAllow.has(tool)) return resolve(true);
+        if (cs.sink !== send) return resolve(false);
         const aid = randomBytes(8).toString("hex");
         const timer = setTimeout(() => {
           approvals.delete(aid);
           resolve(false);
         }, APPROVAL_TIMEOUT_MS);
-        approvals.set(aid, { sessionId: id!, tool, resolve, timer });
-        approvalSink({ type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 2000) });
+        approvals.set(aid, { sessionId: id, tool, resolve, timer });
+        send({ type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 2000) });
       });
-    if (!chatSession) {
-      const s = await createSession(env, { model: body.model, preset: body.preset || undefined, root: opts.root, mode: env.cfg.permissionMode, approve: (t, i, sm) => approveFn(t, i, sm), onEvent: (e) => listener?.(e), signal: ac.signal });
-      id = s.agent.sessionId;
-      chatSession = { session: s, busy: false, alwaysAllow: new Set() };
-      chats.set(id, chatSession);
-    } else {
-      // Later runs reuse the session; route its approvals to this request's stream.
-      chatSession.session.agent.setApprover((t, i, sm) => approveFn(t, i, sm));
-    }
-    const cs = chatSession;
+    const agent = cs.session.agent;
+    agent.setApprover(approveFn);
+    agent.setSignal(ac.signal);
+    cs.sink = send;
+    cs.ac = ac;
     cs.busy = true;
-    send({ type: "session", sessionId: id!, model: cs.session.modelRef, contextWindow: cs.session.context.window });
-    void cs.session.agent.run(body.prompt).finally(() => {
-      cs.busy = false;
-      listener = null;
-      approvalSink = null;
-      for (const [aid, a] of approvals) {
-        if (a.sessionId !== id) continue;
-        clearTimeout(a.timer);
-        approvals.delete(aid);
-        a.resolve(false);
-      }
-      controller.close();
-    });
+    cs.runs++;
+    cs.updatedAt = Date.now();
+    send({ type: "session", sessionId: id, model: cs.session.modelRef, contextWindow: cs.session.context.window, mode: cs.mode });
+    void agent
+      .run(prompt)
+      .then((r) => void (cs.lastOutcome = r.outcome))
+      .finally(() => {
+        cs.busy = false;
+        cs.sink = null;
+        cs.ac = null;
+        cs.updatedAt = Date.now();
+        for (const [aid, a] of approvals) {
+          if (a.sessionId !== id) continue;
+          clearTimeout(a.timer);
+          approvals.delete(aid);
+          a.resolve(false);
+        }
+        controller.close();
+      });
     return new Response(stream, { headers: { "content-type": "text/event-stream", "cache-control": "no-store" } });
+  }
+
+  // Stop the running task, or add a message to it (steering) without waiting for it to end.
+  async function control(req: Request, action: "stop" | "steer"): Promise<Response> {
+    if (req.method !== "POST") return json({ error: "POST required" }, 405);
+    const b = (await req.json()) as { sessionId?: string; text?: string };
+    const cs = b.sessionId ? chats.get(b.sessionId) : undefined;
+    if (!cs) return json({ error: "no such session" }, 404);
+    if (!cs.busy) return json({ error: "session is idle" }, 409);
+    if (action === "stop") cs.ac?.abort();
+    else {
+      const text = b.text?.trim();
+      if (!text) return json({ error: "text required" }, 400);
+      cs.session.agent.steer(text.slice(0, 20_000));
+    }
+    return json({ ok: true });
+  }
+
+  function sessions(): Response {
+    return json(
+      [...chats.entries()]
+        .map(([id, c]) => ({ id, title: c.title, model: c.session.modelRef, busy: c.busy, runs: c.runs, mode: c.mode, createdAt: c.createdAt, updatedAt: c.updatedAt, lastOutcome: c.lastOutcome }))
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+    );
   }
 
   async function approve(req: Request): Promise<Response> {
@@ -341,11 +396,35 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   return { server, token, env };
 }
 
+// A stable default port so the URL can be bookmarked; falls back to any free port if taken.
+export const DEFAULT_PORT = 4747;
+
 export async function cmdServe(argv: string[]): Promise<number> {
-  const { values: v } = parseArgs({ args: argv, strict: false, options: { port: { type: "string", short: "p" }, cwd: { type: "string", short: "C" } } });
+  const { values: v } = parseArgs({ args: argv, strict: false, options: { port: { type: "string", short: "p" }, cwd: { type: "string", short: "C" }, open: { type: "boolean" }, "no-open": { type: "boolean" } } });
   const root = resolve((v.cwd as string | undefined) ?? process.cwd());
-  const { server } = await startServer({ port: Number(v.port ?? 0), root });
-  process.stdout.write(`${green("ah serve")} http://127.0.0.1:${server.port}/  ${dim(`workspace ${root} · bound to loopback · API requires the page token`)}\n`);
+  const wanted = v.port === undefined ? DEFAULT_PORT : Number(v.port);
+  const env = await buildEnvironment({ cwd: root });
+  let started: Awaited<ReturnType<typeof startServer>>;
+  try {
+    started = await startServer({ port: wanted, root, env });
+  } catch (err) {
+    if (v.port !== undefined || !/EADDRINUSE|in use/i.test(String((err as Error).message ?? err))) throw err;
+    started = await startServer({ port: 0, root, env });
+  }
+  const url = `http://127.0.0.1:${started.server.port}/`;
+  process.stdout.write(`\n  ${green("ah web app")}  ${url}\n  ${dim(`workspace ${root}`)}\n  ${dim("loopback only · Ctrl-C to stop · ah serve --no-open to skip the browser")}\n\n`);
+  // Open the browser for interactive launches (or when asked), like `vite --open`.
+  const shouldOpen = v.open === true || (v["no-open"] !== true && process.stdout.isTTY === true && !process.env.CI);
+  if (shouldOpen) openBrowser(url);
   await new Promise(() => {});
   return 0;
+}
+
+function openBrowser(url: string): void {
+  const cmd = process.platform === "darwin" ? ["open", url] : process.platform === "win32" ? ["cmd", "/c", "start", "", url] : ["xdg-open", url];
+  try {
+    Bun.spawn(cmd, { stdout: "ignore", stderr: "ignore" }).unref();
+  } catch {
+    /* no opener available: the URL is printed above */
+  }
 }

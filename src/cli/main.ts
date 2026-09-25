@@ -21,7 +21,7 @@ Usage:
   ah telemetry [options]        Telemetry summaries
   ah image "<prompt>" -o file   Generate an image with a discovered image backend
   ah 3d "<prompt>" -o file.glb  Generate a 3D model
-  ah serve [--port N]           Local web app (dashboard, chat, models, bench)
+  ah serve [--port N] [--no-open] Web app at http://127.0.0.1:4747/ (opens your browser)
   ah memory [list|search|add|rm] Persistent memory (verified lessons, notes, episodes)
   ah mcp                        Connect configured MCP servers and list their tools
   ah plugins                    Plugins and skills that load in this workspace

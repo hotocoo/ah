@@ -276,6 +276,7 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     computer: env.cfg.computerUse,
     memory,
     media: o.media ?? buildMedia(env.cfg, env.registry, { provider, model, contextWindow: context.window }),
+    signal: o.signal,
     ...o.toolContextExtras,
   };
   // provider params < model params < preset params < per-invocation params

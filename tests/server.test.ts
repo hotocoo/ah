@@ -91,6 +91,37 @@ describe("web app API", () => {
   });
 });
 
+describe("chat sessions", () => {
+  const get = (p: string) => fetch(`${base}${p}`, { headers: { "x-ah-token": "t0k" } });
+  const h = { "x-ah-token": "t0k", "content-type": "application/json" };
+  const chat = async (body: Record<string, unknown>) =>
+    (await (await fetch(`${base}/api/chat`, { method: "POST", headers: h, body: JSON.stringify(body) })).text())
+      .split("\n\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l.replace(/^data: /, "")) as { type: string; sessionId?: string; result?: { outcome: string } });
+
+  test("a second message on the same session streams a full run", async () => {
+    const mock = srv.env.registry.get("mock") as MockProvider;
+    mock.setScript([{ text: "first" }], "scripted");
+    const one = await chat({ prompt: "one", model: "mock/scripted" });
+    const sessionId = one[0]!.sessionId!;
+    mock.setScript([{ text: "second" }], "scripted");
+    const two = await chat({ prompt: "two", model: "mock/scripted", sessionId });
+    expect(two[0]!.sessionId).toBe(sessionId);
+    expect(two.map((e) => e.type)).toContain("run_start");
+    expect(two.at(-1)!.result!.outcome).toBe("completed");
+    const list = (await (await get("/api/sessions")).json()) as { id: string; runs: number; busy: boolean }[];
+    expect(list.find((s) => s.id === sessionId)).toMatchObject({ runs: 2, busy: false });
+  });
+
+  test("stop and steer need a busy session", async () => {
+    const post = (p: string, b: unknown) => fetch(`${base}${p}`, { method: "POST", headers: h, body: JSON.stringify(b) });
+    expect((await post("/api/stop", { sessionId: "nope" })).status).toBe(404);
+    const [first] = (await (await get("/api/sessions")).json()) as { id: string }[];
+    expect((await post("/api/steer", { sessionId: first!.id, text: "x" })).status).toBe(409);
+  });
+});
+
 describe("memory, extensions and approvals API", () => {
   const h = { "x-ah-token": "t0k", "content-type": "application/json" };
   test("memory CRUD", async () => {

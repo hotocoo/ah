@@ -97,6 +97,34 @@ export class Agent {
     this.o.approve = fn;
   }
 
+  setMode(mode: PermissionMode) {
+    this.o.mode = mode;
+  }
+
+  // Same for cancellation: each run can have its own signal (stop button, Ctrl-C).
+  setSignal(signal: AbortSignal | undefined) {
+    this.o.signal = signal;
+    this.o.toolContext.signal = signal;
+  }
+
+  // Steering: a message typed while the agent works. It joins the transcript before the
+  // next model request instead of waiting for the run to end.
+  private steering: string[] = [];
+  steer(text: string) {
+    this.steering.push(text);
+  }
+  private drainSteering() {
+    if (!this.steering.length) return;
+    const text = this.steering.splice(0).join("\n\n");
+    this.task += `\n\nUser update during the run: ${text}`;
+    const block: ContentBlock = { type: "text", text: `[User message while you were working] ${text}` };
+    const last = this.messages.at(-1);
+    // Keep roles alternating: fold into a trailing user message (tool results) if there is one.
+    if (last?.role === "user") this.messages[this.messages.length - 1] = { ...last, content: [...last.content, block] };
+    else this.messages.push({ role: "user", content: [block] });
+    this.emit({ type: "steer", runId: this.runId, turn: this.turn, text, t: Date.now() });
+  }
+
   private emit(e: AgentEvent) {
     this.o.onEvent?.(e);
   }
@@ -152,6 +180,7 @@ export class Agent {
           this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: 1, reason: `${this.ledger.failureStreak} failed actions in a row; context rebuilt from task and evidence`, delayMs: 0, t: Date.now() });
           this.ledger.failureStreak = 0;
         }
+        this.drainSteering();
         await this.maybeCompact(this.truncated || reset);
         this.truncated = false;
         this.turn++;
