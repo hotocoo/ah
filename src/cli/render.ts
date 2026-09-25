@@ -15,7 +15,14 @@ const fmtRate = (r?: number | null) => (r ? `${r.toFixed(1)} tok/s` : "-");
 // Streams agent activity to the terminal: text to stdout, tool activity and stats to stderr.
 export function terminalRenderer(opts: { verbose?: boolean; json?: boolean } = {}) {
   let inText = false;
+  // One in-place status line (TTY only) while a long tool call is being written.
+  let progress = false;
+  const clearProgress = () => {
+    if (progress) process.stderr.write("\r\x1b[2K");
+    progress = false;
+  };
   const err = (s: string) => {
+    clearProgress();
     if (inText) {
       process.stdout.write("\n");
       inText = false;
@@ -32,11 +39,24 @@ export function terminalRenderer(opts: { verbose?: boolean; json?: boolean } = {
         err(dim(`● ${e.provider}/${e.model}  ${e.runId}`));
         break;
       case "text_delta":
+        clearProgress();
         process.stdout.write(e.text);
         inText = true;
         break;
       case "thinking_delta":
         if (opts.verbose) process.stderr.write(dim(e.text));
+        break;
+      case "tool_call_progress":
+        if (tty && !inText) {
+          process.stderr.write(`\r\x1b[2K${dim(`  … writing ${e.name} · ${e.chars.toLocaleString()} chars`)}`);
+          progress = true;
+        }
+        break;
+      case "attachments":
+        err(dim(`  @ attached ${e.files.join(", ")}`));
+        break;
+      case "steer":
+        err(dim(`  ↳ your message joined the run: ${e.text.slice(0, 120)}`));
         break;
       case "tool_start":
         err(cyan(`  ⏵ ${e.summary}`));

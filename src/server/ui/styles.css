@@ -610,3 +610,6 @@ button.sm { height: 26px; padding: 0 var(--s-2); font-size: var(--fs-12); }
 .mention li[aria-selected="true"], .mention li:hover { background: var(--bg-subtle); color: var(--text); }
 #runs td.clip { max-width: 260px; }
 #runs td:last-child { max-width: 120px; color: var(--muted); }
+.writing { margin: var(--s-1) var(--s-2); font: 400 var(--fs-12) var(--mono); color: var(--accent); }
+.writing::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: currentColor; vertical-align: middle; animation: ses-pulse 1s var(--ease) infinite; }
+.state[data-state="writing"]::before { background: var(--accent); animation: pulse 1.2s var(--ease) infinite; }

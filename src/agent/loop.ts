@@ -326,7 +326,25 @@ export class Agent {
           signal: req.signal,
         });
         let done: Extract<StreamEvent, { type: "done" }> | undefined;
+        // Where the output goes (reasoning, reply, tool arguments), and live progress while a
+        // long tool call is being written (a big write_file can stream for minutes).
+        const out = { thinking: 0, text: 0, toolArgs: 0 };
+        let writing: { id: string; name: string; chars: number; at: number } | null = null;
         for await (const ev of stream) {
+          if (ev.type === "thinking_delta") out.thinking += ev.text.length;
+          else if (ev.type === "text_delta") out.text += ev.text.length;
+          else if (ev.type === "tool_call_start") writing = { id: ev.id, name: ev.name, chars: 0, at: 0 };
+          else if (ev.type === "tool_call_delta") {
+            out.toolArgs += ev.partialJson.length;
+            if (writing) {
+              writing.chars += ev.partialJson.length;
+              const now = performance.now();
+              if (now - writing.at > 500) {
+                writing.at = now;
+                this.emit({ type: "tool_call_progress", runId: this.runId, turn: this.turn, name: writing.name, chars: writing.chars, t: Date.now() });
+              }
+            }
+          }
           if (ttft === null && (ev.type === "text_delta" || ev.type === "tool_call_start" || ev.type === "thinking_delta")) {
             ttft = performance.now() - t0;
             this.firstTtft ??= ttft;
@@ -379,6 +397,7 @@ export class Agent {
           outputTokensPerSec: genMs >= 250 && done.usage.outputTokens ? (done.usage.outputTokens / genMs) * 1000 : null,
           toolCalls: toolCallsOf(done.message).length,
           timings: done.timings,
+          outputChars: out,
           t: Date.now(),
         });
         this.checkTruncation(done.usage.inputTokens);

@@ -23,12 +23,14 @@ export type AgentEvent =
       outputTokensPerSec: number | null;
       toolCalls: number;
       timings?: RuntimeTimings;
+      outputChars?: { thinking: number; text: number; toolArgs: number };
       t: number;
     }
   | { type: "tool_calls_recovered"; runId: string; turn: number; count: number; formats: string[]; t: number }
   | { type: "context_truncated"; runId: string; turn: number; reportedTokens: number; estimatedTokens: number; window: number; t: number }
   | { type: "steer"; runId: string; turn: number; text: string; t: number }
   | { type: "attachments"; runId: string; turn: number; files: string[]; t: number }
+  | { type: "tool_call_progress"; runId: string; turn: number; name: string; chars: number; t: number }
   | { type: "retry"; runId: string; turn: number; attempt: number; reason: string; delayMs: number; t: number }
   | { type: "tool_start"; runId: string; turn: number; id: string; name: string; input: Record<string, unknown>; summary: string; t: number }
   | {

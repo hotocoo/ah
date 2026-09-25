@@ -298,6 +298,7 @@ function createView(log) {
         break;
       case "model_response":
         endThinking();
+        log.querySelector(".writing")?.remove();
         run.input += ev.usage?.inputTokens ?? 0;
         run.output += ev.usage?.outputTokens ?? 0;
         run.cacheRead += ev.usage?.cacheReadTokens ?? 0;
@@ -307,7 +308,18 @@ function createView(log) {
           inst.trace(`response · ${num(ev.usage?.outputTokens)} out · ${ms(ev.latencyMs)}`);
         }
         break;
+      case "tool_call_progress": {
+        let w = log.querySelector(".writing");
+        if (!w) {
+          w = Object.assign(document.createElement("div"), { className: "writing" });
+          where().append(w);
+        }
+        w.textContent = `Writing ${ev.name} call · ${compact(ev.chars)} chars`;
+        inst.set("writing");
+        break;
+      }
       case "tool_start": {
+        log.querySelector(".writing")?.remove();
         const s = ensureStep(now);
         const kind = kindOf(ev.name);
         const t = { id: ev.id, name: ev.name, kind, input: ev.input ?? {}, done: false, isError: false, start: now, el: null };

@@ -260,6 +260,11 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   }
 
   function publish(cs: ChatSession, e: StreamEvent) {
+    // Progress ticks matter only live; replay has the finished tool call.
+    if (e.type === "tool_call_progress") {
+      for (const s of cs.subs) s.write(e);
+      return;
+    }
     const last = cs.log.at(-1);
     if ((e.type === "text_delta" || e.type === "thinking_delta") && last?.type === e.type && last.turn === e.turn) cs.log[cs.log.length - 1] = { ...last, text: last.text + e.text };
     else if (cs.log.length < MAX_SESSION_EVENTS) cs.log.push(e);

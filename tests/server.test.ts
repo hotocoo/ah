@@ -84,6 +84,10 @@ describe("web app API", () => {
     const types = events.map((e) => e.type);
     expect(types.slice(0, 2)).toEqual(["user", "session"]);
     expect(types).toContain("tool_end");
+    // Live progress while the tool call is written, and where each turn's output went.
+    expect(types).toContain("tool_call_progress");
+    const mr = events.find((e) => e.type === "model_response") as unknown as { outputChars: { toolArgs: number } };
+    expect(mr.outputChars.toolArgs).toBeGreaterThan(0);
     expect(events.at(-1)!.type).toBe("run_end");
     expect(events.at(-1)!.result!.outcome).toBe("completed");
     const runs = (await (await get("/api/telemetry/runs")).json()) as { outcome: string }[];
