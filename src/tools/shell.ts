@@ -224,6 +224,15 @@ export function detectTestCommand(root: string): string | null {
   return null;
 }
 
+// A test-name filter in the runner's own syntax: go and pytest take it as a flag; a bare
+// positional would be read as a package or path. Other runners take a positional pattern.
+export function withFilter(base: string, filter: string): string {
+  const q = JSON.stringify(filter);
+  if (/^go test\b/.test(base)) return `${base} -run ${q}`;
+  if (/-m pytest\b|^pytest\b/.test(base)) return `${base} -k ${q}`;
+  return `${base} ${q}`;
+}
+
 export const runTestsTool: Tool = {
   readOnly: false,
   spec: {
@@ -239,7 +248,7 @@ export const runTestsTool: Tool = {
   async run(input, ctx) {
     const base = (input.command as string | undefined) ?? detectTestCommand(ctx.root);
     if (!base) throw new ToolError("could not detect a test command; pass `command`");
-    const cmd = input.filter ? `${base} ${JSON.stringify(String(input.filter))}` : base;
+    const cmd = input.filter ? withFilter(base, String(input.filter)) : base;
     const r = await exec(cmd, ctx, Math.max(ctx.bashTimeoutMs, 300_000));
     return { content: `$ ${cmd}\n${formatExec(r)}`, isError: r.timedOut || r.code !== 0 };
   },

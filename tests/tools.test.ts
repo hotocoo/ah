@@ -62,6 +62,14 @@ describe("path confinement", () => {
     expect(none.changedFiles).toBeUndefined();
   });
 
+  test("run_tests filters in the runner's syntax", async () => {
+    const { withFilter } = await import("../src/tools/shell.ts");
+    expect(withFilter("go test ./...", "Stack")).toBe('go test ./... -run "Stack"');
+    expect(withFilter("python3 -m pytest -q", "dur")).toBe('python3 -m pytest -q -k "dur"');
+    expect(withFilter("bun test", "lru")).toBe('bun test "lru"');
+    expect(withFilter("cargo test", "top")).toBe('cargo test "top"');
+  });
+
   test("bash reads a timeout under 1000 as seconds", async () => {
     const r = await run("bash", { command: "echo ok", timeout_ms: 30 });
     expect(r.isError).toBeFalsy();
