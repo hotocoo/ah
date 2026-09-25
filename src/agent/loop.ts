@@ -217,8 +217,21 @@ export class Agent {
           outcome = "refusal";
           break;
         }
-        // A tool input cut off at max_tokens can parse as a valid partial object:
-        // never run it. Retry the turn once with a doubled output budget.
+        // A tool input cut off at max_tokens can parse as a valid partial object: never run it.
+        // Regenerating the same huge call with a bigger budget repeats minutes of decoding on
+        // a local model and often truncates again, so record the cut-off and ask for the same
+        // work in smaller pieces. (Without recoveries: retry once with a doubled budget.)
+        if (res.stopReason === "max_tokens" && calls.length && this.o.recoveries !== false) {
+          if (truncationRetries++ < 2) {
+            const name = calls.at(-1)!.name;
+            this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: truncationRetries, reason: `${name} input cut off at the output limit; asked to split the work`, delayMs: 0, t: Date.now() });
+            this.messages.push({ role: "assistant", content: [{ type: "text", text: textOf(res.message).trim() || `(reply cut off at the output limit while writing a ${name} call)` }] });
+            this.messages.push({ role: "user", content: [{ type: "text", text: `[ah] Your last reply hit the output limit (${maxTokens} tokens) while writing a ${name} call. The call was cut off and discarded: nothing ran and no file changed. Do the same work in smaller steps: split large content across several files or successive calls, each well under the limit, and keep reasoning short.` }] });
+            continue;
+          }
+          outcome = "max_tokens";
+          break;
+        }
         if (res.stopReason === "max_tokens" && calls.length) {
           if (truncationRetries++ < 1 && maxTokens < (this.o.maxOutputTokens ?? Number.POSITIVE_INFINITY)) {
             maxTokens = Math.min(maxTokens * 2, this.o.maxOutputTokens ?? maxTokens * 2);

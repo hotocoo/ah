@@ -90,11 +90,24 @@ describe("agent loop", () => {
   });
 
   test("never runs a tool call truncated at max_tokens", async () => {
-    const { agent, events } = setup([{ toolCalls: [{ name: "write_file", input: { path: "x", content: "partial" } }], stopReason: "max_tokens" }]);
+    const { agent, events } = setup([{ toolCalls: [{ name: "write_file", input: { path: "x", content: "partial" } }], stopReason: "max_tokens" }], { recoveries: false });
     const r = await agent.run("x");
     expect(r.outcome).toBe("max_tokens");
     expect(r.toolCalls).toBe(0);
     expect(events.some((e) => e.type === "retry")).toBe(true);
+  });
+
+  test("a tool call cut off at max_tokens is discarded and the model is asked to split the work", async () => {
+    const { agent, events } = setup([
+      { toolCalls: [{ name: "write_file", input: { path: "big.txt", content: "partial" } }], stopReason: "max_tokens" },
+      { toolCalls: [{ name: "write_file", input: { path: "part1.txt", content: "one" } }] },
+      { text: "done" },
+    ]);
+    const r = await agent.run("write a big file");
+    expect(r.outcome).toBe("completed");
+    expect(r.toolCalls).toBe(1);
+    expect(events.find((e) => e.type === "retry")).toMatchObject({ reason: expect.stringContaining("asked to split") });
+    expect(JSON.stringify(agent.messages)).toContain("nothing ran and no file changed");
   });
 
   test("retries transient provider errors with backoff", async () => {
