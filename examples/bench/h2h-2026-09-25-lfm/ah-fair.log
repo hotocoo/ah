@@ -1,0 +1,28 @@
+bench llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0 · 8 tasks × 3 trials · {} · /Users/acotech/workspace/ah-bench-0eb3f99/examples/bench/h2h-lfm-core-fair/ah
+  PASS ts-bugfix-pagination #1 197.4s · 28 turns · 35 tools (9 err)
+  FAIL ts-bugfix-pagination #2 166.2s · 21 turns · 24 tools (3 err) · grader
+  PASS ts-bugfix-pagination #3 30.6s · 8 turns · 12 tools (1 err)
+  FAIL go-feature-stack #1 71.3s · 5 turns · 6 tools · agent_error
+  FAIL go-feature-stack #2 600.0s · 44 turns · 42 tools (16 err) · timeout
+  FAIL go-feature-stack #3 72.8s · 5 turns · 6 tools (2 err) · agent_error
+  PASS py-bugfix-duration #1 38.0s · 8 turns · 9 tools
+  PASS py-bugfix-duration #2 92.1s · 13 turns · 14 tools (2 err)
+  PASS py-bugfix-duration #3 104.5s · 14 turns · 15 tools (3 err)
+  FAIL rust-fix-compile-and-logic #1 328.3s · 29 turns · 33 tools (8 err) · grader
+  FAIL rust-fix-compile-and-logic #2 519.7s · 31 turns · 32 tools (7 err) · grader
+  FAIL rust-fix-compile-and-logic #3 463.4s · 23 turns · 22 tools (6 err) · grader
+  PASS ts-debug-cross-file #1 30.5s · 8 turns · 9 tools (1 err)
+  PASS ts-debug-cross-file #2 57.9s · 11 turns · 12 tools (1 err)
+  PASS ts-debug-cross-file #3 63.7s · 9 turns · 10 tools (1 err)
+  FAIL ts-feature-lru #1 900.0s · 41 turns · 41 tools (12 err) · timeout
+  FAIL ts-feature-lru #2 900.0s · 46 turns · 47 tools (15 err) · timeout
+  FAIL ts-feature-lru #3 900.0s · 40 turns · 43 tools (16 err) · timeout
+  PASS ts-multifile-rename #1 114.3s · 19 turns · 34 tools (9 err)
+  PASS ts-multifile-rename #2 75.8s · 16 turns · 28 tools (2 err)
+  PASS ts-multifile-rename #3 33.3s · 7 turns · 18 tools
+  PASS ts-write-tests #1 226.8s · 17 turns · 18 tools (4 err)
+  FAIL ts-write-tests #2 189.1s · 19 turns · 22 tools (5 err) · grader
+  FAIL ts-write-tests #3 600.0s · 28 turns · 30 tools (11 err) · timeout
+
+result 12/24 trials · pass@1 50% · pass^3 38% · 5/8 tasks solved
+report: /Users/acotech/workspace/ah-bench-0eb3f99/examples/bench/h2h-lfm-core-fair/ah/report.md

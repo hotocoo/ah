@@ -158,7 +158,19 @@ Same model, server, suite and trial count as the rows above, with the evidence l
 - `ts-feature-lru` with episodic reset (D31): 0/3, same as before. The reset fired in 1 of 3 trials; failures were rarely consecutive enough to trigger it, and the trial where it fired still hit the 20-turn limit.
 - Horizon suite, `py-optimal-scheduler` (provably optimal DAG scheduling; 29 hidden checks; greedy list scheduling scores 22/29): 0/2, partial score 0/29. Both trials ended after 3-4 turns because a reply hit the output cap mid-reasoning and the loop treated that as the end of the run. That was a harness bug, fixed in D32. Re-run with the fix: the run survived two cutoffs and a repetition cut, then hit the 45-minute limit after 6 turns without writing code (score 0/29). At ~7 minutes of reasoning per turn, this task is beyond what this 9B model finishes in the time limit; the suite now measures that instead of a harness failure.
 
-**Comparison with other harnesses:** none has been run head to head; `ah` is not shown to be better than Claude Code, Codex, OpenCode, Aider or Pi. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
+### 2026-09-25: head to head with Hermes Agent and dsh on LFM2.5-2.6B
+
+Same model (`DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0`), same llama-server, same core tasks, hidden graders and time limits, 3 trials each:
+
+| harness | trials passed (95% CI) | tasks solved ≥1 | prompt tokens |
+|---|---|---|---|
+| ah `0eb3f99` | 12/24 (31%–69%) | 5/8 | 3.84M |
+| dsh 0.1.1-rc.2 | 9/24 (21%–57%) | 4/8 | not recorded |
+| Hermes Agent 0.21.3 | 7/24 (15%–49%) | 3/8 | 12.30M |
+
+ah is highest and 3.2× cheaper than Hermes in prompt tokens, but the intervals overlap: no lead is proven. On the horizon suite nobody passed a trial at this model size, and ah earned the most partial credit (13 of 58 scheduler checks, against 5 for Hermes and 0 for dsh). The fixes this run led to (D39 to D42), the before/after numbers and every raw result are in [`examples/bench/h2h-2026-09-25-lfm/`](examples/bench/h2h-2026-09-25-lfm/README.md). An earlier head-to-head on Qwen3.8-27B was a three-way tie on the core suite (ah 24/24, dsh 24/24, Hermes 23/24).
+
+**Comparison with other harnesses:** Claude Code, Codex, OpenCode, Aider and Pi have not been run here; `ah` is not shown to be better than them. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
 
 Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/bench/). Reproduce with the commands in each report.
 

@@ -46,6 +46,20 @@ Same model, server, suite and turn caps as the `85cc190` run above (`bash script
 - 11 against 8 is still inside the intervals: it points the right way, but it does not prove an accuracy gain.
 - Every remaining failure is the turn cap. Hermes and dsh never had that cap in the table above.
 
+### Same budget as the other harnesses: ah at `0eb3f99`, time limit only
+
+`bash scripts/h2h.sh --only ah --trials 3`: ah is bound only by each task's time limit, the budget Hermes and dsh had in the first table. Details: [`ah-fair/report.md`](ah-fair/report.md).
+
+| harness (same model, tasks and limits) | trials passed (95% CI) | tasks solved ≥1 | wall time total | prompt tokens |
+|---|---|---|---|---|
+| ah `0eb3f99` | 12/24 (31%–69%) | 5/8 | 113 min | 3.84M |
+| dsh | 9/24 (21%–57%) | 4/8 | 36 min | not recorded |
+| Hermes Agent | 7/24 (15%–49%) | 3/8 | 93 min | 12.30M |
+
+- ah has the most passes and the most tasks solved, and it used 3.2× fewer prompt tokens than Hermes. The intervals still overlap, so this is the best result, not a proven lead.
+- It is also the slowest: ah keeps working until the checks pass or time runs out, while dsh stops early (it finished in a third of the time).
+- Two trials ended `agent_error` on invalid tool-call JSON (`go-feature-stack`). That led to D42, which is not in this build.
+
 ## Horizon suite
 
 `py-optimal-scheduler` (29 hidden checks) and `ts-sql-engine` (61 checks against SQLite), 2 trials each. ah ran at `ac30c5f` with the time-only budget (`--no-turn-limit`), so all three harnesses had the same limits. Details: [`horizon/`](horizon/).
