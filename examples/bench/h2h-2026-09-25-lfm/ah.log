@@ -1,0 +1,28 @@
+bench llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0 · 8 tasks × 3 trials · {} · /Users/acotech/workspace/ah-bench-85cc190/examples/bench/h2h-lfm-core/ah
+  PASS ts-bugfix-pagination #1 38.4s · 10 turns · 13 tools (2 err)
+  FAIL ts-bugfix-pagination #2 36.9s · 10 turns · 12 tools (2 err) · grader
+  PASS ts-bugfix-pagination #3 35.1s · 9 turns · 11 tools (2 err)
+  FAIL go-feature-stack #1 6.5s · 3 turns · 3 tools · agent_error
+  FAIL go-feature-stack #2 124.0s · 15 turns · 18 tools (5 err) · max_turns
+  FAIL go-feature-stack #3 103.7s · 15 turns · 19 tools (3 err) · max_turns
+  PASS py-bugfix-duration #1 47.2s · 11 turns · 12 tools
+  FAIL py-bugfix-duration #2 94.0s · 15 turns · 17 tools (12 err) · max_turns
+  PASS py-bugfix-duration #3 32.0s · 6 turns · 7 tools
+  FAIL rust-fix-compile-and-logic #1 136.9s · 20 turns · 23 tools (9 err) · max_turns
+  FAIL rust-fix-compile-and-logic #2 98.0s · 20 turns · 21 tools (11 err) · max_turns
+  FAIL rust-fix-compile-and-logic #3 216.1s · 20 turns · 30 tools (19 err) · max_turns
+  PASS ts-debug-cross-file #1 72.6s · 14 turns · 16 tools (6 err)
+  PASS ts-debug-cross-file #2 82.4s · 17 turns · 18 tools (6 err)
+  PASS ts-debug-cross-file #3 160.2s · 20 turns · 23 tools (5 err)
+  FAIL ts-feature-lru #1 99.5s · 14 turns · 17 tools (4 err) · grader
+  FAIL ts-feature-lru #2 153.2s · 20 turns · 25 tools (9 err) · max_turns
+  FAIL ts-feature-lru #3 211.5s · 20 turns · 24 tools (10 err) · grader
+  FAIL ts-multifile-rename #1 387.0s · 25 turns · 50 tools (26 err) · max_turns
+  FAIL ts-multifile-rename #2 246.1s · 25 turns · 55 tools (36 err) · max_turns
+  FAIL ts-multifile-rename #3 220.4s · 25 turns · 38 tools (19 err) · max_turns
+  FAIL ts-write-tests #1 233.5s · 15 turns · 19 tools (9 err) · max_turns
+  FAIL ts-write-tests #2 66.4s · 15 turns · 17 tools (8 err) · max_turns
+  PASS ts-write-tests #3 81.8s · 15 turns · 20 tools (9 err)
+
+result 8/24 trials · pass@1 33% · pass^3 13% · 4/8 tasks solved
+report: /Users/acotech/workspace/ah-bench-85cc190/examples/bench/h2h-lfm-core/ah/report.md

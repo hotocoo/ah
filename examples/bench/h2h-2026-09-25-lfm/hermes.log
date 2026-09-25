@@ -1,0 +1,28 @@
+bench external/hermes · 8 tasks × 3 trials · {} · /Users/acotech/workspace/ah-bench-85cc190/examples/bench/h2h-lfm-core/hermes
+  FAIL ts-bugfix-pagination #1 175.3s · 35 turns · 38 tools · grader
+  FAIL ts-bugfix-pagination #2 36.5s · 5 turns · 6 tools · grader
+  FAIL ts-bugfix-pagination #3 65.1s · 15 turns · 16 tools · grader
+  FAIL go-feature-stack #1 309.6s · 39 turns · 38 tools · grader
+  FAIL go-feature-stack #2 600.1s · 69 turns · 69 tools · timeout
+  FAIL go-feature-stack #3 600.1s · 51 turns · 51 tools · timeout
+  PASS py-bugfix-duration #1 68.3s · 10 turns · 9 tools
+  FAIL py-bugfix-duration #2 341.3s · 38 turns · 41 tools · grader
+  PASS py-bugfix-duration #3 122.5s · 16 turns · 17 tools
+  FAIL rust-fix-compile-and-logic #1 247.1s · 18 turns · 18 tools · grader
+  FAIL rust-fix-compile-and-logic #2 110.1s · 12 turns · 12 tools · grader
+  FAIL rust-fix-compile-and-logic #3 329.9s · 13 turns · 21 tools · grader
+  PASS ts-debug-cross-file #1 48.2s · 6 turns · 7 tools
+  PASS ts-debug-cross-file #2 61.3s · 12 turns · 13 tools
+  PASS ts-debug-cross-file #3 38.6s · 7 turns · 8 tools
+  FAIL ts-feature-lru #1 704.5s · 34 turns · 42 tools · grader
+  FAIL ts-feature-lru #2 464.2s · 39 turns · 47 tools · grader
+  FAIL ts-feature-lru #3 417.6s · 34 turns · 34 tools · grader
+  PASS ts-multifile-rename #1 77.0s · 10 turns · 24 tools
+  PASS ts-multifile-rename #2 49.5s · 7 turns · 17 tools
+  FAIL ts-multifile-rename #3 295.3s · 23 turns · 42 tools · grader
+  FAIL ts-write-tests #1 142.2s · 15 turns · 19 tools · grader
+  FAIL ts-write-tests #2 165.9s · 20 turns · 20 tools · grader
+  FAIL ts-write-tests #3 121.6s · 15 turns · 16 tools · grader
+
+result 7/24 trials · pass@1 29% · pass^3 13% · 3/8 tasks solved
+report: /Users/acotech/workspace/ah-bench-85cc190/examples/bench/h2h-lfm-core/hermes/report.md

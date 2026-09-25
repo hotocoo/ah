@@ -1,0 +1,242 @@
+{
+  "model": "external/hermes",
+  "benchRunId": "bench_2026-09-25T06-27-24_external_hermes",
+  "k": 3,
+  "tasks": [
+    {
+      "taskId": "ts-bugfix-pagination",
+      "name": "Fix pagination off-by-one",
+      "category": "bugfix",
+      "difficulty": 1,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 92296.02037533332,
+      "p95WallMs": 164296.15088369997,
+      "meanTurns": 18.333333333333332,
+      "meanToolErrors": 0,
+      "meanTokens": 386234.3333333333,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    },
+    {
+      "taskId": "go-feature-stack",
+      "name": "Implement a generic Go stack",
+      "category": "feature",
+      "difficulty": 2,
+      "language": "go",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 503252.291153,
+      "p95WallMs": 600075.3498581001,
+      "meanTurns": 53,
+      "meanToolErrors": 0,
+      "meanTokens": 1550503,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 1,
+        "timeout": 2
+      }
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "name": "Fix a Python duration parser",
+      "category": "bugfix",
+      "difficulty": 2,
+      "language": "python",
+      "n": 3,
+      "passes": 2,
+      "passRate": 0.6666666666666666,
+      "passAt1": 0.6666666666666667,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.2076549551264879,
+        "high": 0.9385096847238394
+      },
+      "meanWallMs": 177351.46963899993,
+      "p95WallMs": 319373.06610029994,
+      "meanTurns": 21.333333333333332,
+      "meanToolErrors": 0,
+      "meanTokens": 494444.6666666667,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 1
+      }
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "name": "Fix a Rust crate that does not compile and has a logic bug",
+      "category": "bugfix",
+      "difficulty": 3,
+      "language": "rust",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 229017.87681933338,
+      "p95WallMs": 321624.6586914,
+      "meanTurns": 14.333333333333334,
+      "meanToolErrors": 0,
+      "meanTokens": 266711,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "name": "Debug a failing test whose cause is in another module",
+      "category": "debugging",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 3,
+      "passRate": 1,
+      "passAt1": 1,
+      "passAtK": 1,
+      "passHatK": 1,
+      "wilson": {
+        "low": 0.43849391955098227,
+        "high": 1
+      },
+      "meanWallMs": 49349.53666666647,
+      "p95WallMs": 59973.80850859978,
+      "meanTurns": 8.333333333333334,
+      "meanToolErrors": 0,
+      "meanTokens": 130981,
+      "decodeTps": null,
+      "failReasons": {}
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 528743.1942776669,
+      "p95WallMs": 680487.0867160999,
+      "meanTurns": 35.666666666666664,
+      "meanToolErrors": 0,
+      "meanTokens": 869884.6666666666,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "name": "Rename a function across a codebase",
+      "category": "refactor",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 2,
+      "passRate": 0.6666666666666666,
+      "passAt1": 0.6666666666666667,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.2076549551264879,
+        "high": 0.9385096847238394
+      },
+      "meanWallMs": 140589.70330533353,
+      "p95WallMs": 273430.3731622004,
+      "meanTurns": 13.333333333333334,
+      "meanToolErrors": 0,
+      "meanTokens": 276710.6666666667,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 1
+      }
+    },
+    {
+      "taskId": "ts-write-tests",
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 143215.3091253334,
+      "p95WallMs": 163490.65198809988,
+      "meanTurns": 16.666666666666668,
+      "meanToolErrors": 0,
+      "meanTokens": 305678.6666666667,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    }
+  ],
+  "overall": {
+    "trials": 24,
+    "passes": 7,
+    "passRate": 0.2916666666666667,
+    "wilson": {
+      "low": 0.14914460334164278,
+      "high": 0.49168063658709704
+    },
+    "meanPassAt1": 0.2916666666666667,
+    "meanPassAtK": 0.375,
+    "meanPassHatK": 0.125,
+    "solvedAny": 3,
+    "solvedAll": 1,
+    "meanScore": 1,
+    "verdictAgreement": null,
+    "totalWallMs": 5592867.659001001,
+    "p50WallMs": 154018.75010449998,
+    "p95WallMs": 600074.5994956502,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 12304546,
+    "outputTokens": 538898,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0
+  }
+}

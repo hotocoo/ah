@@ -1,0 +1,239 @@
+{
+  "model": "external/dsh",
+  "benchRunId": "bench_2026-09-25T08-00-48_external_dsh",
+  "k": 3,
+  "tasks": [
+    {
+      "taskId": "ts-bugfix-pagination",
+      "name": "Fix pagination off-by-one",
+      "category": "bugfix",
+      "difficulty": 1,
+      "language": "typescript",
+      "n": 3,
+      "passes": 1,
+      "passRate": 0.3333333333333333,
+      "passAt1": 0.33333333333333337,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.0614903152761605,
+        "high": 0.7923450448735121
+      },
+      "meanWallMs": 26580.94568033333,
+      "p95WallMs": 32439.953358299994,
+      "meanTurns": 7.666666666666667,
+      "meanToolErrors": 1,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "go-feature-stack",
+      "name": "Implement a generic Go stack",
+      "category": "feature",
+      "difficulty": 2,
+      "language": "go",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 55855.58070866667,
+      "p95WallMs": 69765.7488837,
+      "meanTurns": 11.666666666666666,
+      "meanToolErrors": 4.666666666666667,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "name": "Fix a Python duration parser",
+      "category": "bugfix",
+      "difficulty": 2,
+      "language": "python",
+      "n": 3,
+      "passes": 3,
+      "passRate": 1,
+      "passAt1": 1,
+      "passAtK": 1,
+      "passHatK": 1,
+      "wilson": {
+        "low": 0.43849391955098227,
+        "high": 1
+      },
+      "meanWallMs": 92702.49263866665,
+      "p95WallMs": 166385.73721659998,
+      "meanTurns": 13.333333333333334,
+      "meanToolErrors": 5.666666666666667,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {}
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "name": "Fix a Rust crate that does not compile and has a logic bug",
+      "category": "bugfix",
+      "difficulty": 3,
+      "language": "rust",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 178839.7183053333,
+      "p95WallMs": 212069.8433372,
+      "meanTurns": 13.333333333333334,
+      "meanToolErrors": 7,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "name": "Debug a failing test whose cause is in another module",
+      "category": "debugging",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 3,
+      "passRate": 1,
+      "passAt1": 1,
+      "passAtK": 1,
+      "passHatK": 1,
+      "wilson": {
+        "low": 0.43849391955098227,
+        "high": 1
+      },
+      "meanWallMs": 40167.104333000025,
+      "p95WallMs": 47240.96745830004,
+      "meanTurns": 8.666666666666666,
+      "meanToolErrors": 0,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {}
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 176208.55738866664,
+      "p95WallMs": 332644.189141,
+      "meanTurns": 14.333333333333334,
+      "meanToolErrors": 10.333333333333334,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "name": "Rename a function across a codebase",
+      "category": "refactor",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 3,
+      "passes": 2,
+      "passRate": 0.6666666666666666,
+      "passAt1": 0.6666666666666667,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.2076549551264879,
+        "high": 0.9385096847238394
+      },
+      "meanWallMs": 94658.55120833327,
+      "p95WallMs": 137743.43935859992,
+      "meanTurns": 13,
+      "meanToolErrors": 2.3333333333333335,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 1
+      }
+    },
+    {
+      "taskId": "ts-write-tests",
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "language": "typescript",
+      "n": 3,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.5615060804490177
+      },
+      "meanWallMs": 49486.053555666855,
+      "p95WallMs": 52667.974945900336,
+      "meanTurns": 8.666666666666666,
+      "meanToolErrors": 3.6666666666666665,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 3
+      }
+    }
+  ],
+  "overall": {
+    "trials": 24,
+    "passes": 9,
+    "passRate": 0.375,
+    "wilson": {
+      "low": 0.21159133433631458,
+      "high": 0.5729038096209293
+    },
+    "meanPassAt1": 0.375,
+    "meanPassAtK": 0.5,
+    "meanPassHatK": 0.25,
+    "solvedAny": 4,
+    "solvedAll": 2,
+    "meanScore": 1,
+    "verdictAgreement": null,
+    "totalWallMs": 2144921.9453310003,
+    "p50WallMs": 54595.242583000174,
+    "p95WallMs": 210521.27510179993,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.3076923076923077
+  }
+}
