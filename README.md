@@ -54,7 +54,15 @@ cd your-project && ah serve          # or: bun run dev   (from a checkout: bun s
 
 Opens `http://127.0.0.1:4747/` in your browser; if 4747 is taken it picks a free port and prints the URL. The app works on the directory you started it in (`-C <dir>` to choose another). `--port N` fixes the port, `--no-open` skips the browser. It listens on loopback only, and every API call needs the per-launch token embedded in the page, so other sites and other machines cannot drive the agent.
 
-In the console: `Enter` sends, `Shift+Enter` adds a line, and while a task runs `Enter` steers it (your message joins before the next model call) and `Esc` or the stop button cancels it. The permission picker next to the model sets what the agent may do without asking (`ask`, `auto`, `read-only`). `⌘K` opens the command palette. Sessions stay in the sidebar until the server stops.
+In the console:
+
+- `Enter` sends, `Shift+Enter` adds a line. `@` completes a workspace path; mentioned files are attached to the task (also in `ah run "fix @src/a.ts"`).
+- While a task runs, `Enter` steers it (your message joins before the next model call) and `Esc` or Stop cancels it. Runs belong to the server, so closing or reloading the tab does not stop them; reopening the session replays it and follows the live run.
+- Consecutive tool calls fold into one step titled by what the model said it was doing; each call expands to its diff, command or output. Long tool calls show live progress while they are written.
+- The permission picker sets what the agent may do without asking (`ask`, `auto`, `read-only`). **Changes** (and **Review changes** after a run) shows the uncommitted git diff.
+- The right panel traces every turn: TTFT, decode speed, context use, GPU load, retries, compactions. `⌘K` opens the command palette.
+
+Sessions are kept in memory and listed in the sidebar until the server stops.
 
 Example `ah run` on MiMo-V2.6-Distill-Qwen-9B (Q8_0 GGUF, served with `llama serve -hf ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF`):
 
