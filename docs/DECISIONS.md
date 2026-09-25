@@ -221,3 +221,9 @@ Two more robustness features came out of these runs: project facts in the system
 - **Chosen:** `timeout_ms` under 1000 is read as seconds. An absolute path outside the root whose tail exists inside it resolves to that file (longest tail first; still confined, and a tail that does not exist still errors). `read_file` on a directory returns its listing. Each turns a wasted turn into the result the model wanted.
 - **Note:** the path rule can read a different file than the one named (`/etc/passwd` becomes `<root>/passwd` when that exists). It never leaves the workspace; like D33, it does what the model meant inside the only place it may act.
 - **Cost of D38's `graph` tool:** 41 more schema tokens than `repo_map` (1,137 to 1,178 for the default tool set, LFM2.5 tokenizer); the compact profile is unchanged (799).
+
+## D40. Bench trials run alone
+
+- **Found by:** the LFM2.5-2.6B trace of `rust-fix-compile-and-logic` #3. The sandbox was `work/<task>/<n>`, so `ls ..` showed the other trials; the model dropped the trial number from the root, read `work/<task>/1/src/lib.rs` and ran `cargo build` inside trial 1's directory. A later trial could have copied an earlier trial's solution. This applied to every harness and every earlier run.
+- **Chosen:** each trial works in a fresh private directory, `$TMPDIR/ah-trial-XXXX/<task-id>`: the root ends in the task name, and its parent holds nothing else. After grading, kept trials (failed, or `--keep-workdirs`) move to `work/<task>/<n>` as before; external transcripts are written next to them.
+- **Effect on published results:** runs before this change (up to build `85cc190`, including the 2026-09-25 LFM2.5 head-to-head) shared the old layout, equally for all harnesses. A passing sibling was visible only when an earlier trial of the same task had failed and been kept, since passed trials were deleted; the contamination route was real but narrow.

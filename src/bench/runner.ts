@@ -1,5 +1,6 @@
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { createSession, type Environment, type SessionFeatures } from "../app/session.ts";
 import type { AgentEventHandler } from "../agent/events.ts";
 import type { Usage } from "../core/types.ts";
@@ -98,9 +99,22 @@ function prepareSandbox(task: BenchTask, dir: string) {
   cpSync(task.fixtureDir, dir, { recursive: true });
 }
 
+// Each trial works in a private directory named after the task, with no sibling trials in
+// view: a path like work/<task>/3 invited small models to drop the trial number and wander
+// into other trials' workspaces. Kept trials move to work/<task>/<n> after grading.
+const trialDir = (o: BenchRunOptions, task: BenchTask, trial: number) => resolve(o.outDir, "work", task.id, String(trial));
+function settle(dir: string, keep: string | null) {
+  if (keep) {
+    rmSync(keep, { recursive: true, force: true });
+    mkdirSync(dirname(keep), { recursive: true });
+    cpSync(dir, keep, { recursive: true });
+  }
+  rmSync(dirname(dir), { recursive: true, force: true });
+}
+
 // Runs one trial: fresh sandbox, agent confined to it, then hidden files + grader.
 export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: number): Promise<TrialResult> {
-  const dir = resolve(o.outDir, "work", task.id, String(trial));
+  const dir = join(mkdtempSync(join(tmpdir(), "ah-trial-")), task.id);
   prepareSandbox(task, dir);
   await sh("git init -q && git add -A && git commit -qm fixture", dir, 20_000, GIT_ENV);
   if (task.setup) await sh(task.setup, dir, task.limits.timeoutMs);
@@ -158,7 +172,7 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
         : summary.outcome === "completed"
           ? "grader"
           : (summary.outcome as TrialResult["failReason"]);
-  if (!o.keepWorkdirs && passed) rmSync(dir, { recursive: true, force: true });
+  settle(dir, o.keepWorkdirs || !passed ? trialDir(o, task, trial) : null);
   return {
     taskId: task.id,
     trial,
@@ -198,7 +212,8 @@ export const shellQuote = (s: string) => `'${s.replaceAll("'", `'\\''`)}'`;
 async function runExternalTrial(o: BenchRunOptions, cmd: string, task: BenchTask, trial: number, dir: string): Promise<TrialResult> {
   const line = cmd.replaceAll("{prompt}", shellQuote(task.prompt)).replaceAll("{dir}", shellQuote(dir));
   const a = await exec(line, { root: dir, signal: o.signal }, task.limits.timeoutMs);
-  writeFileSync(`${dir}.agent.log`, `$ ${line}\nexit ${a.code}${a.timedOut ? " (timeout)" : ""}\n\n${a.stdout}\n${a.stderr}`);
+  mkdirSync(dirname(trialDir(o, task, trial)), { recursive: true });
+  writeFileSync(`${trialDir(o, task, trial)}.agent.log`, `$ ${line}\nexit ${a.code}${a.timedOut ? " (timeout)" : ""}\n\n${a.stdout}\n${a.stderr}`);
   const diff = await sh("git add -A && git diff --cached --stat HEAD | tail -1", dir, 20_000, GIT_ENV);
   const files = await sh("git diff --cached --name-only HEAD", dir, 20_000, GIT_ENV);
   if (task.hiddenDir) cpSync(task.hiddenDir, dir, { recursive: true, force: true });
@@ -206,7 +221,7 @@ async function runExternalTrial(o: BenchRunOptions, cmd: string, task: BenchTask
   const passed = g.code === 0 && !g.timedOut;
   const outcome = a.timedOut ? "aborted" : a.code === 0 ? "completed" : "error";
   const stats = o.agentStats ? await externalStats(o.agentStats, dir) : null;
-  if (!o.keepWorkdirs && passed) rmSync(dir, { recursive: true, force: true });
+  settle(dir, o.keepWorkdirs || !passed ? trialDir(o, task, trial) : null);
   return {
     ...emptyResult(task.id, trial, ""),
     passed,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { compareRuns, markdownReport, summarizeRun } from "../src/bench/report.ts";
@@ -202,6 +202,11 @@ describe("external harness (--agent-cmd)", () => {
     expect(fixed.results[0]!.changedFiles).toEqual(["src/paginate.ts"]);
     const noop = await run("true");
     expect(noop.results[0]!).toMatchObject({ passed: false, failReason: "grader" });
+    // Each trial works alone: its sandbox is named after the task and has no sibling trials in view;
+    // a failed trial is kept under work/<task>/<n> afterwards.
+    const peek = await run("ls .. > seen.txt");
+    expect(peek.results[0]!.passed).toBe(false);
+    expect(readFileSync(join(out, "work", "ts-bugfix-pagination", "1", "seen.txt"), "utf8").trim()).toBe("ts-bugfix-pagination");
     expect(noop.results[0]!.measured).toBe(false);
     // Stats read from the harness's own records after the trial.
     const withStats = await runBench({ env, model: "external/test", tasks, trials: 1, outDir: out, benchRunId: "t", agentCmd: "true", agentStats: `echo noise; echo '{"turns":7,"toolCalls":9,"toolErrors":1,"inputTokens":1200,"outputTokens":80}'` });
