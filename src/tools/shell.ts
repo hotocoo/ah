@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { delimiter, join } from "node:path";
 import { num, str, ToolError, truncate, type Tool, type ToolContext } from "./types.ts";
 
 // Commands that are never run without explicit approval, even in auto mode.
@@ -145,15 +145,26 @@ export const bashTool: Tool = {
   },
 };
 
-// A missing command usually has an installed stand-in (python -> python3). Say which, so the
-// model does not burn a turn discovering it.
-const STAND_INS: Record<string, string[]> = { python: ["python3"], pip: ["pip3", "uv"], node: ["bun"], npx: ["bunx"], ts_node: ["bun"], "ts-node": ["bun", "tsx"], tsx: ["bun"], deno: ["bun", "node"], yarn: ["bun", "npm"], pnpm: ["bun", "npm"], gsed: ["sed"], timeout: ["gtimeout"] };
+// A missing command usually has a versioned twin on PATH (python -> python3, pip -> pip3.14).
+// Look it up instead of guessing, so the model does not burn a turn discovering it.
+function versionedOnPath(cmd: string): string[] {
+  const found = new Set<string>();
+  const re = new RegExp(`^${cmd.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[-.]?\\d[\\d.]*$`);
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    try {
+      for (const f of readdirSync(dir)) if (re.test(f)) found.add(f);
+    } catch {
+      /* unreadable PATH entry */
+    }
+  }
+  return [...found].sort((a, b) => a.length - b.length).slice(0, 3);
+}
 export function missingCommandHint(stderr: string): string {
   const found = [...stderr.matchAll(/command not found: ([\w.+-]+)|(?:^|[\s:])([\w.+-]+): (?:command )?not found(?!:)/g)].map((m) => m[1] ?? m[2]!);
   const cmds = [...new Set(found)].filter((c) => !["sh", "bash", "zsh", "line"].includes(c));
-  const hints = cmds.flatMap((c) => {
-    const alts = [...(STAND_INS[c] ?? []), `${c}3`].filter((a, i, all) => all.indexOf(a) === i && Bun.which(a));
-    return alts.length ? [`\`${c}\` is not installed; use ${alts.map((a) => `\`${a}\``).join(" or ")}`] : [`\`${c}\` is not installed`];
+  const hints = cmds.map((c) => {
+    const alts = versionedOnPath(c);
+    return alts.length ? `\`${c}\` is not installed; use ${alts.map((a) => `\`${a}\``).join(" or ")}` : `\`${c}\` is not installed`;
   });
   return hints.length ? `\n[${hints.join("; ")}]` : "";
 }
