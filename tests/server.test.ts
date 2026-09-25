@@ -82,7 +82,7 @@ describe("web app API", () => {
       .filter(Boolean)
       .map((l) => JSON.parse(l.replace(/^data: /, "")) as { type: string; result?: { outcome: string } });
     const types = events.map((e) => e.type);
-    expect(types[0]).toBe("session");
+    expect(types.slice(0, 2)).toEqual(["user", "session"]);
     expect(types).toContain("tool_end");
     expect(events.at(-1)!.type).toBe("run_end");
     expect(events.at(-1)!.result!.outcome).toBe("completed");
@@ -104,14 +104,41 @@ describe("chat sessions", () => {
     const mock = srv.env.registry.get("mock") as MockProvider;
     mock.setScript([{ text: "first" }], "scripted");
     const one = await chat({ prompt: "one", model: "mock/scripted" });
-    const sessionId = one[0]!.sessionId!;
+    const sessionId = one[1]!.sessionId!;
     mock.setScript([{ text: "second" }], "scripted");
     const two = await chat({ prompt: "two", model: "mock/scripted", sessionId });
-    expect(two[0]!.sessionId).toBe(sessionId);
+    expect(two[1]!.sessionId).toBe(sessionId);
     expect(two.map((e) => e.type)).toContain("run_start");
     expect(two.at(-1)!.result!.outcome).toBe("completed");
     const list = (await (await get("/api/sessions")).json()) as { id: string; runs: number; busy: boolean }[];
     expect(list.find((s) => s.id === sessionId)).toMatchObject({ runs: 2, busy: false });
+    // Replay returns both runs, prompts included, with text deltas coalesced.
+    const replay = (await (await get(`/api/sessions/${sessionId}`)).text()).split("\n\n").filter(Boolean).map((l) => JSON.parse(l.replace(/^data: /, "")) as { type: string; text?: string });
+    expect(replay.filter((e) => e.type === "user").map((e) => e.text)).toEqual(["one", "two"]);
+    expect(replay.filter((e) => e.type === "run_end")).toHaveLength(2);
+  });
+
+  test("stop aborts a running task, including a running shell command", async () => {
+    const mock = srv.env.registry.get("mock") as MockProvider;
+    mock.setScript([{ toolCalls: [{ name: "bash", input: { command: "sleep 5" } }] }, { text: "done" }], "scripted");
+    const t0 = performance.now();
+    const res = await fetch(`${base}/api/chat`, { method: "POST", headers: h, body: JSON.stringify({ prompt: "wait", model: "mock/scripted" }) });
+    const reader = res.body!.getReader();
+    const dec = new TextDecoder();
+    let text = "";
+    let stopped = false;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += dec.decode(value, { stream: true });
+      if (!stopped && text.includes('"tool_start"')) {
+        stopped = true;
+        const sessionId = /"sessionId":"([^"]+)"/.exec(text)![1];
+        expect((await fetch(`${base}/api/stop`, { method: "POST", headers: h, body: JSON.stringify({ sessionId }) })).status).toBe(200);
+      }
+    }
+    expect(text).toContain('"outcome":"aborted"');
+    expect(performance.now() - t0).toBeLessThan(4000);
   });
 
   test("stop and steer need a busy session", async () => {

@@ -438,7 +438,7 @@ export class Agent {
       denied: Boolean(out.denied),
       outputChars: out.content.length,
       changedFiles: out.changedFiles ?? [],
-      preview: out.content.slice(0, 300),
+      preview: out.content.slice(0, 4000),
       t: Date.now(),
     });
     const shot = out.images?.at(-1);

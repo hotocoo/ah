@@ -1,40 +1,7 @@
 // web app. Vanilla JS; all dynamic text is escaped (model output is untrusted).
 import { fx, accent, readAccent, rgba } from "/fx.js";
-const TOKEN = document.querySelector('meta[name="ah-token"]').content;
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => [...document.querySelectorAll(s)];
-const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-let inflight = 0;
-const busy = (d) => document.body.classList.toggle("busy", (inflight = Math.max(0, inflight + d)) > 0);
-const api = async (path, body, quiet = false) => {
-  if (!quiet) busy(1);
-  const res = await fetch(path, {
-    method: body ? "POST" : "GET",
-    headers: { "x-ah-token": TOKEN, ...(body ? { "content-type": "application/json" } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  }).finally(() => quiet || busy(-1));
-  const j = await res.json().catch(() => ({ error: `${res.status} ${res.statusText}` }));
-  if (!res.ok) throw new Error(j.error ?? res.statusText);
-  return j;
-};
-const num = (x, d = 0) => (x === null || x === undefined || Number.isNaN(x) ? "-" : Number(x).toLocaleString(undefined, { maximumFractionDigits: d, minimumFractionDigits: d }));
-const ms = (x) => (x === null || x === undefined ? "-" : x < 1000 ? `${num(x)} ms` : `${num(x / 1000, 1)} s`);
-const pct = (x) => (x === null || x === undefined || Number.isNaN(x) ? "-" : `${num(x * 100)}%`);
-const gb = (b) => (b ? `${num(b / 1024 ** 3, 1)} GB` : "-");
-const compact = (x) => (x === null || x === undefined ? "-" : Number(x).toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 }));
-const ago = (t) => {
-  const s = (Date.now() - t) / 1000;
-  return s < 60 ? `${num(s)}s ago` : s < 3600 ? `${num(s / 60)}m ago` : s < 86400 ? `${num(s / 3600)}h ago` : new Date(t).toLocaleDateString();
-};
-const plural = (n, w) => `${num(n)} ${w}${n === 1 ? "" : "s"}`;
-const clamp01 = (x) => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0));
-const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-const html = (s) => {
-  const t = document.createElement("template");
-  t.innerHTML = s;
-  return t.content;
-};
-
+import { TOKEN, $, $$, esc, busy, api, num, ms, pct, gb, compact, ago, plural, clamp01, reducedMotion, html, alertBox } from "/util.js";
+import { loadConsole } from "/console.js";
 // ---------- shared states: table, loading, empty, error ----------
 function table(cols, rows, onClick, empty = "No data yet.") {
   const head = cols.map((c) => `<th class="${c.num ? "num" : ""}" scope="col">${esc(c.label)}</th>`).join("");
@@ -67,11 +34,6 @@ const shimmer = (...sels) =>
     if (el && !el.dataset.loaded) el.innerHTML = `<div class="sk sk-line" style="width:40%"></div><div class="sk sk-block"></div><div class="sk sk-line" style="width:70%"></div>`;
   });
 const loaded = (...sels) => sels.forEach((s) => $(s) && ($(s).dataset.loaded = "1"));
-const alertBox = (title, message, retry) => {
-  const el = html(`<div class="alert" role="alert"><span class="glyph" aria-hidden="true">!</span><div><strong>${esc(title)}</strong><p>${esc(message)}</p></div>${retry ? '<button type="button" class="ghost">Retry</button>' : ""}</div>`).firstElementChild;
-  if (retry) el.querySelector("button").addEventListener("click", retry);
-  return el;
-};
 
 // ---------- tabs: roving focus, hash state, view transitions ----------
 const loaders = {};
@@ -347,226 +309,7 @@ loaders.models = async () => {
 };
 ["#m-q", "#m-kind", "#m-local", "#m-tools"].forEach((s) => $(s).addEventListener("input", () => (clearTimeout(mTimer), (mTimer = setTimeout(() => openTab("models"), 250)))));
 
-// ---------- chat: transcript + live instrument ----------
-let sessionId = null;
-let modelsFilled = false;
-async function fillModels() {
-  const [ms_, doc] = await Promise.all([api("/api/models?local=1&kind=chat&limit=100"), api("/api/doctor")]);
-  const sel = $("#chat-model");
-  const prev = sel.value;
-  sel.innerHTML = ms_.length
-    ? ms_.map((m) => { const ref = `${m.provider}/${m.id}`; return `<option ${(modelsFilled ? ref === prev : ref === doc.defaultModel) ? "selected" : ""}>${esc(ref)}</option>`; }).join("")
-    : `<option value="">no local chat model found</option>`;
-  modelsFilled = true;
-  const presets = await api("/api/presets", undefined, true).catch(() => []);
-  $("#preset-pick").hidden = !presets.length;
-  const cur = $("#chat-preset").value;
-  $("#chat-preset").innerHTML = `<option value="">no preset</option>${presets.map((p) => `<option value="${esc(p.name)}" title="${esc(p.description)}" ${p.name === cur ? "selected" : ""}>${esc(p.name)}</option>`).join("")}`;
-}
-// A preset that names a model selects it (the model picker stays the explicit override).
-$("#chat-preset").addEventListener("change", async () => {
-  const presets = await api("/api/presets", undefined, true).catch(() => []);
-  const p = presets.find((x) => x.name === $("#chat-preset").value);
-  if (p?.model && [...$("#chat-model").options].some((o) => o.value === p.model)) $("#chat-model").value = p.model;
-  sessionId = null;
-});
-loaders.chat = () => fillModels();
-
-const inst = {
-  set(state) {
-    const el = $("#run-state");
-    el.dataset.state = state;
-    el.textContent = state;
-    fx.energy(state);
-  },
-  reset() {
-    this.set("idle");
-    ["#run-turn", "#run-ttft", "#run-tps", "#run-tools"].forEach((s) => ($(s).textContent = "-"));
-    this.ctx(0, 0);
-    $("#run-trace").innerHTML = `<li class="trace-empty">Events stream here while a task runs.</li>`;
-  },
-  ctx(used, window) {
-    const f = window ? clamp01(used / window) : 0;
-    const m = $("#run-ctx");
-    m.querySelector("span").style.setProperty("--v", f);
-    m.classList.toggle("hot", f > 0.8);
-    m.setAttribute("aria-valuenow", String(Math.round(f * 100)));
-    $("#run-ctx-label").textContent = window ? `${compact(used)} / ${compact(window)}` : "-";
-  },
-  trace(text, kind = "") {
-    const list = $("#run-trace");
-    list.querySelector(".trace-empty")?.remove();
-    const li = document.createElement("li");
-    li.className = kind ? `k-${kind}` : "";
-    li.innerHTML = `<time>${esc(new Date().toLocaleTimeString())}</time>${esc(text)}`;
-    list.append(li);
-    list.scrollTop = list.scrollHeight;
-  },
-};
-let ctxWindow = 0;
-
-function showWelcome() {
-  const log = $("#chat-log");
-  log.replaceChildren($("#chat-empty").content.cloneNode(true));
-  log.querySelectorAll(".chip").forEach((c) =>
-    c.addEventListener("click", () => {
-      $("#chat-input").value = c.textContent;
-      $("#chat-input").focus();
-    }),
-  );
-}
-$("#chat-new").addEventListener("click", () => {
-  sessionId = null;
-  showWelcome();
-  $("#chat-meta").textContent = "";
-  inst.reset();
-});
-$("#chat-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-    e.preventDefault();
-    $("#chat-form").requestSubmit();
-  }
-});
-
-$("#chat-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const prompt = $("#chat-input").value.trim();
-  if (!prompt) return;
-  const log = $("#chat-log");
-  const btn = $("#chat-form button[type=submit]");
-  if (btn.disabled) return;
-  btn.disabled = true;
-  $("#chat-new").disabled = true;
-  btn.querySelector(".btn-label").textContent = "Running";
-  $("#chat-input").value = "";
-  log.querySelector(".welcome")?.remove();
-  log.insertAdjacentHTML("beforeend", `<div class="msg user"><div class="text">${esc(prompt)}</div></div>`);
-  const msg = document.createElement("div");
-  msg.className = "msg agent streaming";
-  log.append(msg);
-  const nearBottom = () => log.scrollHeight - log.scrollTop - log.clientHeight < 120;
-  const follow = (was) => was && (log.scrollTop = log.scrollHeight);
-  follow(true);
-  let textEl = null;
-  let thinkEl = null;
-  let toolCount = 0;
-  const tools = new Map();
-  inst.reset();
-  inst.set("thinking");
-  inst.trace("task submitted", "gold");
-  $("#run-tools").textContent = "0";
-  try {
-    const res = await fetch("/api/chat", { method: "POST", headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ prompt, model: $("#chat-model").value, preset: $("#chat-preset").value, sessionId }) });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `${res.status} ${res.statusText}`);
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let buf = "";
-    for (;;) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i;
-      while ((i = buf.indexOf("\n\n")) >= 0) {
-        const line = buf.slice(0, i).replace(/^data: /, "");
-        buf = buf.slice(i + 2);
-        const ev = JSON.parse(line);
-        const was = nearBottom();
-        if (ev.type === "session") {
-          sessionId = ev.sessionId;
-          ctxWindow = ev.contextWindow ?? 0;
-          $("#chat-meta").textContent = `${ev.model} · context ${compact(ev.contextWindow)}`;
-          inst.ctx(0, ctxWindow);
-        } else if (ev.type === "turn_start") {
-          $("#run-turn").textContent = String(ev.turn);
-          inst.ctx(ev.contextTokens, ctxWindow);
-          inst.set("thinking");
-          inst.trace(`turn ${ev.turn} · ${compact(ev.contextTokens)} ctx tokens`);
-        } else if (ev.type === "first_token") {
-          $("#run-ttft").textContent = ms(ev.ttftMs);
-        } else if (ev.type === "thinking_delta") {
-          if (!thinkEl) {
-            const d = html(`<details class="thinking"><summary>Reasoning</summary><div></div></details>`).firstElementChild;
-            msg.append(d);
-            thinkEl = d.querySelector("div");
-          }
-          thinkEl.textContent += ev.text;
-        } else if (ev.type === "text_delta") {
-          thinkEl = null;
-          if (!textEl) msg.append((textEl = Object.assign(document.createElement("div"), { className: "text" })));
-          textEl.textContent += ev.text;
-        } else if (ev.type === "model_response") {
-          if (ev.outputTokensPerSec) $("#run-tps").textContent = `${num(ev.outputTokensPerSec, 1)}/s`;
-          inst.trace(`response · ${num(ev.usage?.outputTokens)} out · ${ms(ev.latencyMs)}`);
-        } else if (ev.type === "tool_start") {
-          textEl = null;
-          thinkEl = null;
-          toolCount += 1;
-          $("#run-tools").textContent = String(toolCount);
-          inst.set("tool");
-          const t = html(`<div class="tool"><span class="dot" aria-hidden="true"></span><span class="sum">${esc(ev.summary)}</span><span class="dur">running</span></div>`).firstElementChild;
-          tools.set(ev.id, t);
-          msg.append(t);
-          inst.trace(`${ev.name} started`, "gold");
-        } else if (ev.type === "tool_end") {
-          const t = tools.get(ev.id);
-          if (t) {
-            t.classList.add(ev.isError ? "err" : "done");
-            t.querySelector(".dur").textContent = `${ev.isError ? "✗" : "✓"} ${ms(ev.durationMs)}`;
-            if (ev.isError) t.insertAdjacentHTML("beforeend", `<span class="note">${esc(ev.preview.split("\n")[0].slice(0, 160))}</span>`);
-          }
-          inst.trace(`${ev.name} ${ev.denied ? "denied" : ev.isError ? "failed" : "ok"} · ${ms(ev.durationMs)}`, ev.isError ? "bad" : "ok");
-          inst.set("thinking");
-        } else if (ev.type === "retry") {
-          inst.trace(`retry ${ev.attempt} · ${ev.reason} · ${ms(ev.delayMs)}`, "bad");
-        } else if (ev.type === "compaction") {
-          inst.trace(`compacted ${compact(ev.beforeTokens)} to ${compact(ev.afterTokens)} (${ev.strategy})`, "gold");
-          inst.ctx(ev.afterTokens, ctxWindow);
-        } else if (ev.type === "tool_calls_recovered") {
-          inst.trace(`recovered ${ev.count} tool call${ev.count === 1 ? "" : "s"} from ${ev.formats.join(", ")}`);
-        } else if (ev.type === "approval_request") {
-          const card = approvalCard(ev);
-          msg.append(card);
-          card.querySelector("button").focus({ preventScroll: true });
-          inst.set("waiting");
-          inst.trace(`waiting for approval · ${ev.summary}`, "gold");
-        } else if (ev.type === "tool_image") {
-          showScreen(ev);
-        } else if (ev.type === "memory_recall") {
-          const d = html(`<details class="recall"><summary>Recalled ${plural(ev.memories.length, "memory").replace("memorys", "memories")}</summary><ul>${ev.memories.map((m) => `<li><span class="tag ${m.kind === "lesson" ? "gold" : ""}">${esc(m.kind)} ${esc(num(m.trust, 2))}</span> ${esc(m.text)}</li>`).join("")}</ul></details>`).firstElementChild;
-          msg.append(d);
-          inst.trace(`recalled ${ev.memories.length} from memory`);
-        } else if (ev.type === "evidence_gate") {
-          inst.trace(`${ev.lastFailed ? "last check failed" : "no passing check"} after editing ${ev.files.join(", ")}; asked to verify`, "gold");
-        } else if (ev.type === "evidence") {
-          if (ev.lessons.length) inst.trace(`learned ${plural(ev.lessons.length, "lesson")}`, "ok");
-        } else if (ev.type === "run_end") {
-          const r = ev.result;
-          const chip = (v, cls = "") => `<span class="tag ${cls}">${esc(v)}</span>`;
-          const verdict = r.verdict && r.verdict !== "none" ? chip(r.verdict, r.verdict === "verified" ? "ok" : r.verdict === "failed" ? "bad" : "") : "";
-          msg.insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "gold" : "")}${verdict}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${num(r.usage.inputTokens)} in / ${num(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
-          inst.set(r.outcome === "completed" ? "done" : "error");
-          inst.trace(`run ${r.outcome} · ${ms(r.wallMs)}`, r.outcome === "completed" ? "ok" : "bad");
-        } else if (ev.type === "error") {
-          msg.append(alertBox("Agent error", ev.message));
-          inst.set("error");
-          inst.trace(ev.message, "bad");
-        }
-        follow(was);
-      }
-    }
-  } catch (err) {
-    msg.append(alertBox("Run failed", err.message));
-    inst.set("error");
-    inst.trace(err.message, "bad");
-  } finally {
-    msg.classList.remove("streaming");
-    if (!msg.childElementCount) msg.remove();
-    btn.disabled = false;
-    $("#chat-new").disabled = false;
-    btn.querySelector(".btn-label").textContent = "Run task";
-    $("#chat-input").focus();
-  }
-});
+loaders.chat = loadConsole;
 
 // ---------- studio ----------
 function mediaForm(formSel, outSel, run) {
@@ -594,34 +337,6 @@ mediaForm("#m3d-form", "#m3d-out", async () => {
   const blob = new Blob([Uint8Array.from(atob(r.glb), (c) => c.charCodeAt(0))], { type: "model/gltf-binary" });
   return html(`<img alt="3D preview" src="data:image/png;base64,${esc(r.preview)}"><p class="caption">${esc(r.model)} · ${r.scene.objects.length} parts · ${num(r.triangles)} triangles · ${ms(r.ms)} · <a download="model.glb" href="${URL.createObjectURL(blob)}">download .glb</a></p>`);
 });
-
-// ---------- approvals and live screen ----------
-// A tool outside the workspace (desktop control, dangerous shell) waits here for the user.
-function approvalCard(ev) {
-  const el = html(`<div class="approval" role="group" aria-labelledby="ap-${esc(ev.id)}"><p id="ap-${esc(ev.id)}">Allow <code>${esc(ev.summary)}</code>?</p>${ev.tool === "screenshot" || ev.tool === "computer" ? '<p class="help">Screenshots can show anything on screen, and they go to the model.</p>' : ""}<details><summary>Tool input</summary><pre>${esc(ev.input)}</pre></details><div class="approval-actions"><button type="button" class="primary" data-a="allow"><span class="btn-label">Allow</span></button><button type="button" class="ghost" data-a="always">Always allow ${esc(ev.tool)}</button><button type="button" class="ghost" data-a="deny">Deny</button></div></div>`).firstElementChild;
-  el.querySelectorAll("button").forEach((b) =>
-    b.addEventListener("click", async () => {
-      const a = b.dataset.a;
-      el.querySelectorAll("button").forEach((x) => (x.disabled = true));
-      try {
-        await api("/api/approve", { id: ev.id, allow: a !== "deny", always: a === "always" }, true);
-        el.classList.add(a === "deny" ? "denied" : "allowed");
-        el.querySelector(".approval-actions").textContent = a === "deny" ? "Denied" : a === "always" ? `Allowed ${ev.tool} for this session` : "Allowed";
-        inst.set(a === "deny" ? "thinking" : "tool");
-      } catch (err) {
-        el.querySelectorAll("button").forEach((x) => (x.disabled = false));
-        el.append(alertBox("Could not send the answer", err.message));
-      }
-    }),
-  );
-  return el;
-}
-function showScreen(ev) {
-  const fig = $("#run-screen");
-  fig.hidden = false;
-  $("#run-screen-img").src = `data:${ev.mediaType};base64,${ev.data}`;
-  $("#run-screen-label").textContent = `${ev.name} · ${new Date().toLocaleTimeString()}`;
-}
 
 // ---------- memory ----------
 let memTimer;
@@ -908,5 +623,4 @@ $("#cmdk").addEventListener("click", (e) => e.target === $("#cmdk") && $("#cmdk"
 fx.init();
 pollHw();
 setInterval(pollHw, 2000);
-showWelcome();
 select(location.hash.slice(1) || "chat");

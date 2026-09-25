@@ -18,6 +18,8 @@ import { AppearanceStore, MAX_WALLPAPER_BYTES } from "./appearance.ts";
 import indexHtmlSrc from "./ui/index.html" with { type: "text" };
 import appJs from "./ui/app.js" with { type: "text" };
 import fxJs from "./ui/fx.js" with { type: "text" };
+import utilJs from "./ui/util.js" with { type: "text" };
+import consoleJs from "./ui/console.js" with { type: "text" };
 import stylesCss from "./ui/styles.css" with { type: "text" };
 import geistFont from "./ui/fonts/geist.woff2" with { type: "file" };
 import geistMonoFont from "./ui/fonts/geist-mono.woff2" with { type: "file" };
@@ -28,6 +30,8 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
 const UI: Record<string, { body: string | Blob; type: string; cache?: string }> = {
   "/app.js": { body: appJs, type: "text/javascript; charset=utf-8" },
   "/fx.js": { body: fxJs, type: "text/javascript; charset=utf-8" },
+  "/util.js": { body: utilJs, type: "text/javascript; charset=utf-8" },
+  "/console.js": { body: consoleJs, type: "text/javascript; charset=utf-8" },
   "/styles.css": { body: stylesCss, type: "text/css; charset=utf-8" },
   "/fonts/geist.woff2": { body: Bun.file(geistFont), type: FONT, cache: IMMUTABLE },
   "/fonts/geist-mono.woff2": { body: Bun.file(geistMonoFont), type: FONT, cache: IMMUTABLE },
@@ -40,8 +44,9 @@ interface ChatSession {
   session: Session;
   busy: boolean;
   alwaysAllow: Set<string>;
-  // Where the current run's events go (the open SSE stream), and how to stop it.
-  sink: ((e: AgentEvent) => void) | null;
+  // Pages watching the session live, every event so far (for replay), and the run's stop switch.
+  subs: Set<Subscriber>;
+  log: StreamEvent[];
   ac: AbortController | null;
   title: string;
   createdAt: number;
@@ -51,6 +56,12 @@ interface ChatSession {
   lastOutcome: string | null;
 }
 type SessionEvent = { type: "session"; sessionId: string; model: string; contextWindow: number; mode: PermissionMode };
+type StreamEvent = AgentEvent | ApprovalEvent | SessionEvent | { type: "user"; text: string; t: number } | { type: "approval_result"; id: string; allow: boolean; reason?: string };
+interface Subscriber {
+  write: (e: StreamEvent) => void;
+  close: () => void;
+}
+const MAX_SESSION_EVENTS = 20_000;
 
 // A tool call waiting for the user in the web UI.
 interface PendingApproval {
@@ -135,6 +146,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
               defaultModel: env.cfg.defaultModel ?? autoSelectModel(env),
               catalogSize: env.catalog.all().length,
               catalogErrors: env.catalog.errors,
+              permissionMode: env.cfg.permissionMode,
             });
           case "/api/hardware":
             return json(await sampleHardware());
@@ -188,6 +200,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
           case "/api/wallpaper":
             return await wallpaper(req);
         }
+        if (p.startsWith("/api/sessions/")) return sessionRoute(req, decodeURIComponent(p.slice("/api/sessions/".length)));
         if (p.startsWith("/api/telemetry/run/")) return json(runDetail(db(), decodeURIComponent(p.slice("/api/telemetry/run/".length))));
         if (p.startsWith("/api/bench/")) {
           const id = decodeURIComponent(p.slice("/api/bench/".length));
@@ -204,9 +217,49 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     },
   });
 
-  // Streams agent events as Server-Sent Events. One run at a time per chat session.
-  // Each request re-points the session's event sink, approver and abort signal at itself,
-  // so the second and later runs of a session stream exactly like the first.
+  // Runs belong to the session, not to the HTTP request: closing the tab does not stop the
+  // agent. Every event is kept in the session's log (text deltas coalesced), so a page can
+  // replay a session and re-attach to a run in progress. Stop is explicit (/api/stop).
+  const sseHeaders = { "content-type": "text/event-stream", "cache-control": "no-store" };
+  function subscribe(cs: ChatSession, req: Request, replay: boolean): Response {
+    const encoder = new TextEncoder();
+    let sub: Subscriber | null = null;
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const write = (e: StreamEvent) => {
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
+          } catch {
+            /* client went away */
+          }
+        };
+        const close = () => {
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
+        };
+        if (replay) for (const e of cs.log) write(e);
+        if (!cs.busy) return close();
+        sub = { write, close };
+        cs.subs.add(sub);
+        req.signal.addEventListener("abort", () => sub && cs.subs.delete(sub));
+      },
+      cancel() {
+        if (sub) cs.subs.delete(sub);
+      },
+    });
+    return new Response(stream, { headers: sseHeaders });
+  }
+
+  function publish(cs: ChatSession, e: StreamEvent) {
+    const last = cs.log.at(-1);
+    if ((e.type === "text_delta" || e.type === "thinking_delta") && last?.type === e.type && last.turn === e.turn) cs.log[cs.log.length - 1] = { ...last, text: last.text + e.text };
+    else if (cs.log.length < MAX_SESSION_EVENTS) cs.log.push(e);
+    for (const s of cs.subs) s.write(e);
+  }
+
   async function chat(req: Request): Promise<Response> {
     if (req.method !== "POST") return json({ error: "POST required" }, 405);
     const body = (await req.json()) as { prompt?: string; model?: string; preset?: string; sessionId?: string; mode?: string };
@@ -215,22 +268,10 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     const mode = PERMISSION_MODES.includes(body.mode as PermissionMode) ? (body.mode as PermissionMode) : undefined;
     let chatSession = body.sessionId ? chats.get(body.sessionId) : undefined;
     if (chatSession?.busy) return json({ error: "session busy" }, 409);
-    const encoder = new TextEncoder();
-    let controller!: ReadableStreamDefaultController<Uint8Array>;
-    const stream = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
-    const send = (e: AgentEvent | ApprovalEvent | SessionEvent) => {
-      try {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
-      } catch {
-        /* client went away */
-      }
-    };
-    const ac = new AbortController();
-    req.signal.addEventListener("abort", () => ac.abort());
     if (!chatSession) {
       let cs!: ChatSession;
-      const s = await createSession(env, { model: body.model, preset: body.preset || undefined, root: opts.root, mode: mode ?? env.cfg.permissionMode, approve: () => Promise.resolve(false), onEvent: (e) => cs.sink?.(e) });
-      cs = { session: s, busy: false, alwaysAllow: new Set(), sink: null, ac: null, title: prompt.slice(0, 80), createdAt: Date.now(), updatedAt: Date.now(), runs: 0, mode: mode ?? env.cfg.permissionMode, lastOutcome: null };
+      const s = await createSession(env, { model: body.model, preset: body.preset || undefined, root: opts.root, mode: mode ?? env.cfg.permissionMode, approve: () => Promise.resolve(false), onEvent: (e) => publish(cs, e) });
+      cs = { session: s, busy: false, alwaysAllow: new Set(), subs: new Set(), log: [], ac: null, title: prompt.slice(0, 80), createdAt: Date.now(), updatedAt: Date.now(), runs: 0, mode: mode ?? env.cfg.permissionMode, lastOutcome: null };
       chats.set(s.agent.sessionId, cs);
       chatSession = cs;
     } else if (mode && mode !== chatSession.mode) {
@@ -239,34 +280,37 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     }
     const cs = chatSession;
     const id = cs.session.agent.sessionId;
-    // Approvals travel to the page as SSE events and come back through /api/approve.
-    const approveFn = (tool: string, input: Record<string, unknown>, summary: string) =>
-      new Promise<boolean>((resolve) => {
-        if (cs.alwaysAllow.has(tool)) return resolve(true);
-        if (cs.sink !== send) return resolve(false);
-        const aid = randomBytes(8).toString("hex");
-        const timer = setTimeout(() => {
-          approvals.delete(aid);
-          resolve(false);
-        }, APPROVAL_TIMEOUT_MS);
-        approvals.set(aid, { sessionId: id, tool, resolve, timer });
-        send({ type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 2000) });
-      });
     const agent = cs.session.agent;
-    agent.setApprover(approveFn);
+    // Approvals travel to the page as SSE events and come back through /api/approve.
+    agent.setApprover(
+      (tool, input, summary) =>
+        new Promise<boolean>((resolve) => {
+          if (cs.alwaysAllow.has(tool)) return resolve(true);
+          const aid = randomBytes(8).toString("hex");
+          const timer = setTimeout(() => {
+            approvals.delete(aid);
+            publish(cs, { type: "approval_result", id: aid, allow: false, reason: "timed out" });
+            resolve(false);
+          }, APPROVAL_TIMEOUT_MS);
+          approvals.set(aid, { sessionId: id, tool, resolve: (allow) => (publish(cs, { type: "approval_result", id: aid, allow }), resolve(allow)), timer });
+          publish(cs, { type: "approval_request", id: aid, tool, summary, input: JSON.stringify(input).slice(0, 4000) });
+        }),
+    );
+    const ac = new AbortController();
     agent.setSignal(ac.signal);
-    cs.sink = send;
     cs.ac = ac;
     cs.busy = true;
     cs.runs++;
     cs.updatedAt = Date.now();
-    send({ type: "session", sessionId: id, model: cs.session.modelRef, contextWindow: cs.session.context.window, mode: cs.mode });
+    const res = subscribe(cs, req, false);
+    publish(cs, { type: "user", text: prompt, t: Date.now() });
+    publish(cs, { type: "session", sessionId: id, model: cs.session.modelRef, contextWindow: cs.session.context.window, mode: cs.mode });
     void agent
       .run(prompt)
       .then((r) => void (cs.lastOutcome = r.outcome))
+      .catch((err) => publish(cs, { type: "error", runId: "", turn: 0, message: (err as Error).message, t: Date.now() }))
       .finally(() => {
         cs.busy = false;
-        cs.sink = null;
         cs.ac = null;
         cs.updatedAt = Date.now();
         for (const [aid, a] of approvals) {
@@ -275,9 +319,10 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
           approvals.delete(aid);
           a.resolve(false);
         }
-        controller.close();
+        for (const s of cs.subs) s.close();
+        cs.subs.clear();
       });
-    return new Response(stream, { headers: { "content-type": "text/event-stream", "cache-control": "no-store" } });
+    return res;
   }
 
   // Stop the running task, or add a message to it (steering) without waiting for it to end.
@@ -302,6 +347,18 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
         .map(([id, c]) => ({ id, title: c.title, model: c.session.modelRef, busy: c.busy, runs: c.runs, mode: c.mode, createdAt: c.createdAt, updatedAt: c.updatedAt, lastOutcome: c.lastOutcome }))
         .sort((a, b) => b.updatedAt - a.updatedAt),
     );
+  }
+
+  // GET replays a session's events (and follows a live run); DELETE forgets an idle session.
+  function sessionRoute(req: Request, id: string): Response {
+    const cs = chats.get(id);
+    if (!cs) return json({ error: "no such session" }, 404);
+    if (req.method === "DELETE") {
+      if (cs.busy) return json({ error: "session is busy" }, 409);
+      chats.delete(id);
+      return json({ ok: true });
+    }
+    return subscribe(cs, req, true);
   }
 
   async function approve(req: Request): Promise<Response> {

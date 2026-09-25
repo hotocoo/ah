@@ -37,6 +37,10 @@
             <button role="tab" id="t-system" data-tab="system" aria-controls="tab-system" aria-selected="false" tabindex="-1"><span class="lbl">System</span></button>
           </div>
         </nav>
+        <section class="sessions" aria-labelledby="h-sessions">
+          <div class="sessions-head"><h2 id="h-sessions">Sessions</h2><button type="button" id="ses-new" class="ghost sm" aria-label="New session" title="New session">+</button></div>
+          <ul id="ses-list" class="ses-list"><li class="ses-empty">No sessions yet</li></ul>
+        </section>
         <div class="rail-foot">
           <div class="hw" title="Live hardware">
             <span class="hw-dot" aria-hidden="true"></span>
@@ -51,27 +55,39 @@
           <div class="console">
             <div class="chat edge">
               <header class="chat-head">
-                <h1 id="h-chat" class="title">Console</h1>
-                <label class="model-pick">
-                  <span class="sr">Model</span>
-                  <select id="chat-model"><option>discovering models</option></select>
-                </label>
+                <h1 id="h-chat" class="title"><span id="chat-title">New session</span></h1>
+                <span id="chat-meta" class="meta"></span>
                 <label class="model-pick" id="preset-pick" hidden>
                   <span class="sr">Preset</span>
                   <select id="chat-preset"><option value="">no preset</option></select>
                 </label>
-                <span id="chat-meta" class="meta"></span>
                 <button id="chat-new" class="ghost" type="button">New session</button>
               </header>
               <div id="chat-log" class="chat-log" aria-live="polite"></div>
-              <form id="chat-form" class="composer">
-                <label for="chat-input" class="sr">Task</label>
-                <textarea id="chat-input" rows="3" placeholder="Describe a task for the agent. It works inside your workspace."></textarea>
-                <div class="composer-bar">
-                  <span class="hint"><kbd>⌘</kbd><kbd>Enter</kbd> to run</span>
-                  <button type="submit" class="primary"><span class="btn-label">Run task</span></button>
-                </div>
-              </form>
+              <div class="dock">
+                <div id="chat-plan" class="plan" hidden></div>
+                <form id="chat-form" class="composer">
+                  <label for="chat-input" class="sr">Message</label>
+                  <textarea id="chat-input" rows="2" placeholder="Describe a task. Enter sends, Shift+Enter adds a line."></textarea>
+                  <div class="composer-bar">
+                    <label class="pick" title="What the agent may do without asking">
+                      <span class="sr">Permissions</span>
+                      <select id="chat-mode">
+                        <option value="ask">Ask before changes</option>
+                        <option value="auto">Full access</option>
+                        <option value="read-only">Read only</option>
+                      </select>
+                    </label>
+                    <label class="pick model-pick">
+                      <span class="sr">Model</span>
+                      <select id="chat-model"><option>discovering models</option></select>
+                    </label>
+                    <span class="hint" id="chat-hint"></span>
+                    <button type="submit" class="primary send" id="chat-send"><span class="btn-label">Send</span></button>
+                  </div>
+                </form>
+                <div id="chat-stats" class="run-stats"></div>
+              </div>
             </div>
 
             <aside class="instrument" aria-labelledby="h-inst">
