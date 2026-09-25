@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { ToolRegistry } from "../src/tools/index.ts";
 import { isPrivateHost, repoMap } from "../src/tools/misc.ts";
 import { validate } from "../src/tools/schema.ts";
-import { detectTestCommand, isDangerousCommand } from "../src/tools/shell.ts";
+import { detectTestCommand, isDangerousCommand, missingCommandHint } from "../src/tools/shell.ts";
 import { applyEdit } from "../src/tools/fs.ts";
 import { confine, type ToolContext } from "../src/tools/types.ts";
 
@@ -56,13 +56,33 @@ describe("file tools", () => {
     // Not an exact match (would need the tolerant matcher): the model has not seen the real text.
     const r = await run("edit_file", { path: "src/a.ts", old_string: "  return a-b;", new_string: "a + b" });
     expect(r.isError).toBe(true);
-    expect(r.content).toMatch(/read src\/a.ts before editing/);
+    expect(r.content).toMatch(/does not match src\/a.ts exactly.*Nothing was changed/s);
+    // The refusal carries the file (numbered like read_file) and counts as a read, saving a turn.
+    expect(r.content).toMatch(/\n1\t/);
+    expect(ctx.readFiles.has(join(root, "src", "a.ts"))).toBe(true);
+    ctx.readFiles.delete(join(root, "src", "a.ts"));
     // Exact, unique text (e.g. copied from grep output) is grounded in the file: applied, file counts as read.
     writeFileSync(join(root, "g.ts"), "export const greet = getUserName;\n");
     const ok = await run("edit_file", { path: "g.ts", old_string: "getUserName", new_string: "getDisplayName" });
     expect(ok.isError).toBeFalsy();
     expect(readFileSync(join(root, "g.ts"), "utf8")).toBe("export const greet = getDisplayName;\n");
     expect(ctx.readFiles.has(join(root, "g.ts"))).toBe(true);
+  });
+
+  test("a missing path names files with the same name elsewhere", async () => {
+    mkdirSync(join(root, "lib"), { recursive: true });
+    writeFileSync(join(root, "lib", "paginate.test.ts"), "x\n");
+    const r = await run("read_file", { path: "src/paginate.test.ts" });
+    expect(r.isError).toBe(true);
+    expect(r.content).toContain("Similar paths: lib/paginate.test.ts");
+    const d = await run("list_dir", { path: "nope" });
+    expect(d.content).toMatch(/directory not found: nope\. Nothing with that name/);
+  });
+
+  test("command not found names an installed stand-in", () => {
+    expect(missingCommandHint("sh: definitely-not-a-cmd: command not found")).toBe("\n[`definitely-not-a-cmd` is not installed]");
+    expect(missingCommandHint("zsh: command not found: definitely-not-a-cmd")).toContain("definitely-not-a-cmd");
+    expect(missingCommandHint("all good")).toBe("");
   });
 
   test("edit_file replaces a unique match and reports changed files", async () => {

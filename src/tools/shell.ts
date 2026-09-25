@@ -141,9 +141,22 @@ export const bashTool: Tool = {
     const r = await exec(command, ctx, num(input, "timeout_ms", ctx.bashTimeoutMs));
     // Name the cause, so the model does not retry a write the sandbox will always refuse.
     const note = ctx.shellPrefix && /Operation not permitted/.test(r.stderr) ? "\n[workspace-only shell: writes are allowed only inside the workspace, temp dirs and tool caches]" : "";
-    return { content: formatExec(r) + note, isError: r.timedOut || r.code !== 0 };
+    return { content: formatExec(r) + note + (r.code === 127 ? missingCommandHint(r.stderr) : ""), isError: r.timedOut || r.code !== 0 };
   },
 };
+
+// A missing command usually has an installed stand-in (python -> python3). Say which, so the
+// model does not burn a turn discovering it.
+const STAND_INS: Record<string, string[]> = { python: ["python3"], pip: ["pip3", "uv"], node: ["bun"], npx: ["bunx"], ts_node: ["bun"], "ts-node": ["bun", "tsx"], tsx: ["bun"], deno: ["bun", "node"], yarn: ["bun", "npm"], pnpm: ["bun", "npm"], gsed: ["sed"], timeout: ["gtimeout"] };
+export function missingCommandHint(stderr: string): string {
+  const found = [...stderr.matchAll(/command not found: ([\w.+-]+)|(?:^|[\s:])([\w.+-]+): (?:command )?not found(?!:)/g)].map((m) => m[1] ?? m[2]!);
+  const cmds = [...new Set(found)].filter((c) => !["sh", "bash", "zsh", "line"].includes(c));
+  const hints = cmds.flatMap((c) => {
+    const alts = [...(STAND_INS[c] ?? []), `${c}3`].filter((a, i, all) => all.indexOf(a) === i && Bun.which(a));
+    return alts.length ? [`\`${c}\` is not installed; use ${alts.map((a) => `\`${a}\``).join(" or ")}`] : [`\`${c}\` is not installed`];
+  });
+  return hints.length ? `\n[${hints.join("; ")}]` : "";
+}
 
 // The Python interpreter on PATH: macOS and many Linux images ship only python3.
 export const pythonBin = () => (Bun.which("python") ? "python" : Bun.which("python3") ? "python3" : "python");

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import { dirname, extname, join } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 import { applyEditTolerant } from "./edit-match.ts";
-import { confine, num, rel, str, ToolError, truncate, type Tool } from "./types.ts";
+import { confine, num, rel, str, ToolError, truncate, type Tool, type ToolContext } from "./types.ts";
 
 const IMAGE_TYPES: Record<string, string> = {
   ".png": "image/png",
@@ -32,10 +32,46 @@ export function syntaxNote(abs: string, text: string): string {
   }
 }
 
+// A wrong path is usually a wrong directory or extension guess. Name the likely files so the
+// model does not spend a turn on list_dir or glob to find them.
+const MAX_SUGGEST_SCAN = 20_000;
+function notFound(root: string, path: unknown, kind: "file" | "directory" = "file"): never {
+  const want = basename(String(path)).toLowerCase();
+  const stem = want.replace(/\.[^.]+$/, "");
+  const hits: string[] = [];
+  let seen = 0;
+  const walk = (dir: string) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (hits.length >= 5 || ++seen > MAX_SUGGEST_SCAN) return;
+      if (IGNORED_DIRS.has(e.name)) continue;
+      const p = join(dir, e.name);
+      const n = e.name.toLowerCase();
+      if (n === want || n.replace(/\.[^.]+$/, "") === stem) hits.push(`${rel(root, p)}${e.isDirectory() ? "/" : ""}`);
+      if (e.isDirectory()) walk(p);
+    }
+  };
+  if (want) walk(root);
+  throw new ToolError(`${kind} not found: ${String(path)}${hits.length ? `. Similar paths: ${hits.join(", ")}` : ". Nothing with that name exists in the workspace."}`);
+}
+
+const numbered = (lines: string[], offset: number) => lines.map((l, i) => `${offset + i}\t${l.length > MAX_LINE_CHARS ? `${l.slice(0, MAX_LINE_CHARS)}…` : l}`).join("\n");
+const NEEDS_READ_LINES = 400;
+
 // An unread file may still be edited when old_string matches its text exactly and once (the model
-// saw that text, e.g. in grep output). Anything looser needs a real read first.
-function needsRead(path: unknown): never {
-  throw new ToolError(`read ${String(path)} before editing it`);
+// saw that text, e.g. in grep output). Otherwise the model is editing from a wrong picture of the
+// file: refuse, but return the file (numbered, as read_file shows it) and count it as read, so
+// the retry needs no separate read turn.
+function needsRead(path: unknown, abs: string, text: string, ctx: ToolContext): never {
+  ctx.readFiles.add(abs);
+  const lines = text.split("\n");
+  const more = lines.length > NEEDS_READ_LINES ? `\n[showing lines 1-${NEEDS_READ_LINES} of ${lines.length}; read_file with offset shows the rest]` : "";
+  throw new ToolError(`old_string does not match ${String(path)} exactly, and the file had not been read in this session. Nothing was changed. Its current content:\n${truncate(numbered(lines.slice(0, NEEDS_READ_LINES), 1), 40_000)}${more}`);
 }
 
 export const readFileTool: Tool = {
@@ -57,7 +93,7 @@ export const readFileTool: Tool = {
   summarize: (i) => `read ${i.path}`,
   async run(input, ctx) {
     const abs = confine(ctx.root, input.path);
-    if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
+    if (!existsSync(abs)) notFound(ctx.root, input.path);
     if (statSync(abs).isDirectory()) throw new ToolError(`${input.path} is a directory; use list_dir`);
     const imageType = IMAGE_TYPES[extname(abs).toLowerCase()];
     const buf = readFileSync(abs);
@@ -68,9 +104,7 @@ export const readFileTool: Tool = {
     const offset = num(input, "offset", 1);
     const limit = num(input, "limit", MAX_READ_LINES);
     const slice = lines.slice(offset - 1, offset - 1 + limit);
-    const body = slice
-      .map((l, i) => `${offset + i}\t${l.length > MAX_LINE_CHARS ? `${l.slice(0, MAX_LINE_CHARS)}…` : l}`)
-      .join("\n");
+    const body = numbered(slice, offset);
     const more = offset - 1 + slice.length < lines.length ? `\n[showing lines ${offset}-${offset + slice.length - 1} of ${lines.length}]` : "";
     return { content: truncate(body || "[empty file]", MAX_READ_CHARS) + more };
   },
@@ -125,9 +159,10 @@ export const editFileTool: Tool = {
   summarize: (i) => `edit ${i.path}`,
   async run(input, ctx) {
     const abs = confine(ctx.root, input.path);
-    if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
+    if (!existsSync(abs)) notFound(ctx.root, input.path);
     const unread = !ctx.readFiles.has(abs);
-    const r = applyEditTolerant(readFileSync(abs, "utf8"), str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits, unread ? () => needsRead(input.path) : undefined);
+    const before = readFileSync(abs, "utf8");
+    const r = applyEditTolerant(before, str(input, "old_string"), str(input, "new_string"), input.replace_all === true, ctx.exactEdits, unread ? () => needsRead(input.path, abs, before, ctx) : undefined);
     ctx.readFiles.add(abs);
     writeFileSync(abs, r.text);
     const note =
@@ -165,13 +200,14 @@ export const multiEditTool: Tool = {
   summarize: (i) => `multi-edit ${i.path} (${(i.edits as unknown[] | undefined)?.length ?? 0} edits)`,
   async run(input, ctx) {
     const abs = confine(ctx.root, input.path);
-    if (!existsSync(abs)) throw new ToolError(`file not found: ${input.path}`);
+    if (!existsSync(abs)) notFound(ctx.root, input.path);
     const unread = !ctx.readFiles.has(abs);
     const edits = input.edits as { old_string: string; new_string: string; replace_all?: boolean }[];
-    let text = readFileSync(abs, "utf8");
+    const original = readFileSync(abs, "utf8");
+    let text = original;
     edits.forEach((e, i) => {
       try {
-        text = applyEditTolerant(text, e.old_string, e.new_string, e.replace_all === true, ctx.exactEdits, unread ? () => needsRead(input.path) : undefined).text;
+        text = applyEditTolerant(text, e.old_string, e.new_string, e.replace_all === true, ctx.exactEdits, unread ? () => needsRead(input.path, abs, original, ctx) : undefined).text;
       } catch (err) {
         if (unread) throw err;
         throw new ToolError(`edit ${i + 1}: ${(err as Error).message}`);
@@ -196,6 +232,7 @@ export const listDirTool: Tool = {
   summarize: (i) => `ls ${i.path ?? "."}`,
   async run(input, ctx) {
     const abs = confine(ctx.root, (input.path as string) || ".");
+    if (!existsSync(abs)) notFound(ctx.root, input.path, "directory");
     const depth = num(input, "depth", 2);
     const lines: string[] = [];
     const walk = (dir: string, d: number, indent: string) => {

@@ -144,7 +144,9 @@ export class TelemetryStore {
     const seq = (this.seq.get(e.runId) ?? 0) + 1;
     this.seq.set(e.runId, seq);
     const t = "t" in e ? e.t : Date.now();
-    this.db.run("INSERT OR REPLACE INTO events (run_id, seq, type, t, data) VALUES (?, ?, ?, ?, ?)", [e.runId, seq, e.type, t, JSON.stringify(e)]);
+    // Tool output previews are for the live UI; keep a short one, longer when it explains an error.
+    const stored = e.type === "tool_end" ? { ...e, preview: e.preview.slice(0, e.isError ? 2000 : 300) } : e;
+    this.db.run("INSERT OR REPLACE INTO events (run_id, seq, type, t, data) VALUES (?, ?, ?, ?, ?)", [e.runId, seq, e.type, t, JSON.stringify(stored)]);
 
     switch (e.type) {
       case "run_start": {
