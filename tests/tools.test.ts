@@ -42,6 +42,7 @@ describe("path confinement", () => {
     expect(confine(root, join(dirname(root), "src", "a.ts"))).toBe(join(root, "src", "a.ts"));
     expect(confine(root, "/elsewhere/project/src/a.ts")).toBe(join(root, "src", "a.ts"));
     expect(() => confine(root, join(dirname(root), "src", "missing.ts"))).toThrow(/relative to the workspace root .*"src\/missing.ts" does not exist there either/);
+    expect(() => confine(root, dirname(root))).toThrow(/above the workspace; the workspace root is .*use "\."/);
   });
 
   test("read_file on a directory returns its listing", async () => {

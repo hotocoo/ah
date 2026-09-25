@@ -93,8 +93,10 @@ function escapeHint(absRoot: string, target: string): string {
   let i = 0;
   while (i < a.length && i < b.length && a[i] === b[i]) i++;
   const tail = b.slice(i).join("/");
+  // An ancestor of the root: the model thinks the workspace starts higher up.
+  if (!tail && i === b.length) return `. That is above the workspace; the workspace root is ${absRoot}; use "." for it and paths relative to it.`;
   if (i < 3 || !tail) return "";
-  return `. Tool paths are relative to the workspace root ${absRoot}, and "${tail}" does not exist there either; use list_dir or glob to find the file.`;
+  return `. Tool paths are relative to the workspace root ${absRoot}, and "${tail}" does not exist there either; use list_dir or glob to find an existing file, or "${tail}" as the path to create it.`;
 }
 
 export function confine(root: string, p: unknown): string {
