@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { num, str, ToolError, truncate, type Tool, type ToolContext } from "./types.ts";
 
@@ -140,12 +140,34 @@ export const bashTool: Tool = {
   async run(input, ctx) {
     const command = str(input, "command");
     const t = num(input, "timeout_ms", ctx.bashTimeoutMs);
+    const started = Date.now();
     const r = await exec(command, ctx, t < 1000 ? t * 1000 : t);
+    const changedFiles = await shellWrites(ctx, started);
     // Name the cause, so the model does not retry a write the sandbox will always refuse.
     const note = ctx.shellPrefix && /Operation not permitted/.test(r.stderr) ? "\n[workspace-only shell: writes are allowed only inside the workspace, temp dirs and tool caches]" : "";
-    return { content: formatExec(r) + note + (r.code === 127 ? missingCommandHint(r.stderr) : ""), isError: r.timedOut || r.code !== 0 };
+    return { content: formatExec(r) + note + (r.code === 127 ? missingCommandHint(r.stderr) : ""), isError: r.timedOut || r.code !== 0, ...(changedFiles.length ? { changedFiles } : {}) };
   },
 };
+
+// Files a shell command wrote (heredocs, sed -i, generators), so the evidence ledger sees them
+// like edits: in a git workspace, files git reports as changed or new whose mtime is at or after
+// the command's start. ponytail: git repos only; a non-git workspace would need an mtime walk.
+async function shellWrites(ctx: ToolContext, since: number): Promise<string[]> {
+  if (!existsSync(join(ctx.root, ".git"))) return [];
+  const st = await exec("git status --porcelain -uall -z", { root: ctx.root, signal: ctx.signal }, 10_000);
+  if (st.code !== 0) return [];
+  const out: string[] = [];
+  for (const entry of st.stdout.split("\0")) {
+    const f = entry.slice(3);
+    if (!f || entry[0] === "D" || entry[1] === "D") continue;
+    try {
+      if (statSync(join(ctx.root, f)).mtimeMs >= since) out.push(f);
+    } catch {
+      /* gone again */
+    }
+  }
+  return out;
+}
 
 // A missing command usually has a versioned twin on PATH (python -> python3, pip -> pip3.14).
 // Look it up instead of guessing, so the model does not burn a turn discovering it.

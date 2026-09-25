@@ -51,6 +51,17 @@ describe("path confinement", () => {
     expect(r.content).toContain("a.ts");
   });
 
+  test("bash reports the files it wrote in a git workspace", async () => {
+    const g = mkRoot();
+    const ctx2 = { root: g, bashTimeoutMs: 10_000, todos: [], readFiles: new Set<string>(), media: {} };
+    const reg2 = new ToolRegistry();
+    await reg2.execute("bash", { command: "git init -q && echo old > kept.txt && git add -A && git -c user.email=a@b -c user.name=a commit -qm i" }, ctx2, "auto");
+    const r = await reg2.execute("bash", { command: "cat > new.ts << 'EOF'\nexport {};\nEOF\necho more >> kept.txt" }, ctx2, "auto");
+    expect(r.changedFiles?.sort()).toEqual(["kept.txt", "new.ts"]);
+    const none = await reg2.execute("bash", { command: "cat new.ts" }, ctx2, "auto");
+    expect(none.changedFiles).toBeUndefined();
+  });
+
   test("bash reads a timeout under 1000 as seconds", async () => {
     const r = await run("bash", { command: "echo ok", timeout_ms: 30 });
     expect(r.isError).toBeFalsy();

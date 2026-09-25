@@ -112,6 +112,14 @@ describe("evidence gate and memory", () => {
     expect(JSON.stringify(agent.messages)).toContain("What failed:");
   });
 
+  test("a heredoc write is a change, not a check", async () => {
+    const { isCheckCommand } = await import("../src/agent/evidence.ts");
+    expect(isCheckCommand("cat > src/db.ts << 'EOF'\n// run the tests, build, check\nEOF")).toBe(false);
+    expect(isCheckCommand("cd /w && bun test --no-watch 2>&1")).toBe(true);
+    expect(isCheckCommand('echo "all tests pass"')).toBe(false);
+    expect(isCheckCommand("FOO=1 go test ./...")).toBe(true);
+  });
+
   test("verified lessons are stored, recalled and reinforced", async () => {
     const mem = new MemoryStore(":memory:");
     const { root, agent } = setup(

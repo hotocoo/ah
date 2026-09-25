@@ -41,6 +41,22 @@ export interface Lesson {
 // command is added per session.
 const CHECK_WORDS = /\b(test|tests|spec|build|tsc|typecheck|type-check|lint|check|vet|clippy|pytest|mypy|ruff|eslint|jest|vitest|mocha|cargo|go\s+(test|build|vet)|make|mvn|gradle|gradlew|ctest|dotnet\s+(test|build))\b/i;
 
+// Commands that only move text around: a check word in their arguments (a heredoc writing a
+// test file, `echo "run tests"`) does not make them a check.
+const NOT_A_CHECK = new Set(["cat", "echo", "printf", "tee", "ls", "cd", "rm", "mkdir", "cp", "mv", "touch", "sed", "awk", "grep", "rg", "find", "head", "tail", "wc", "chmod", "git"]);
+
+// A shell command is a check when one of its segments *runs* a check: the heredoc body and quoted
+// strings are ignored, and a segment whose program only handles text does not count.
+export function isCheckCommand(cmd: string, testCommand: string | null = null): boolean {
+  const head = cmd.split("\n")[0]!.replace(/'[^']*'|"[^"]*"/g, "''");
+  if (testCommand && head.includes(testCommand)) return true;
+  return head.split(/&&|\|\||[;|]/).some((seg) => {
+    const words = seg.trim().replace(/<<-?\s*\S+.*$/, "").split(/\s+/).filter((w) => w && !/^[A-Z_][A-Z0-9_]*=/.test(w));
+    const prog = (words[0] ?? "").split("/").at(-1)!;
+    return Boolean(prog) && !NOT_A_CHECK.has(prog) && !/[<>]/.test(prog) && CHECK_WORDS.test(words.join(" "));
+  });
+}
+
 const firstLine = (s: string) =>
   s
     .split("\n")
@@ -64,8 +80,7 @@ export class EvidenceLedger {
   isCheck(o: Pick<Observation, "name" | "input">): boolean {
     if (o.name === "run_tests") return true;
     if (o.name !== "bash") return false;
-    const cmd = String(o.input.command ?? "");
-    return CHECK_WORDS.test(cmd) || (this.testCommand !== null && cmd.includes(this.testCommand));
+    return isCheckCommand(String(o.input.command ?? ""), this.testCommand);
   }
 
   observe(o: Observation): void {
