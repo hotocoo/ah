@@ -95,6 +95,13 @@ describe("web app API", () => {
   });
 });
 
+test("chat runs built-in commands without a model call", async () => {
+  const res = await fetch(`${base}/api/chat`, { method: "POST", headers: { "x-ah-token": "t0k", "content-type": "application/json" }, body: JSON.stringify({ prompt: "/help", model: "mock/scripted" }) });
+  const events = (await res.text()).split("\n\n").filter(Boolean).map((l) => JSON.parse(l.replace(/^data: /, "")) as { type: string; text?: string });
+  expect(events.map((e) => e.type)).not.toContain("run_start");
+  expect(events.find((e) => e.type === "notice")?.text).toContain("/goal <condition>");
+});
+
 describe("chat sessions", () => {
   const get = (p: string) => fetch(`${base}${p}`, { headers: { "x-ah-token": "t0k" } });
   const h = { "x-ah-token": "t0k", "content-type": "application/json" };
