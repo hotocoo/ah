@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Head-to-head: ah vs Hermes Agent vs DeepSeek Harness (dsh) on the same model, tasks and hidden graders.
 # Run it yourself (it starts autonomous agents with full shell access inside bench sandboxes):
-#   bash scripts/h2h.sh [--trials N] [--suite DIR] [--task ID]... [--only ah|hermes|dsh]
+#   bash scripts/h2h.sh [--trials N] [--suite DIR] [--task ID]... [--only ah|hermes|dsh] [--turn-limit]
 # Needs: a local OpenAI-compatible runtime that ah discovers (ah doctor); override with MODEL_REF=provider/model.
 # Trials run one after another, never in parallel, so harnesses never share the server's slot.
 set -euo pipefail
@@ -9,11 +9,15 @@ cd "$(dirname "$0")/.."
 
 TRIALS=3
 ONLY=""
+# External harnesses are bound only by each task's time limit; ah gets the same budget unless
+# --turn-limit keeps the task's turn cap (to compare with earlier ah-only runs like for like).
+TURNS="--no-turn-limit"
 PASS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --trials) TRIALS="$2"; shift 2 ;;
     --only) ONLY="$2"; shift 2 ;;
+    --turn-limit) TURNS=""; shift ;;
     *) PASS+=("$1"); shift ;;
   esac
 done
@@ -42,7 +46,7 @@ want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }
 
 # ah: in-process, default features (memory and user extensions are off in every bench trial).
 if want ah; then
-  bun src/cli/main.ts bench run --model "$MODEL_REF" --trials "$TRIALS" --out "$OUT/ah" ${PASS[@]+"${PASS[@]}"} 2>&1 | tee "$OUT/ah.log"
+  bun src/cli/main.ts bench run --model "$MODEL_REF" --trials "$TRIALS" --out "$OUT/ah" $TURNS ${PASS[@]+"${PASS[@]}"} 2>&1 | tee "$OUT/ah.log"
 fi
 
 # Hermes: isolated HERMES_HOME (no user memory, skills or cloud keys), custom provider at the same server.

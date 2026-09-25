@@ -16,6 +16,7 @@ const HELP = `ah bench — benchmarks
                [--baseline] [--no-context-sizing] [--no-text-tools] [--no-compact] [--protocol native|text]
       Agentic coding suite. Each trial runs in a fresh sandbox; hidden graders decide pass/fail.
       --baseline switches off ah's local-model adaptations (for ablation).
+      --no-turn-limit bounds ah by the task's time limit only, like external harnesses (head-to-head).
       --agent-cmd CMD runs another harness instead of ah ({prompt} = quoted task prompt, {dir} = sandbox);
       --label NAME names that run in reports (default "external").
       --agent-stats CMD runs after each external trial; last stdout line = JSON {turns, toolCalls, toolErrors, inputTokens, outputTokens}.
@@ -48,6 +49,7 @@ export async function cmdBench(argv: string[]): Promise<number> {
       "no-compact": { type: "boolean" },
       protocol: { type: "string" },
       keep: { type: "boolean" },
+      "no-turn-limit": { type: "boolean" },
       "agent-cmd": { type: "string" },
       "agent-stats": { type: "string" },
       label: { type: "string" },
@@ -130,6 +132,7 @@ export async function cmdBench(argv: string[]): Promise<number> {
       benchRunId,
       features,
       keepWorkdirs: Boolean(v.keep),
+      noTurnLimit: Boolean(v["no-turn-limit"]),
       agentCmd,
       agentStats: v["agent-stats"] as string | undefined,
       onTrial: (r) =>

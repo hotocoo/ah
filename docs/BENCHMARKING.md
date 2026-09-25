@@ -51,7 +51,7 @@ Per task and overall: pass count, **pass@1** and **pass@k** (unbiased estimator,
 
 ## Head-to-head with other harnesses
 
-`--agent-cmd` runs another harness's CLI in the sandbox instead of ah's agent, with the same fixture, turn-free time limit (`limits.timeoutMs`) and hidden grader. `{prompt}` becomes the shell-quoted task prompt and `{dir}` the sandbox path; the external transcript is saved next to the sandbox as `<trial>.agent.log`. Only what is visible from outside is recorded (pass, partial score, wall time, diff); turns and tokens stay 0.
+`--agent-cmd` runs another harness's CLI in the sandbox instead of ah's agent, with the same fixture, turn-free time limit (`limits.timeoutMs`) and hidden grader. `--no-turn-limit` gives ah the same budget (time only); `scripts/h2h.sh` passes it unless `--turn-limit` is given. Before 2026-09-25 ah alone was also held to the task's turn cap in head-to-head runs. `{prompt}` becomes the shell-quoted task prompt and `{dir}` the sandbox path; the external transcript is saved next to the sandbox as `<trial>.agent.log`. Only what is visible from outside is recorded (pass, partial score, wall time, diff); turns and tokens stay 0.
 
 ```bash
 ah bench run --label hermes --agent-cmd 'HERMES_HOME=/path/iso hermes -z {prompt} --in {dir} --yolo'

@@ -54,6 +54,8 @@ export interface BenchRunOptions {
   benchRunId: string;
   features?: SessionFeatures;
   keepWorkdirs?: boolean;
+  // Bound ah only by the task's time limit, as external harnesses are (head-to-head fairness).
+  noTurnLimit?: boolean;
   // External harness command run in the sandbox instead of ah's agent (head-to-head).
   // {prompt} is replaced by the shell-quoted task prompt, {dir} by the sandbox path.
   agentCmd?: string;
@@ -73,6 +75,7 @@ export interface BenchRun {
   trials: number;
   features: SessionFeatures;
   agentCmd?: string;
+  noTurnLimit?: boolean;
   hardware: HardwareSample;
   runtime?: { kind: string; version?: string; baseURL: string };
   ahVersion: string;
@@ -134,7 +137,7 @@ export async function runTrial(o: BenchRunOptions, task: BenchTask, trial: numbe
     model,
     root: dir,
     mode: "auto",
-    maxTurns: task.limits.maxTurns,
+    maxTurns: o.noTurnLimit ? Number.POSITIVE_INFINITY : task.limits.maxTurns,
     budgetUsd: task.limits.maxCostUsd,
     signal,
     // Trials must be independent and comparable: no memory, no user extensions.
@@ -299,6 +302,7 @@ export async function runBench(o: BenchRunOptions): Promise<BenchRun> {
     trials: o.trials,
     features: o.features ?? {},
     ...(o.agentCmd ? { agentCmd: o.agentCmd } : {}),
+    ...(o.noTurnLimit ? { noTurnLimit: true } : {}),
     hardware,
     runtime: rt ? { kind: rt.kind, version: rt.version, baseURL: rt.baseURL } : undefined,
     ahVersion: "0.1.0",
