@@ -119,7 +119,7 @@ describe("agent loop", () => {
     expect(events.filter((e) => e.type === "retry")).toHaveLength(1);
   });
 
-  test("re-issues a turn on invalid tool JSON, at most twice", async () => {
+  test("invalid tool JSON: re-issues the turn twice, then tells the model (twice), then ends", async () => {
     let calls = 0;
     const flaky: Provider = {
       key: "flaky",
@@ -133,7 +133,8 @@ describe("agent loop", () => {
     const { agent } = setup([], { provider: flaky });
     const r = await agent.run("x");
     expect(r.outcome).toBe("error");
-    expect(calls).toBe(3);
+    expect(calls).toBe(9);
+    expect(JSON.stringify(agent.messages)).toContain("Send the call again with valid JSON arguments");
   });
 
   test("respects the USD budget", async () => {
@@ -306,6 +307,12 @@ describe("tool-error coaching", () => {
     expect(coachingHints(db, "p", "b")).toEqual([]);
     expect(classify("edited a.ts (old_string matched after removing copied line numbers or '>' markers; do not include them)")).toBe("copied-prefix");
   });
+});
+
+test("tool arguments with raw newlines, tabs and trailing commas still parse", async () => {
+  const { parseToolArgs } = await import("../src/providers/provider.ts");
+  expect(parseToolArgs('{"path":"a.ts","old_string":"x\n\ty","new_string":"[1, 2, ]",}')).toEqual({ path: "a.ts", old_string: "x\n\ty", new_string: "[1, 2, ]" });
+  expect(parseToolArgs("not json")).toBeNull();
 });
 
 describe("server tool-call parse failures", () => {

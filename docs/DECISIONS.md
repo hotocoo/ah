@@ -234,3 +234,8 @@ Two more robustness features came out of these runs: project facts in the system
 
 - **Found by:** dsh's two `ts-sql-engine` trials in the LFM2.5 horizon run ended on llama-server's "The model produced output that does not match the expected peg-native format" (a mid-stream error from llama.cpp's chat parser). Checking whether ah would survive the same output showed it would not: the stream error was a plain retryable 500, so ah retried the same request three times and ended the run.
 - **Chosen:** errors whose message says the server could not parse the model's output as tool calls get the code `tool_parse` (streamed or HTTP). The loop then switches the session to the text tool protocol, where ah parses calls itself, and retries the turn. This is the same fallback ah already used when a server reports tool calls but delivers none. It is off with `recoveries: false`.
+
+## D42. Tool arguments as small models write them
+
+- **Found by:** the fair core run (`0eb3f99`, time-only budget): a `go-feature-stack` trial ended `agent_error` on "tool edit_file arguments are not valid JSON" after 5 turns. ah re-issued the same request twice. At temperature 0.1 that reproduces the same broken call, and then the run ended.
+- **Chosen:** one shared lenient parser (`lenientJson`) for native tool arguments and the text protocol. It tries a strict parse first. On failure it escapes raw newlines, carriage returns and tabs inside strings (file contents in an edit), and drops trailing commas outside strings (string contents are never touched). If the arguments still do not parse after the two re-issues, the model is told that nothing ran and why, and the run continues (at most twice per run) instead of ending.

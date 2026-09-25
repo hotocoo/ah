@@ -171,10 +171,33 @@ export async function* ndjson(body: ReadableStream<Uint8Array>): AsyncGenerator<
 // so the agent loop can report the error back to the model instead of running the tool.
 export function parseToolArgs(raw: string): Record<string, unknown> | null {
   if (raw.trim() === "") return {};
+  const v = lenientJson(raw);
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+// JSON as small models write it: raw newlines and tabs inside strings (file contents in an
+// edit) and trailing commas. Strict parse first; repairs only when that fails.
+export function lenientJson(raw: string): unknown {
   try {
-    const v = JSON.parse(raw);
-    return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+    return JSON.parse(raw);
   } catch {
-    return null;
+    let out = "";
+    let inString = false;
+    for (let i = 0; i < raw.length; i++) {
+      const c = raw[i]!;
+      if (inString && c === "\\") {
+        out += c + (raw[++i] ?? "");
+        continue;
+      }
+      if (c === '"') inString = !inString;
+      // A trailing comma outside strings: drop it when only whitespace precedes } or ].
+      if (!inString && c === "," && /^\s*[}\]]/.test(raw.slice(i + 1))) continue;
+      out += inString && c === "\n" ? "\\n" : inString && c === "\r" ? "\\r" : inString && c === "\t" ? "\\t" : c;
+    }
+    try {
+      return JSON.parse(out);
+    } catch {
+      return undefined;
+    }
   }
 }

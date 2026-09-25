@@ -1,4 +1,5 @@
 import type { ContentBlock, Message, ToolSpec } from "../core/types.ts";
+import { lenientJson } from "../providers/provider.ts";
 
 // Extracts tool calls that a model wrote as text instead of structured tool_calls.
 // Local servers do this whenever they cannot map the model's native format (unknown
@@ -16,18 +17,7 @@ export interface ParseResult {
   text: string; // remaining prose with the tool-call markup removed
 }
 
-function parseJson(s: string): unknown {
-  try {
-    return JSON.parse(s);
-  } catch {
-    // Tolerate trailing commas and single-quoted keys common in small-model output.
-    try {
-      return JSON.parse(s.replace(/,\s*([}\]])/g, "$1"));
-    } catch {
-      return undefined;
-    }
-  }
-}
+const parseJson = lenientJson;
 
 const asArgs = (v: unknown): Record<string, unknown> | null => {
   if (typeof v === "string") v = parseJson(v);

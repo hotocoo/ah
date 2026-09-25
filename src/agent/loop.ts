@@ -206,6 +206,7 @@ export class Agent {
     let finalText = "";
     let maxTokens = this.o.maxTokens;
     let jsonRetries = 0;
+    let jsonFeedback = 0;
     let truncationRetries = 0;
     let overflowRetried = false;
     let nudges = 0;
@@ -252,6 +253,17 @@ export class Agent {
           if (err instanceof ProviderError && err.code === "invalid_tool_json" && jsonRetries++ < 2) {
             this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: jsonRetries, reason: "invalid tool JSON", delayMs: 0, t: Date.now() });
             this.turn--;
+            continue;
+          }
+          // The same request keeps producing the same broken call: change the request instead
+          // of ending the run (at most twice per run).
+          if (err instanceof ProviderError && err.code === "invalid_tool_json" && jsonFeedback++ < 2 && this.o.recoveries !== false) {
+            jsonRetries = 0;
+            this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: jsonFeedback, reason: "tool arguments kept failing to parse; told the model", delayMs: 0, t: Date.now() });
+            const note: ContentBlock = { type: "text", text: `[ah] Your last tool call could not be used: ${err.message.replace(/^[^:]+: /, "")}. Nothing ran. Send the call again with valid JSON arguments (escape quotes and newlines inside strings), or split a large edit into smaller ones.` };
+            const last = this.messages.at(-1);
+            if (last?.role === "user") this.messages[this.messages.length - 1] = { ...last, content: [...last.content, note] };
+            else this.messages.push({ role: "user", content: [note] });
             continue;
           }
           throw err;
