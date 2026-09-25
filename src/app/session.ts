@@ -11,6 +11,7 @@ import { getPreset, loadConfig, parseModelRef, type AhConfig } from "../config.t
 import type { LocalModelFacts, ModelInfo } from "../core/types.ts";
 import { ModelCatalog } from "../models/catalog.ts";
 import { hubRepoFrom, modelArchFacts, modelCardDefaults } from "../models/hf.ts";
+import { templateControls, type TemplateControl } from "../models/template.ts";
 import { buildMedia } from "../media/services.ts";
 import { OllamaProvider } from "../providers/ollama.ts";
 import { ProviderRegistry } from "../providers/registry.ts";
@@ -242,6 +243,7 @@ export interface GenerationOverrides {
   topP?: number;
   topK?: number;
   maxTokens?: number;
+  templateKwargs?: Record<string, string | number | boolean>; // chat-template switches (effort levels, enable_thinking, ...)
 }
 
 export interface Session {
@@ -327,7 +329,7 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     reasoning: o.generation?.reasoning ?? env.cfg.reasoning,
     temperature: o.generation?.temperature ?? gen.temperature,
     sampling: withSampling(gen.sampling, o.generation),
-    templateKwargs: gen.templateKwargs,
+    templateKwargs: o.generation?.templateKwargs ? { ...gen.templateKwargs, ...o.generation.templateKwargs } : gen.templateKwargs,
     params,
     // Without context sizing the runtime default applies and no compaction happens.
     contextWindow: f.contextSizing === false ? undefined : context.window,
@@ -351,3 +353,24 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
 }
 
 export const dataPath = (env: Environment, ...parts: string[]) => join(env.cfg.dataDir, ...parts);
+
+// The switches a model's chat template accepts, read from the template itself: the serving
+// runtime's copy (llama.cpp /props) when it has one, else the Hugging Face model card's.
+export async function modelControls(env: Environment, ref: string): Promise<{ controls: TemplateControl[]; source: string | null }> {
+  const { provider, model } = parseModelRef(ref);
+  const rt = env.registry.runtimes.get(provider);
+  if (rt && !env.offline) {
+    try {
+      const res = await fetch(`${rt.baseURL}/props?model=${encodeURIComponent(model)}`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const t = ((await res.json()) as { chat_template?: string }).chat_template;
+        if (t) return { controls: templateControls(t), source: `${provider} runtime chat template` };
+      }
+    } catch {
+      /* runtime without /props: fall back to the model card */
+    }
+  }
+  const repo = hubRepoFrom(model);
+  const card = repo && !env.offline ? await modelCardDefaults(repo, { store: env.telemetry.store }).catch(() => null) : null;
+  return card?.controls?.length ? { controls: card.controls, source: `model card ${card.repo}` } : { controls: [], source: null };
+}

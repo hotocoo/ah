@@ -276,3 +276,8 @@ describe("settings API", () => {
     expect(bad.status).toBe(400);
   });
 });
+
+test("template switches from the page are plain identifiers with scalar values", async () => {
+  const { parseGeneration } = await import("../src/server/server.ts");
+  expect(parseGeneration({ templateKwargs: { reasoning_effort: "xhigh", enable_thinking: false, "bad key": 1, nested: { a: 1 } } })).toEqual({ templateKwargs: { reasoning_effort: "xhigh", enable_thinking: false } });
+});

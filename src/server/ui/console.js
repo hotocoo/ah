@@ -730,29 +730,58 @@ $("#chat-preset").addEventListener("change", async () => {
 });
 
 // ---------- tune: per-session generation settings, remembered per model ----------
+// Sampling fields are the same for every model. Chat-template switches (effort levels, thinking
+// on/off, ...) are read from the model's own template, so each model shows exactly what it accepts.
 const GEN = ["reasoning", "temperature", "topP", "topK", "maxTokens"];
 const tuneKey = () => `ah.tune.${$("#chat-model").value.trim() || "auto"}`;
+let controlsSeq = 0;
 function generation() {
   const g = {};
   for (const k of GEN) {
-    const v = $(`#g-${k}`).value.trim();
-    if (v) g[k] = k === "reasoning" ? v : Number(v);
+    const el = $(`#g-${k}`);
+    const v = el.value.trim();
+    if (v && !el.closest("[hidden]")) g[k] = k === "reasoning" ? v : Number(v);
   }
+  const kw = {};
+  for (const el of document.querySelectorAll("#g-template [data-kw]")) {
+    const v = el.value.trim();
+    if (!v) continue;
+    kw[el.dataset.kw] = el.dataset.type === "boolean" ? v === "true" : el.dataset.type === "number" ? Number(v) : v;
+  }
+  if (Object.keys(kw).length) g.templateKwargs = kw;
   return Object.keys(g).length ? g : undefined;
 }
-function loadTune() {
+const humanize = (n) => n.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+function controlField(c, saved) {
+  const v = saved?.[c.name];
+  const cur = v === undefined ? "" : String(v);
+  const def = c.default === undefined ? "default" : `default (${c.default})`;
+  const note = c.type === "boolean" && /^(enable_)?(thinking|think|reasoning)$/i.test(c.name) ? " · off = instruct mode" : "";
+  const attrs = `data-kw="${esc(c.name)}" data-type="${esc(c.type)}"`;
+  if (c.type === "enum") return `<label title="${esc(c.name)}">${esc(humanize(c.name))}<select ${attrs}><option value="">${esc(def)}</option>${c.values.map((x) => `<option ${x === cur ? "selected" : ""}>${esc(x)}</option>`).join("")}</select></label>`;
+  if (c.type === "boolean") return `<label title="${esc(c.name)}${note}">${esc(humanize(c.name))}<select ${attrs}><option value="">${esc(def)}</option><option value="true" ${cur === "true" ? "selected" : ""}>on</option><option value="false" ${cur === "false" ? "selected" : ""}>off${note ? " (instruct)" : ""}</option></select></label>`;
+  return `<label title="${esc(c.name)}">${esc(humanize(c.name))}<input ${attrs} type="${c.type === "number" ? "number" : "text"}" value="${esc(cur)}" placeholder="${esc(def)}" /></label>`;
+}
+async function loadTune() {
   const saved = JSON.parse(localStorage.getItem(tuneKey()) ?? "{}");
   for (const k of GEN) $(`#g-${k}`).value = saved[k] ?? "";
-  const m = modelInfo.get($("#chat-model").value.trim());
-  $("#g-reasoning").disabled = m ? !m.reasoning && !m.local : false;
+  const ref = $("#chat-model").value.trim();
+  const m = modelInfo.get(ref);
   $("#g-maxTokens").placeholder = m?.maxOutput ? `up to ${compact(m.maxOutput)}` : "model limit";
   $("#tune summary").textContent = Object.keys(saved).length ? "Tune •" : "Tune";
+  const seq = ++controlsSeq;
+  const d = await api(`/api/model-controls?model=${encodeURIComponent(ref)}`, undefined, true).catch(() => ({ controls: [], source: null }));
+  if (seq !== controlsSeq) return;
+  // Enums and booleans are the switches worth showing; long-tail string/number knobs stay in config.
+  const shown = d.controls.filter((c) => c.type === "enum" || c.type === "boolean" || c.type === "number");
+  $("#g-template").innerHTML = shown.length ? `<p class="help">From ${esc(d.source)}</p>${shown.map((c) => controlField(c, saved.templateKwargs)).join("")}` : "";
+  // The API-level effort only matters when the template has no effort switch of its own.
+  $("#g-reasoning-row").hidden = shown.some((c) => /effort/i.test(c.name)) || (m ? !m.reasoning && !m.local : false);
 }
-for (const k of GEN)
-  $(`#g-${k}`).addEventListener("change", () => {
-    localStorage.setItem(tuneKey(), JSON.stringify(generation() ?? {}));
-    loadTune();
-  });
+$("#tune").addEventListener("change", () => {
+  localStorage.setItem(tuneKey(), JSON.stringify(generation() ?? {}));
+  $("#tune summary").textContent = generation() ? "Tune •" : "Tune";
+});
 
 // ---------- loader ----------
 let filled = false;

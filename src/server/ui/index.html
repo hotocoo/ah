@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-style="photoreal">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -15,6 +15,7 @@
   <body data-run="idle">
     <div class="progress" aria-hidden="true"></div>
     <div class="wallpaper" aria-hidden="true"></div>
+    <p class="photo-credit" id="photo-credit"></p>
     <a class="skip" href="#main">Skip to content</a>
     <div class="shell">
       <aside class="rail">
@@ -89,12 +90,13 @@
                     <details class="tune" id="tune">
                       <summary title="Reasoning effort, sampling and output cap for this session">Tune</summary>
                       <div class="tune-panel">
-                        <label>Reasoning effort<select id="g-reasoning"><option value="">default</option><option>off</option><option>low</option><option>medium</option><option>high</option><option>max</option></select></label>
+                        <div id="g-template" class="tune-template"></div>
+                        <label id="g-reasoning-row">Reasoning effort (API)<select id="g-reasoning"><option value="">default</option><option>off</option><option>low</option><option>medium</option><option>high</option><option>max</option></select></label>
                         <label>Temperature<input id="g-temperature" type="number" min="0" max="2" step="0.05" placeholder="model card" /></label>
                         <label>Top p<input id="g-topP" type="number" min="0" max="1" step="0.01" placeholder="model card" /></label>
                         <label>Top k<input id="g-topK" type="number" min="1" step="1" placeholder="model card" /></label>
                         <label>Max output tokens<input id="g-maxTokens" type="number" min="256" step="256" placeholder="model limit" /></label>
-                        <p class="help" id="g-note">Blank uses the model card or runtime default. Applies from the next message.</p>
+                        <p class="help" id="g-note">Blank uses the model's own default. Applies from the next message.</p>
                       </div>
                     </details>
                     <span class="hint" id="chat-hint"></span>
@@ -292,6 +294,11 @@
             <h2>Appearance</h2>
             <div class="appearance">
               <div>
+                <fieldset class="seg-field">
+                  <legend>Style</legend>
+                  <div class="seg" id="styles" role="radiogroup" aria-label="Style"></div>
+                  <button type="button" class="ghost sm" id="ap-daily" title="Fetch today's featured photograph from Wikimedia Commons">New photo</button>
+                </fieldset>
                 <fieldset class="seg-field">
                   <legend>Theme</legend>
                   <div class="seg" id="themes" role="radiogroup" aria-label="Theme"></div>

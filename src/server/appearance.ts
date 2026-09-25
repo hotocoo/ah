@@ -6,13 +6,23 @@ import { join } from "node:path";
 // so an upload can never choose a path.
 
 export const THEMES = ["system", "light", "dark"] as const;
+// photoreal: glass materials over a photograph; flat: opaque neutral surfaces.
+export const STYLES = ["photoreal", "flat"] as const;
+export interface PhotoCredit {
+  title: string;
+  artist: string;
+  license: string;
+  url: string;
+}
 export interface Appearance {
   theme: (typeof THEMES)[number];
+  style: (typeof STYLES)[number];
+  credit: PhotoCredit | null; // set only by the server when it fetched the wallpaper
   accent: string | null; // #rrggbb; null = the default accent
   wallpaper: { enabled: boolean; opacity: number; blur: number; dim: number };
 }
 
-export const DEFAULT_APPEARANCE: Appearance = { theme: "system", accent: null, wallpaper: { enabled: false, opacity: 0.6, blur: 8, dim: 0.35 } };
+export const DEFAULT_APPEARANCE: Appearance = { theme: "system", style: "photoreal", credit: null, accent: null, wallpaper: { enabled: false, opacity: 0.6, blur: 8, dim: 0.35 } };
 export const MAX_WALLPAPER_BYTES = 12 * 1024 * 1024;
 
 const clampNum = (v: unknown, lo: number, hi: number, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d);
@@ -25,6 +35,8 @@ export function sanitizeAppearance(raw: unknown, base: Appearance = DEFAULT_APPE
   const accent = r.accent === null ? null : typeof r.accent === "string" && /^#[0-9a-f]{6}$/i.test(r.accent) ? r.accent.toLowerCase() : base.accent;
   return {
     theme,
+    style: STYLES.includes(r.style as Appearance["style"]) ? (r.style as Appearance["style"]) : base.style,
+    credit: base.credit,
     accent,
     wallpaper: {
       enabled: typeof w.enabled === "boolean" ? w.enabled : base.wallpaper.enabled,
@@ -62,7 +74,8 @@ export class AppearanceStore {
     } catch {
       // A corrupt file falls back to defaults; the next save rewrites it.
     }
-    return { ...sanitizeAppearance(saved), hasWallpaper: existsSync(this.image) };
+    const credit = (saved as { credit?: PhotoCredit | null }).credit ?? null;
+    return { ...sanitizeAppearance(saved, { ...DEFAULT_APPEARANCE, credit }), hasWallpaper: existsSync(this.image) };
   }
 
   set(patch: unknown): Appearance & { hasWallpaper: boolean } {
@@ -79,16 +92,18 @@ export class AppearanceStore {
   }
 
   // Throws with a user-facing message; the caller maps it to 400/413.
-  saveWallpaper(body: Uint8Array): void {
+  saveWallpaper(body: Uint8Array, credit: PhotoCredit | null = null): void {
     if (body.length === 0) throw new Error("empty upload");
     if (body.length > MAX_WALLPAPER_BYTES) throw new Error(`wallpaper larger than ${MAX_WALLPAPER_BYTES / 1024 / 1024} MB`);
     if (!sniffImage(body)) throw new Error("not a PNG, JPEG, WebP, GIF or AVIF image");
     writeFileSync(this.image, body);
-    this.set({ wallpaper: { enabled: true } });
+    const { hasWallpaper: _h, ...cur } = this.get();
+    writeFileSync(this.file, JSON.stringify({ ...sanitizeAppearance({ wallpaper: { enabled: true } }, cur), credit }, null, 2));
   }
 
   removeWallpaper(): void {
     rmSync(this.image, { force: true });
-    this.set({ wallpaper: { enabled: false } });
+    const { hasWallpaper: _h, ...cur } = this.get();
+    writeFileSync(this.file, JSON.stringify({ ...sanitizeAppearance({ wallpaper: { enabled: false } }, cur), credit: null }, null, 2));
   }
 }

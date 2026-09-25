@@ -1,3 +1,4 @@
+import { templateControls, type TemplateControl } from "./template.ts";
 import type { TelemetryStore } from "../telemetry/store.ts";
 
 // Model-card metadata from the Hugging Face Hub, so ah serves a model with the settings
@@ -11,6 +12,7 @@ export interface ModelCardDefaults {
   repo: string; // repo the values came from
   sampling: { temperature?: number; topP?: number; topK?: number; minP?: number };
   templateThinkingToggle: boolean;
+  controls?: TemplateControl[]; // switches the chat template accepts (effort levels, thinking, ...)
 }
 
 const HUB = "https://huggingface.co";
@@ -51,13 +53,14 @@ export function samplingFrom(gen: Record<string, unknown> | null): ModelCardDefa
 }
 
 export async function modelCardDefaults(repo: string, o: { store?: TelemetryStore | null; fetchImpl?: typeof fetch } = {}): Promise<ModelCardDefaults | null> {
-  const key = `hfcard:${repo}`;
+  const key = `hfcard2:${repo}`;
   const cached = o.store?.cacheGet(key, WEEK);
   if (cached) return JSON.parse(cached) as ModelCardDefaults | null;
   const f = o.fetchImpl ?? fetch;
   let current: string | null = repo;
   let result: ModelCardDefaults | null = null;
   let toggle = false;
+  let controls: TemplateControl[] = [];
   for (let hop = 0; current && hop < 3; hop++) {
     const repoNow: string = current;
     const [gen, tmpl, tok, info]: [unknown, string | null, unknown, unknown] = await Promise.all([
@@ -68,15 +71,16 @@ export async function modelCardDefaults(repo: string, o: { store?: TelemetryStor
     ]);
     const template = tmpl ?? ((tok as { chat_template?: unknown } | null)?.chat_template as string | undefined) ?? "";
     toggle ||= typeof template === "string" && template.includes("enable_thinking");
+    if (!controls.length && typeof template === "string") controls = templateControls(template);
     const sampling = samplingFrom(gen as Record<string, unknown> | null);
     if (Object.values(sampling).some((v) => v !== undefined)) {
-      result = { repo: repoNow, sampling, templateThinkingToggle: toggle };
+      result = { repo: repoNow, sampling, templateThinkingToggle: toggle, controls };
       break;
     }
     const base: string | string[] | undefined = (info as { cardData?: { base_model?: string | string[] } } | null)?.cardData?.base_model;
     current = Array.isArray(base) ? (base[0] ?? null) : (base ?? null);
   }
-  if (!result && toggle) result = { repo, sampling: {}, templateThinkingToggle: true };
+  if (!result && (toggle || controls.length)) result = { repo, sampling: {}, templateThinkingToggle: toggle, controls };
   o.store?.cacheSet(key, JSON.stringify(result));
   return result;
 }

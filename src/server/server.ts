@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import { join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentEvent } from "../agent/events.ts";
-import { autoSelectModel, buildEnvironment, createSession, loadExtensions, refreshProviders, resolveModelContext, type Environment, type GenerationOverrides, type Session } from "../app/session.ts";
+import { autoSelectModel, buildEnvironment, createSession, loadExtensions, modelControls, refreshProviders, resolveModelContext, type Environment, type GenerationOverrides, type Session } from "../app/session.ts";
 import { isTrusted, setTrusted } from "../plugins/index.ts";
 import type { PermissionMode } from "../tools/index.ts";
 import { confine } from "../tools/types.ts";
@@ -21,6 +21,7 @@ import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../
 import { dim, green } from "../cli/render.ts";
 import { assetDir } from "../app/paths.ts";
 import { AppearanceStore, MAX_WALLPAPER_BYTES } from "./appearance.ts";
+import { fetchDailyPhoto } from "./daily-photo.ts";
 import { SessionStore } from "./session-store.ts";
 import indexHtmlSrc from "./ui/index.html" with { type: "text" };
 import appJs from "./ui/app.js" with { type: "text" };
@@ -83,6 +84,12 @@ type ApprovalEvent = { type: "approval_request"; id: string; tool: string; summa
 
 // Validated per-session generation settings from the page; anything out of range is dropped.
 const EFFORTS = ["off", "low", "medium", "high", "max"] as const;
+// Chat-template switches: plain identifiers with scalar values (the template decides what they mean).
+function kwargsIn(v: unknown): Record<string, string | number | boolean> | undefined {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return undefined;
+  const out = Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k, x]) => /^[A-Za-z]\w{0,63}$/.test(k) && ["string", "number", "boolean"].includes(typeof x) && String(x).length <= 200).slice(0, 24)) as Record<string, string | number | boolean>;
+  return Object.keys(out).length ? out : undefined;
+}
 export function parseGeneration(g: Record<string, unknown> | undefined): GenerationOverrides | undefined {
   if (!g || typeof g !== "object") return undefined;
   const numIn = (v: unknown, lo: number, hi: number, int = false) => (typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi && (!int || Number.isInteger(v)) ? v : undefined);
@@ -92,6 +99,7 @@ export function parseGeneration(g: Record<string, unknown> | undefined): Generat
     topP: numIn(g.topP, 0, 1),
     topK: numIn(g.topK, 1, 10_000, true),
     maxTokens: numIn(g.maxTokens, 256, 2_000_000, true),
+    templateKwargs: kwargsIn(g.templateKwargs),
   };
   return Object.values(out).some((v) => v !== undefined) ? out : undefined;
 }
@@ -191,6 +199,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             if (req.method !== "POST") return json({ error: "POST required" }, 405);
             await refreshProviders(env, { refresh: true });
             return json({ models: env.catalog.all().length, providers: usableProviders(), errors: env.catalog.errors });
+          case "/api/model-controls":
+            return json(await modelControls(env, q.get("model") || env.cfg.defaultModel || autoSelectModel(env) || "mock/echo"));
           case "/api/providers":
             return json(providerList());
           case "/api/credentials":
@@ -239,6 +249,13 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return json(Object.entries(env.cfg.presets).map(([name, p]) => ({ name, description: p.description ?? "", model: p.model ?? null })));
           case "/api/appearance":
             return json(req.method === "POST" ? looks.set(await req.json()) : looks.get());
+          case "/api/wallpaper/daily": {
+            if (req.method !== "POST") return json({ error: "POST required" }, 405);
+            if (env.offline) return json({ error: "offline" }, 503);
+            const photo = await fetchDailyPhoto();
+            looks.saveWallpaper(photo.body, photo.credit);
+            return json(looks.get());
+          }
           case "/api/wallpaper":
             return await wallpaper(req);
         }

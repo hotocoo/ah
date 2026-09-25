@@ -99,11 +99,12 @@ export class Agent {
   }
 
   // Reasoning effort, sampling and output cap can change between runs of a session.
-  setGeneration(g: { reasoning?: AgentOptions["reasoning"]; temperature?: number; topP?: number; topK?: number; maxTokens?: number }) {
+  setGeneration(g: { reasoning?: AgentOptions["reasoning"]; temperature?: number; topP?: number; topK?: number; maxTokens?: number; templateKwargs?: Record<string, unknown> }) {
     if (g.reasoning) this.o.reasoning = g.reasoning;
     if (g.temperature !== undefined) this.o.temperature = g.temperature;
     if (g.topP !== undefined || g.topK !== undefined) this.o.sampling = { ...this.o.sampling, ...(g.topP !== undefined ? { topP: g.topP } : {}), ...(g.topK !== undefined ? { topK: g.topK } : {}) };
     if (g.maxTokens) this.o.maxTokens = Math.min(g.maxTokens, this.o.maxOutputTokens ?? g.maxTokens);
+    if (g.templateKwargs) this.o.templateKwargs = { ...this.o.templateKwargs, ...g.templateKwargs };
   }
 
   setMode(mode: PermissionMode) {

@@ -24,7 +24,7 @@ describe("model card defaults", () => {
     }) as typeof fetch;
     const store = new TelemetryStore(":memory:");
     const d = await modelCardDefaults("q/gguf", { store, fetchImpl: fake });
-    expect(d).toEqual({ repo: "orig/model", sampling: { temperature: 0.6, topP: 0.95, topK: 20, minP: undefined }, templateThinkingToggle: true });
+    expect(d).toEqual({ repo: "orig/model", sampling: { temperature: 0.6, topP: 0.95, topK: 20, minP: undefined }, templateThinkingToggle: true, controls: [] });
     // cached: no network the second time
     expect(await modelCardDefaults("q/gguf", { store, fetchImpl: (() => { throw new Error("net"); }) as unknown as typeof fetch })).toEqual(d);
   });

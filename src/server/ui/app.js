@@ -705,8 +705,22 @@ const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
 // Accent presets: hues only; lightness and chroma come from the theme's accent formula.
 const SWATCHES = [["#3b6ff5", "Cobalt"], ["#0f9d7a", "Teal"], ["#c2410c", "Rust"], ["#b45309", "Amber"], ["#be185d", "Rose"], ["#525252", "Graphite"]];
 let wallUrl = null;
+const STYLES = [["photoreal", "Photoreal"], ["flat", "Flat"]];
+let dailyTried = false;
+async function fetchDaily() {
+  dailyTried = true;
+  const ap = await api("/api/wallpaper/daily", {}, true);
+  if (wallUrl) URL.revokeObjectURL(wallUrl);
+  wallUrl = null;
+  return applyAppearance(ap);
+}
 async function applyAppearance(ap) {
   const r = document.documentElement;
+  r.dataset.style = ap.style ?? "photoreal";
+  const c = ap.credit;
+  $("#photo-credit").innerHTML = c && ap.hasWallpaper ? `<a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.title)}</a> · ${esc(c.artist)}${c.license ? ` · ${esc(c.license)}` : ""}` : "";
+  // Photoreal without a photo: look one up once (Wikimedia featured picture); offline keeps the gradient.
+  if (r.dataset.style === "photoreal" && !ap.hasWallpaper && !dailyTried) fetchDaily().catch(() => {});
   if (ap.theme === "system") delete r.dataset.theme;
   else r.dataset.theme = ap.theme;
   if (ap.accent) r.style.setProperty("--accent-base", ap.accent);
@@ -731,6 +745,7 @@ async function applyAppearance(ap) {
   renderAppearance(ap);
 }
 function renderAppearance(ap) {
+  $("#styles").innerHTML = STYLES.map(([k, l]) => `<button type="button" role="radio" data-style="${k}" aria-checked="${k === (ap.style ?? "photoreal")}">${l}</button>`).join("");
   $("#themes").innerHTML = THEMES.map(([k, l]) => `<button type="button" role="radio" data-theme="${k}" aria-checked="${k === ap.theme}">${l}</button>`).join("");
   $("#swatches").innerHTML = SWATCHES.map(([c, l]) => `<button type="button" role="radio" class="swatch" data-accent="${c}" aria-checked="${c === ap.accent}" aria-label="${l}" title="${l}" style="--sw:${c}"></button>`).join("");
   $("#ap-accent").value = ap.accent ?? rgbHex(accent.gold);
@@ -744,6 +759,16 @@ function renderAppearance(ap) {
 }
 const rgbHex = (c) => `#${c.map((x) => x.toString(16).padStart(2, "0")).join("")}`;
 const saveAppearance = async (patch) => applyAppearance(await api("/api/appearance", patch, true)).catch((e) => ($("#ap-msg").textContent = e.message));
+$("#styles").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-style]");
+  if (b) saveAppearance({ style: b.dataset.style });
+});
+$("#ap-daily").addEventListener("click", async (e) => {
+  e.currentTarget.disabled = true;
+  await fetchDaily().catch((err) => ($("#ap-msg").textContent = err.message));
+  e.currentTarget.disabled = false;
+  loaders.system?.();
+});
 $("#themes").addEventListener("click", (e) => {
   const b = e.target.closest("[data-theme]");
   if (b) saveAppearance({ theme: b.dataset.theme });

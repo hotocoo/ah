@@ -660,3 +660,89 @@ button.sm { height: 26px; padding: 0 var(--s-2); font-size: var(--fs-12); }
 .mk-env label { display: grid; gap: 2px; font: 400 var(--fs-11) var(--mono); color: var(--text-2); }
 .mk-env input { height: 28px; min-height: 28px; font-size: var(--fs-12); }
 .mk-act { display: flex; align-items: flex-start; gap: var(--s-2); }
+
+/* ---------- photoreal style: glass materials over a photograph ----------
+   Top-level surfaces (rail, console, instrument, page cells, dialogs) are frosted glass lit from
+   above: translucent tint + backdrop blur/saturate, a bright top rim, an inset specular edge and a
+   soft drop shadow. Nested things (steps, inputs, rows) are tint only, so blur never stacks.
+   Tints derive from the theme's own --bg/--surface, so light and dark both work. */
+:root[data-style="photoreal"] {
+  --glass-rail: oklch(from var(--bg) l c h / 0.58);
+  --glass-panel: oklch(from var(--bg) l c h / 0.66);
+  --glass-pop: oklch(from var(--surface) l c h / 0.86);
+  --glass-card: oklch(from var(--surface-2) l c h / 0.5);
+  --glass-input: oklch(from var(--bg) l c h / 0.42);
+  --rim: oklch(100% 0 0 / 0.26);
+  --rim-lo: oklch(100% 0 0 / 0.08);
+  --spec: inset 0 1px 0 oklch(100% 0 0 / 0.16), inset 0 -1px 0 oklch(0% 0 0 / 0.25);
+  --drop: 0 2px 6px oklch(0% 0 0 / 0.25), 0 18px 48px oklch(0% 0 0 / 0.35);
+  --border: oklch(100% 0 0 / 0.1);
+  --border-strong: oklch(100% 0 0 / 0.18);
+  --bg-subtle: oklch(100% 0 0 / 0.05);
+  --surface-2: oklch(from var(--surface) l c h / 0.55);
+}
+:root[data-style="photoreal"][data-theme="light"], :root[data-style="photoreal"]:not([data-theme="dark"]) { }
+@media (prefers-color-scheme: light) {
+  :root[data-style="photoreal"]:not([data-theme="dark"]) { --rim: oklch(100% 0 0 / 0.7); --rim-lo: oklch(100% 0 0 / 0.25); --spec: inset 0 1px 0 oklch(100% 0 0 / 0.75), inset 0 -1px 0 oklch(100% 0 0 / 0.15); --drop: 0 2px 4px oklch(0% 0 0 / 0.06), 0 12px 32px oklch(0% 0 0 / 0.14), 0 32px 64px oklch(0% 0 0 / 0.1); --border: oklch(0% 0 0 / 0.08); --border-strong: oklch(0% 0 0 / 0.14); --bg-subtle: oklch(0% 0 0 / 0.04); --glass-rail: oklch(from var(--bg) l c h / 0.55); --glass-panel: oklch(from var(--bg) l c h / 0.64); }
+}
+:root[data-style="photoreal"][data-theme="light"] { --rim: oklch(100% 0 0 / 0.7); --rim-lo: oklch(100% 0 0 / 0.25); --spec: inset 0 1px 0 oklch(100% 0 0 / 0.75), inset 0 -1px 0 oklch(100% 0 0 / 0.15); --drop: 0 2px 4px oklch(0% 0 0 / 0.06), 0 12px 32px oklch(0% 0 0 / 0.14), 0 32px 64px oklch(0% 0 0 / 0.1); --border: oklch(0% 0 0 / 0.08); --border-strong: oklch(0% 0 0 / 0.14); --bg-subtle: oklch(0% 0 0 / 0.04); }
+
+/* The photograph, full bleed and static (a fixed layer keeps backdrop blur cheap), dimmed once. */
+:root[data-style="photoreal"] body { background: var(--bg); }
+:root[data-style="photoreal"] .wallpaper { inset: 0; opacity: 1; filter: none; background: var(--wall, radial-gradient(120% 90% at 15% 10%, oklch(62% 0.09 230) 0%, transparent 55%), radial-gradient(90% 80% at 90% 90%, oklch(55% 0.1 30) 0%, transparent 60%), linear-gradient(160deg, oklch(34% 0.04 250), oklch(22% 0.03 280))) center / cover no-repeat; }
+:root[data-style="photoreal"] .wallpaper::after { background: linear-gradient(oklch(from var(--bg) l c h / 0.28), oklch(from var(--bg) l c h / 0.4)); }
+/* Film grain: one fixed layer for the whole page. */
+:root[data-style="photoreal"] body::before { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.05; mix-blend-mode: overlay; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); background-size: 180px; }
+:root[data-style="photoreal"] .app, :root[data-style="photoreal"] main, :root[data-style="photoreal"] .rail { position: relative; z-index: 2; }
+
+/* Frosted top-level surfaces. */
+:root[data-style="photoreal"] .rail,
+:root[data-style="photoreal"] .instrument,
+:root[data-style="photoreal"] .console .chat,
+:root[data-style="photoreal"] .tab:not(#tab-chat) .cell,
+:root[data-style="photoreal"] dialog {
+  border: 1px solid var(--rim-lo);
+  border-top-color: var(--rim);
+  box-shadow: var(--spec), var(--drop);
+  -webkit-backdrop-filter: blur(var(--glass-blur, 26px)) saturate(170%);
+  backdrop-filter: blur(var(--glass-blur, 26px)) saturate(170%);
+}
+:root[data-style="photoreal"] .rail { --glass-blur: 40px; background: var(--glass-rail); border-width: 0 1px 0 0; border-right-color: var(--rim-lo); box-shadow: var(--spec); }
+:root[data-style="photoreal"] .console { gap: 12px; padding: 12px; }
+:root[data-style="photoreal"] .console .chat, :root[data-style="photoreal"] .instrument { background: var(--glass-panel); border-radius: 18px; overflow: hidden; }
+:root[data-style="photoreal"] .tab:not(#tab-chat) .cell { background: var(--glass-panel); border-radius: 16px; }
+:root[data-style="photoreal"] dialog { background: var(--glass-pop); }
+:root[data-style="photoreal"] .chat-head { border-bottom-color: var(--border); }
+
+/* Specular sheen on the big panels: a soft diagonal light, above the tint, below content. */
+:root[data-style="photoreal"] .console .chat::before, :root[data-style="photoreal"] .instrument::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(135deg, oklch(100% 0 0 / 0.07), transparent 38%); }
+:root[data-style="photoreal"] .console .chat, :root[data-style="photoreal"] .instrument { position: relative; isolation: isolate; }
+
+/* Nested surfaces: tint only. */
+:root[data-style="photoreal"] .step, :root[data-style="photoreal"] .plan, :root[data-style="photoreal"] .readouts, :root[data-style="photoreal"] .msg.user .text, :root[data-style="photoreal"] .diff, :root[data-style="photoreal"] .md pre.code { background: var(--glass-card); box-shadow: inset 0 1px 0 var(--rim-lo); }
+:root[data-style="photoreal"] .composer { background: var(--glass-input); border-color: var(--border-strong); box-shadow: inset 0 1px 2px oklch(0% 0 0 / 0.18), inset 0 1px 0 var(--rim-lo); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-style="photoreal"] input, :root[data-style="photoreal"] select, :root[data-style="photoreal"] textarea:not(#chat-input) { background-color: var(--glass-input); }
+:root[data-style="photoreal"] .tool-body pre { background: oklch(from var(--bg) l c h / 0.5); }
+
+.photo-credit { position: fixed; right: 14px; bottom: 8px; z-index: 3; max-width: 46ch; font-size: 10.5px; color: oklch(100% 0 0 / 0.7); text-shadow: 0 1px 2px oklch(0% 0 0 / 0.6); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.photo-credit a { color: inherit; }
+:root:not([data-style="photoreal"]) .photo-credit { display: none; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-style="photoreal"] { --glass-rail: var(--bg); --glass-panel: var(--surface); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root[data-style="photoreal"] { --glass-rail: var(--bg-subtle); --glass-panel: var(--surface); --glass-card: var(--surface-2); }
+  :root[data-style="photoreal"] .rail, :root[data-style="photoreal"] .instrument, :root[data-style="photoreal"] .console .chat, :root[data-style="photoreal"] .tab:not(#tab-chat) .cell, :root[data-style="photoreal"] dialog { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root[data-style="photoreal"] body::before { display: none; }
+}
+@media (prefers-contrast: more) {
+  :root[data-style="photoreal"] .rail, :root[data-style="photoreal"] .instrument, :root[data-style="photoreal"] .console .chat, :root[data-style="photoreal"] .tab:not(#tab-chat) .cell { background: Canvas; -webkit-backdrop-filter: none; backdrop-filter: none; border: 1px solid CanvasText; }
+}
+.tune-template { display: grid; gap: var(--s-2); }
+.tune-template:empty { display: none; }
+.tune-template .help { margin: 0; font-size: var(--fs-11); color: var(--muted); }
+.tune-panel { max-height: 70dvh; overflow: auto; }
+.tune-panel label[hidden] { display: none; }
+.tune-panel { width: 340px; }
+.tune-panel label { grid-template-columns: 1fr 150px; }
