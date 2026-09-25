@@ -630,3 +630,14 @@ button.sm { height: 26px; padding: 0 var(--s-2); font-size: var(--fs-12); }
 .tune-panel input, .tune-panel select { height: 28px; min-height: 28px; font-size: var(--fs-12); }
 .tune-panel .help { margin: 0; font-size: var(--fs-11); color: var(--muted); }
 .prov-name { align-items: flex-start; }
+.set-groups { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 520px), 1fr)); align-items: start; }
+.set-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-4); align-items: center; padding: var(--s-3) 0; border-top: 1px solid var(--border); }
+.set-row:first-of-type { border-top: 0; }
+.set-row label { display: flex; flex-direction: column; gap: 2px; }
+.set-row label strong { font: 500 var(--fs-12) var(--mono); }
+.set-row label span { font-size: var(--fs-12); color: var(--muted); }
+.set-ctl { display: flex; align-items: center; gap: var(--s-2); }
+.set-ctl input[type="text"], .set-ctl input[type="number"], .set-ctl select { width: 200px; height: 30px; min-height: 30px; font-size: var(--fs-12); }
+.set-ctl textarea { width: 220px; font: 400 var(--fs-12) var(--mono); }
+.raw { width: 100%; font: 400 var(--fs-12) / 1.5 var(--mono); }
+.row-actions { display: flex; align-items: center; gap: var(--s-3); margin-top: var(--s-2); }

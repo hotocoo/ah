@@ -391,6 +391,64 @@ $("#providers").addEventListener("click", async (e) => {
   renderProviders();
 });
 
+// ---------- settings ----------
+function settingControl(f) {
+  const id = `set-${f.key.replace(/\./g, "-")}`;
+  const v = f.value;
+  if (f.type === "boolean") return `<input type="checkbox" id="${id}" data-key="${esc(f.key)}" ${v ? "checked" : ""} />`;
+  if (f.choices) return `<select id="${id}" data-key="${esc(f.key)}">${f.choices.map((c) => `<option ${c === v ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>`;
+  if (f.type === "list") return `<textarea id="${id}" data-key="${esc(f.key)}" rows="2" spellcheck="false">${esc((v ?? []).join("\n"))}</textarea>`;
+  return `<input id="${id}" data-key="${esc(f.key)}" type="${f.type === "number" ? "number" : "text"}" value="${esc(v ?? "")}" placeholder="${esc(f.default ?? "auto")}" />`;
+}
+function renderSettings(d) {
+  $("#set-path").textContent = d.path;
+  const groups = [...new Set(d.fields.map((f) => f.group))];
+  $("#settings").innerHTML = groups
+    .map(
+      (g) =>
+        `<article class="cell"><h2>${esc(g)}</h2>${d.fields
+          .filter((f) => f.group === g)
+          .map(
+            (f) =>
+              `<div class="set-row"><label for="set-${esc(f.key.replace(/\./g, "-"))}"><strong>${esc(f.key)}</strong><span>${esc(f.help)}</span></label><div class="set-ctl">${settingControl(f)}${f.user !== null ? `<button type="button" class="ghost sm" data-reset="${esc(f.key)}" title="Back to the default (${esc(JSON.stringify(f.default))})">Reset</button>` : ""}</div></div>`,
+          )
+          .join("")}</article>`,
+    )
+    .join("");
+  if (document.activeElement !== $("#set-raw")) $("#set-raw").value = d.raw;
+}
+loaders.settings = async () => renderSettings(await api("/api/config"));
+async function saveSetting(key, value, el) {
+  try {
+    renderSettings(await api("/api/config", { key, value }));
+    $("#set-raw-msg").textContent = `Saved ${key}`;
+  } catch (err) {
+    el?.closest(".set-row")?.append(alertBox(`Could not save ${key}`, err.message));
+  }
+}
+$("#settings").addEventListener("change", (e) => {
+  const el = e.target.closest("[data-key]");
+  if (!el) return;
+  const key = el.dataset.key;
+  const value = el.type === "checkbox" ? el.checked : el.tagName === "TEXTAREA" ? el.value.split("\n").map((x) => x.trim()).filter(Boolean) : el.type === "number" ? (el.value === "" ? null : Number(el.value)) : el.value.trim() || null;
+  saveSetting(key, value, el);
+});
+$("#settings").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-reset]");
+  if (b) saveSetting(b.dataset.reset, null, b);
+});
+$("#set-raw-save").addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/config", { method: "PUT", headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ text: $("#set-raw").value }) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    renderSettings(j);
+    $("#set-raw-msg").textContent = "Saved config.json";
+  } catch (err) {
+    $("#set-raw-msg").textContent = err.message;
+  }
+});
+
 loaders.chat = loadConsole;
 
 // ---------- studio ----------

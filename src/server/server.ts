@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -11,7 +11,7 @@ import { adapterForNpm } from "../providers/registry.ts";
 import { saveCredential } from "../app/credentials.ts";
 import { walkFiles } from "../tools/search.ts";
 import { discoverBackend } from "../tools/computer.ts";
-import { parseModelRef } from "../config.ts";
+import { checkSetting, defaultConfig, getPath, parseModelRef, SETTINGS } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
 import { compileScene, designScene } from "../media/model3d.ts";
 import { sampleHardware } from "../runtimes/hardware.ts";
@@ -193,6 +193,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return json(providerList());
           case "/api/credentials":
             return await credentials(req);
+          case "/api/config":
+            return await configRoute(req);
           case "/api/telemetry/summary":
             return json(summary(db(), filter));
           case "/api/telemetry/runs":
@@ -434,6 +436,51 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     await refreshProviders(env);
     const listed = env.catalog.all().filter((m) => m.provider === p.id).length;
     return json({ ok: true, provider: p.id, active: env.registry.has(p.id), models: listed, errors: env.catalog.errors.filter((e) => e.includes(p.id)) });
+  }
+
+  // Settings: the effective value of every editable key, what ~/.ah/config.json sets, and the
+  // default. Writes go to that user file (validated) and apply to this server at once.
+  async function configRoute(req: Request): Promise<Response> {
+    const file = join(env.cfg.dataDir, "config.json");
+    const read = (): Record<string, unknown> => {
+      try {
+        return JSON.parse(readFileSync(file, "utf8")) as Record<string, unknown>;
+      } catch {
+        return {};
+      }
+    };
+    const setPath = (obj: Record<string, unknown>, key: string, value: unknown) => {
+      const parts = key.split(".");
+      let o = obj;
+      for (const k of parts.slice(0, -1)) o = (o[k] && typeof o[k] === "object" ? o[k] : (o[k] = {})) as Record<string, unknown>;
+      if (value === null || value === undefined) delete o[parts.at(-1)!];
+      else o[parts.at(-1)!] = value;
+    };
+    if (req.method === "POST") {
+      const b = (await req.json()) as { key?: string; value?: unknown };
+      const value = checkSetting(String(b.key), b.value ?? null);
+      const user = read();
+      setPath(user, b.key!, value);
+      writeFileSync(file, `${JSON.stringify(user, null, 2)}\n`);
+      setPath(env.cfg as unknown as Record<string, unknown>, b.key!, value ?? getPath(defaultConfig(), b.key!));
+    } else if (req.method === "PUT") {
+      const b = (await req.json()) as { text?: string };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(b.text ?? "");
+      } catch (err) {
+        return json({ error: `not valid JSON: ${(err as Error).message}` }, 400);
+      }
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return json({ error: "config must be a JSON object" }, 400);
+      writeFileSync(file, `${JSON.stringify(parsed, null, 2)}\n`);
+      for (const spec of SETTINGS) setPath(env.cfg as unknown as Record<string, unknown>, spec.key, getPath(parsed, spec.key) ?? getPath(defaultConfig(), spec.key));
+    }
+    const user = read();
+    return json({
+      path: file,
+      raw: JSON.stringify(user, null, 2),
+      fields: SETTINGS.map((spec) => ({ ...spec, value: getPath(env.cfg, spec.key) ?? null, user: getPath(user, spec.key) ?? null, default: getPath(defaultConfig(), spec.key) ?? null })),
+    });
   }
 
   // Uncommitted changes in the workspace (optionally only some files), for review in the console.

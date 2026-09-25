@@ -258,3 +258,21 @@ test("generation settings from the page are range-checked", async () => {
   expect(parseGeneration({ reasoning: "ultra", temperature: 9, topK: 1.5 })).toBeUndefined();
   expect(parseGeneration(undefined)).toBeUndefined();
 });
+
+describe("settings API", () => {
+  const h = { "x-ah-token": "t0k", "content-type": "application/json" };
+  test("edits are validated, written to the user config and applied live", async () => {
+    const set = (key: string, value: unknown) => fetch(`${base}/api/config`, { method: "POST", headers: h, body: JSON.stringify({ key, value }) });
+    expect((await set("maxTurns", 12)).status).toBe(200);
+    expect(srv.env.cfg.maxTurns).toBe(12);
+    expect(JSON.parse(readFileSync(join(home, "config.json"), "utf8"))).toMatchObject({ maxTurns: 12 });
+    expect((await set("reasoning", "ultra")).status).toBe(500);
+    expect((await set("nope", 1)).status).toBe(500);
+    await set("recall.limit", 3);
+    expect(srv.env.cfg.recall.limit).toBe(3);
+    const d = (await (await set("maxTurns", null)).json()) as { fields: { key: string; value: unknown; user: unknown }[] };
+    expect(d.fields.find((f) => f.key === "maxTurns")).toMatchObject({ value: 60, user: null });
+    const bad = await fetch(`${base}/api/config`, { method: "PUT", headers: h, body: JSON.stringify({ text: "{nope" }) });
+    expect(bad.status).toBe(400);
+  });
+});

@@ -35,6 +35,7 @@
             <button role="tab" id="t-memory" data-tab="memory" aria-controls="tab-memory" aria-selected="false" tabindex="-1"><span class="lbl">Memory</span></button>
             <button role="tab" id="t-ext" data-tab="ext" aria-controls="tab-ext" aria-selected="false" tabindex="-1"><span class="lbl">Extensions</span></button>
             <button role="tab" id="t-system" data-tab="system" aria-controls="tab-system" aria-selected="false" tabindex="-1"><span class="lbl">System</span></button>
+            <button role="tab" id="t-settings" data-tab="settings" aria-controls="tab-settings" aria-selected="false" tabindex="-1"><span class="lbl">Settings</span></button>
           </div>
         </nav>
         <section class="sessions" aria-labelledby="h-sessions">
@@ -305,6 +306,21 @@
                 <p class="field-row" id="ap-msg" role="status"></p>
               </div>
             </div>
+          </article>
+        </section>
+
+        <section id="tab-settings" class="tab" role="tabpanel" aria-labelledby="h-settings" hidden>
+          <header class="page-head">
+            <h1 id="h-settings" class="title">Settings</h1>
+            <p class="lede">Saved to <code id="set-path">~/.ah/config.json</code> and applied at once (running sessions keep theirs; new ones use these). A workspace's <code>.ah/config.json</code> overrides them. Provider keys live in Models, MCP servers and skills in Extensions.</p>
+          </header>
+          <div id="settings" class="set-groups"></div>
+          <article class="cell" style="margin-top: var(--s-4)">
+            <h2>config.json</h2>
+            <p class="help">Everything else (providers, per-model sampling, presets, mcpServers) as raw JSON.</p>
+            <label for="set-raw" class="sr">config.json</label>
+            <textarea id="set-raw" class="raw" rows="14" spellcheck="false"></textarea>
+            <div class="row-actions"><button type="button" id="set-raw-save">Save JSON</button><span id="set-raw-msg" class="meta"></span></div>
           </article>
         </section>
       </main>

@@ -155,3 +155,59 @@ export function parseModelRef(ref: string): { provider: string; model: string } 
   if (i <= 0) throw new Error(`model ref must be "provider/model", got "${ref}"`);
   return { provider: ref.slice(0, i), model: ref.slice(i + 1) };
 }
+
+// Settings the web app can edit, with their help text and allowed values. Also the validation
+// for writes, so the page and the file agree. Keys are dotted paths into AhConfig.
+export interface SettingSpec {
+  key: string;
+  type: "string" | "number" | "boolean" | "list";
+  choices?: string[];
+  help: string;
+  group: string;
+}
+export const SETTINGS: SettingSpec[] = [
+  { key: "defaultModel", type: "string", group: "Models", help: "provider/model used when none is picked. Empty: the best discovered local model." },
+  { key: "reasoning", type: "string", choices: ["off", "low", "medium", "high", "max"], group: "Models", help: "Reasoning effort requested from models that support it." },
+  { key: "maxTokens", type: "number", group: "Models", help: "Output cap per model call (also capped by the model's own limit)." },
+  { key: "contextWindow", type: "number", group: "Models", help: "Context window wanted for local models; capped by the trained maximum and free memory. Empty: sized automatically." },
+  { key: "toolProtocol", type: "string", choices: ["auto", "native", "text"], group: "Models", help: "Native tool calls, tools described in the prompt, or auto (native when the runtime reports tool support)." },
+  { key: "imageModel", type: "string", group: "Models", help: "provider/model for image generation. Empty: first discovered image backend." },
+  { key: "model3d", type: "string", group: "Models", help: "provider/model that designs 3D scenes. Empty: the chat model." },
+  { key: "permissionMode", type: "string", choices: ["ask", "auto", "read-only"], group: "Agent", help: "Default permissions for new sessions. auto still asks for dangerous commands and paths outside the workspace." },
+  { key: "maxTurns", type: "number", group: "Agent", help: "Model calls allowed per task before it stops." },
+  { key: "evidenceGate", type: "boolean", group: "Agent", help: "A task that changed files must pass a check (tests, build) before it may finish." },
+  { key: "resetAfterFailures", type: "number", group: "Agent", help: "Rebuild the context from the task and evidence after this many failed actions in a row (0 = off)." },
+  { key: "contextBudgetRatio", type: "number", group: "Agent", help: "Compact the conversation when it fills this share of the context window (0-1)." },
+  { key: "compactToolsRatio", type: "number", group: "Agent", help: "Offer only core tools when the window is smaller than this many times the prompt plus tool definitions." },
+  { key: "bashTimeoutMs", type: "number", group: "Tools", help: "Default timeout for shell commands, in milliseconds." },
+  { key: "shellSandbox", type: "string", choices: ["auto", "off"], group: "Tools", help: "auto: shell commands may write only inside the workspace, temp dirs and tool caches." },
+  { key: "writablePaths", type: "list", group: "Tools", help: "Extra directories the sandboxed shell may write to (one per line)." },
+  { key: "computerUse", type: "string", choices: ["off", "ask", "auto"], group: "Tools", help: "Desktop control tools: hidden, approve every action, or act without asking." },
+  { key: "mcpTools", type: "string", choices: ["auto", "inline", "deferred"], group: "Tools", help: "How MCP tools reach the model: every schema inline, one mcp tool plus an index, or auto." },
+  { key: "recall.enabled", type: "boolean", group: "Memory", help: "Recall persistent memories into each task and learn from verified runs." },
+  { key: "recall.limit", type: "number", group: "Memory", help: "Memories recalled per task." },
+  { key: "runtimes.scan", type: "boolean", group: "Runtimes", help: "Scan local ports for model runtimes (Ollama, llama.cpp, LM Studio, vLLM, ...)." },
+  { key: "runtimes.endpoints", type: "list", group: "Runtimes", help: "Extra runtime URLs to probe, e.g. a remote Ollama (one per line)." },
+  { key: "telemetry.enabled", type: "boolean", group: "Telemetry", help: "Record runs, turns and tool calls locally (SQLite + JSONL)." },
+  { key: "telemetry.otlpEndpoint", type: "string", group: "Telemetry", help: "Also export traces and metrics to this OTLP/HTTP endpoint." },
+  { key: "hardwareSampling.enabled", type: "boolean", group: "Telemetry", help: "Sample GPU, memory and power during runs." },
+];
+
+export function getPath(obj: unknown, key: string): unknown {
+  return key.split(".").reduce<unknown>((o, k) => (o && typeof o === "object" ? (o as Record<string, unknown>)[k] : undefined), obj);
+}
+
+// Checks a value for a setting; null clears it (back to the default). Throws on bad input.
+export function checkSetting(key: string, value: unknown): unknown {
+  const spec = SETTINGS.find((s) => s.key === key);
+  if (!spec) throw new Error(`unknown setting ${key}`);
+  if (value === null || value === "") return null;
+  if (spec.type === "boolean" && typeof value !== "boolean") throw new Error(`${key} must be true or false`);
+  if (spec.type === "number" && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) throw new Error(`${key} must be a non-negative number`);
+  if (spec.type === "string" && typeof value !== "string") throw new Error(`${key} must be text`);
+  if (spec.type === "list" && !(Array.isArray(value) && value.every((v) => typeof v === "string"))) throw new Error(`${key} must be a list of strings`);
+  if (spec.choices && !spec.choices.includes(value as string)) throw new Error(`${key} must be one of ${spec.choices.join(", ")}`);
+  return value;
+}
+
+export const userConfigPath = () => join(AH_HOME, "config.json");
