@@ -1,6 +1,6 @@
 # Head-to-head, 2026-09-25: ah vs Hermes Agent vs DeepSeek Harness (dsh) on LFM2.5-2.6B
 
-Same model for all three: `DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0` (3.1 GB) on one llama-server (`llama-server -hf <repo>:Q8_0 --jinja -c 65536 -ngl 99`, 4 slots, harnesses run one after another). Apple M4 Max, 64 GB. Core suite, 8 tasks × 3 trials, fresh sandbox per trial, hidden graders. `bash scripts/h2h.sh --trials 3`, run from a frozen worktree at build `85cc190`.
+Same model for all three: `DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0` (3.1 GB) on one llama-server, harnesses run one after another. The server was restarted by the user at 13:39, two minutes into the first ah run. From then on it ran `llama-server -hf <repo>:Q8_0 --ctx-size 131072 --parallel 1 --flash-attn on --jinja --temperature 0.1 --top-k 64 --top-p 0.95 --min-p 0.05 --repeat-penalty 1.1 --reasoning on` (plus cache and batch flags), and every Hermes, dsh and later ah trial ran on it. The first ah trials ran on a 4-slot, 65,536-token server; the restart itself cut one ah trial (`go-feature-stack` #1, "socket connection was closed", `agent_error`). Apple M4 Max, 64 GB. Core suite, 8 tasks × 3 trials, fresh sandbox per trial, hidden graders. `bash scripts/h2h.sh --trials 3`, run from a frozen worktree at build `85cc190`.
 
 ## Core suite
 
@@ -30,7 +30,7 @@ From ah's own telemetry for these 24 trials (215 tool errors):
 | `bash` `timeout_ms` given in seconds (under the 1000 ms minimum) | 66 of 97 bash errors | values under 1000 read as seconds (D39) |
 | absolute paths that rebuilt the workspace root wrong (dropped the trial number) | 90 of 118 file-tool errors | the tail that exists inside the root is used; otherwise the error names the root and the relative path tried (D39) |
 | `read_file` on a directory | 3 | returns the listing (D39) |
-| server closed the connection mid-stream | 1 trial ended `agent_error` | stream read errors are retryable (D38) |
+| server closed the connection mid-stream (the server restart) | 1 trial ended `agent_error` | stream read errors are retryable (D38) |
 | trial sandboxes at `work/<task>/<n>`: sibling trials visible, the model ran `cargo build` inside trial 1's directory from trial 3 | shared by all harnesses | each trial in a private `$TMPDIR/ah-trial-XXXX/<task-id>` (D40) |
 
 ## After the fixes: ah at `ac30c5f`, same conditions

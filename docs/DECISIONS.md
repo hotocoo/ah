@@ -213,7 +213,7 @@ Two more robustness features came out of these runs: project facts in the system
   - **`/graph`** replaces `repo_map` with a `graph` tool (methods are recognised only when the line ends in `{` after a parameter list, so call statements in Python or semicolon-less JavaScript stay references; found by cross-checking the first version): the same declaration outline, plus a symbol's definitions, every reference attributed to its enclosing function or method (callers), and the declared functions its body calls. Language-agnostic declaration matching, no parser per language, no index on disk.
   - **`/loop`** is a few lines over `agent.run`: fixed interval until stopped (or N runs), or back to back until the judge says done.
 - **Rejected:** a separate verifier agent with its own tool loop (a second loop to maintain; the check plus the diff carries the signal), a persistent graph database (the scan is fast enough for repositories of a few thousand files; `ponytail:` note in `graph.ts`).
-- **Found while benchmarking:** a llama-server connection dropped mid-stream ("socket connection was closed unexpectedly") ended a trial as `agent_error`, because only connect-time failures were retryable. Stream read errors are now retryable `unavailable` errors too (`sseData`, `ndjson`).
+- **Found while benchmarking:** a llama-server restart during a trial dropped the connection mid-stream ("socket connection was closed unexpectedly") and ended the trial as `agent_error`, because only connect-time failures were retryable. Stream read errors are now retryable `unavailable` errors too (`sseData`, `ndjson`).
 
 ## D39. Three more small-model slips (LFM2.5-2.6B bench)
 
