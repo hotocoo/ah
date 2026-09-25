@@ -8,8 +8,10 @@ import { confine, rel, truncate, type Tool } from "./types.ts";
 // (declared functions its body calls). No parser per language; declarations are lines that
 // start with a declaration keyword at low indentation.
 const DECL = /^\s*(export\s+)?(default\s+)?(async\s+)?(pub(\(crate\))?\s+)?(function\*?|class|interface|type|enum|struct|trait|impl|fn|def|func|const|let|module|object)\s+([A-Za-z_$][\w$]*)/;
-// Methods inside a class body (two-space or four-space indent, no keyword): `  async run(`, `    def x(` is DECL.
-const METHOD = /^ {2}(?: {2})?(?:(?:public|private|protected|static|async|readonly|override|get|set)\s+)*#?([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\([^)]*\)?[^;]*\{?\s*$/;
+// Methods inside a class body (two- or four-space indent, no keyword): a name, a parameter
+// list (one level of nested parentheses) and an optional return type, then `{` ending the line.
+// Call statements (`  helper(1)`, `  foo(a, () => {`) do not end that way. Python's `def` is DECL.
+const METHOD = /^ {2}(?: {2})?(?:(?:public|private|protected|static|async|readonly|override|get|set)\s+)*#?([A-Za-z_$][\w$]*)\s*(?:<[^>]*>)?\([^()]*(?:\([^()]*\)[^()]*)*\)\s*(?::\s*[^=;{}()]+)?\{\s*$/;
 const NOT_METHOD = new Set(["if", "for", "while", "switch", "catch", "return", "function", "else", "do", "try", "with", "await", "new", "super", "this"]);
 const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".py", ".rs", ".go", ".java", ".kt", ".rb", ".swift", ".c", ".h", ".cpp", ".hpp", ".cs", ".php", ".scala"]);
 const MAX_FILE_BYTES = 1_000_000;

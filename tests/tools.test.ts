@@ -163,6 +163,14 @@ describe("file tools", () => {
     expect(total).toContain("src/c.ts:3 method total (lines 3-6)");
     expect(total).toContain("src/c.ts:9 in function sum3");
     expect(total).toContain("calls: add");
+    // Call statements in Python and semicolon-less JS are references, not declarations.
+    writeFileSync(join(root, "src", "d.py"), "def main():\n    helper(1)\n\ndef helper(n):\n    return n\n");
+    writeFileSync(join(root, "src", "e.js"), "export function go() {\n  helper(2)\n}\n");
+    const helper = (await run("graph", { symbol: "helper" })).content;
+    expect(helper).toContain("src/d.py:4 def helper");
+    expect(helper).toContain("src/d.py:2 in def main");
+    expect(helper).toContain("src/e.js:2 in function go");
+    expect(helper).not.toContain("method helper");
   });
 });
 
