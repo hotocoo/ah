@@ -219,6 +219,7 @@ Two more robustness features came out of these runs: project facts in the system
 
 - **Found by:** tool errors in the 2026-09-25 LFM2.5-2.6B core-suite run: 13 of 26 `bash` errors were `timeout_ms` under the 1000 ms minimum (the model passed seconds); 17 file-tool errors were absolute paths that rebuilt the workspace root wrong (dropped the trial directory, `.../rust-fix-compile-and-logic/Cargo.toml` for root `.../rust-fix-compile-and-logic/1`, or mixed in the suite directory); several `read_file` calls named a directory.
 - **Chosen:** `timeout_ms` under 1000 is read as seconds. An absolute path outside the root whose tail exists inside it resolves to that file (longest tail first; still confined, and a tail that does not exist still errors). `read_file` on a directory returns its listing. Each turns a wasted turn into the result the model wanted.
+- An absolute path near the root that still escapes (the file does not exist anywhere under it) gets an error naming the workspace root and the relative path that was tried, instead of a bare "path escapes workspace" the model kept retrying.
 - **Note:** the path rule can read a different file than the one named (`/etc/passwd` becomes `<root>/passwd` when that exists). It never leaves the workspace; like D33, it does what the model meant inside the only place it may act.
 - **Cost of D38's `graph` tool:** 41 more schema tokens than `repo_map` (1,137 to 1,178 for the default tool set, LFM2.5 tokenizer); the compact profile is unchanged (799).
 
