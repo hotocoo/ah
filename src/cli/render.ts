@@ -92,6 +92,13 @@ export function terminalRenderer(opts: { verbose?: boolean; json?: boolean } = {
       case "memory_recall":
         err(dim(`  ◆ recalled ${e.memories.length} memor${e.memories.length === 1 ? "y" : "ies"} (${e.memories.map((m) => `${m.kind} ${m.trust.toFixed(2)}`).join(", ")})`));
         break;
+      case "goal":
+        err((e.status === "met" ? green : yellow)(`  ◎ goal ${e.status.replace("_", " ")}${e.goal && e.status === "set" ? `: ${e.goal}` : ""}${e.reason && e.status === "not_met" ? `: ${e.reason.split("\n")[0]}` : ""}`));
+        break;
+      case "review":
+        if (e.kind === "verify") err((e.met ? green : yellow)(`  ✓ verify: ${e.met ? "met" : "not met"}`));
+        else err(dim(`  ✦ advisor: ${e.text.split("\n")[0]!.slice(0, 160)}`));
+        break;
       case "evidence_gate":
         err(yellow(`  ⚑ ${e.lastFailed ? "last check failed" : "no check passed"} after changing ${e.files.join(", ")}; asking to verify`));
         break;

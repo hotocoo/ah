@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ToolRegistry } from "../src/tools/index.ts";
-import { isPrivateHost, repoMap } from "../src/tools/misc.ts";
+import { isPrivateHost } from "../src/tools/misc.ts";
 import { validate } from "../src/tools/schema.ts";
 import { detectTestCommand, isDangerousCommand, missingCommandHint } from "../src/tools/shell.ts";
 import { applyEdit } from "../src/tools/fs.ts";
@@ -132,10 +132,18 @@ describe("file tools", () => {
     expect(g.content).not.toContain("node_modules");
   });
 
-  test("repo_map outlines declarations", () => {
-    const map = repoMap(root, root);
+  test("graph outlines declarations, and finds a symbol's definition, callers and calls", async () => {
+    const map = (await run("graph", {})).content;
     expect(map).toContain("src/a.ts (4 lines)");
     expect(map).toContain("1: function add");
+    writeFileSync(join(root, "src", "c.ts"), "import { add } from './a';\nexport class Calc {\n  total(xs: number[]) {\n    return xs.reduce((s, x) => add(s, x), 0);\n  }\n}\nexport function sum3(a: number) {\n  const t = new Calc();\n  return t.total([a, a, a]);\n}\n");
+    const add = (await run("graph", { symbol: "add" })).content;
+    expect(add).toContain("src/a.ts:1 function add");
+    expect(add).toContain("src/c.ts:4 in method total");
+    const total = (await run("graph", { symbol: "total" })).content;
+    expect(total).toContain("src/c.ts:3 method total (lines 3-6)");
+    expect(total).toContain("src/c.ts:9 in function sum3");
+    expect(total).toContain("calls: add");
   });
 });
 

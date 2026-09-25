@@ -10,6 +10,7 @@ import type { AgentEvent, AgentEventHandler, RunOutcome, RunSummary } from "./ev
 import { mentionedFiles } from "./mentions.ts";
 import { EvidenceLedger } from "./evidence.ts";
 import type { MemoryStore } from "../memory/store.ts";
+import { advise, judge, type Judgement, type Reviewer } from "./review.ts";
 
 export interface AgentOptions {
   provider: Provider;
@@ -53,6 +54,8 @@ export interface AgentOptions {
   // Episodic reset: after this many consecutive failed actions, rebuild the context from
   // the task and harness evidence (D31). 0 disables.
   resetAfterFailures?: number;
+  // Second-opinion model for the advisor, /verify and the goal judge (default: this model).
+  reviewer?: Reviewer;
 }
 
 const sleep = (ms: number, signal?: AbortSignal) =>
@@ -135,6 +138,38 @@ export class Agent {
     this.emit({ type: "steer", runId: this.runId, turn: this.turn, text, t: Date.now() });
   }
 
+  // Session goal: a condition that must hold before a run may end. When the model stops,
+  // an independent judge (fresh context, the check re-run, the diff) decides; "not met"
+  // sends the model back to work with the judge's reasons. Persists across runs until met.
+  goal: string | null = null;
+  setGoal(goal: string | null) {
+    this.goal = goal?.trim() || null;
+    this.emit({ type: "goal", runId: this.runId, turn: this.turn, goal: this.goal, status: this.goal ? "set" : "cleared", t: Date.now() });
+  }
+
+  private reviewer(): Reviewer {
+    return this.o.reviewer ?? { provider: this.o.provider, model: this.o.model, contextWindow: this.o.contextWindow };
+  }
+
+  private reviewContext() {
+    return { task: this.task, goal: this.goal, transcript: renderTranscript(this.messages), evidence: this.ledger.snapshot() };
+  }
+
+  async advise(question?: string): Promise<string> {
+    const text = await advise(this.reviewer(), this.reviewContext(), question, this.o.signal);
+    this.emit({ type: "review", runId: this.runId, turn: this.turn, kind: "advisor", text, t: Date.now() });
+    return text;
+  }
+
+  // Independent verification of a criterion (default: the last task) against the workspace.
+  async verify(criterion?: string): Promise<Judgement> {
+    const what = criterion ?? this.goal ?? this.task;
+    if (!what.trim()) return { met: false, reason: "nothing to verify: no task has run in this session" };
+    const j = await judge(this.reviewer(), this.reviewContext(), what, { toolContext: this.o.toolContext, testCommand: this.o.testCommand }, this.o.signal);
+    this.emit({ type: "review", runId: this.runId, turn: this.turn, kind: "verify", text: j.reason, met: j.met, t: Date.now() });
+    return j;
+  }
+
   private emit(e: AgentEvent) {
     this.o.onEvent?.(e);
   }
@@ -153,7 +188,7 @@ export class Agent {
     this.ledger = new EvidenceLedger(this.o.testCommand ?? null);
     const content: ContentBlock[] = typeof prompt === "string" ? [{ type: "text", text: prompt }] : prompt;
     const promptText = textOf({ role: "user", content });
-    this.task = promptText;
+    this.task = this.goal ? `${promptText}\n\nSession goal (must hold before you finish): ${this.goal}` : promptText;
     this.emit({ type: "run_start", runId: this.runId, sessionId: this.sessionId, model: this.o.model, provider: this.o.provider.key, prompt: promptText, t: Date.now() });
     // Recalled memory rides on the user message, not the system prompt, so the cached
     // system prefix stays byte-stable (D4).
@@ -163,7 +198,8 @@ export class Agent {
     if (attached.length) this.emit({ type: "attachments", runId: this.runId, turn: this.turn, files: attached.map((a) => a.path), t: Date.now() });
     // Say plainly that these count as read, or models spend a turn re-reading them.
     const files: ContentBlock[] = attached.length ? [{ type: "text", text: `The user attached ${attached.map((a) => a.path).join(", ")} (current content below, with line numbers as read_file shows them). These files are already read in this session: edit them directly without calling read_file.\n\n${attached.map((a) => `<file path="${a.path}">\n${a.text}\n</file>`).join("\n\n")}` }] : [];
-    this.messages.push({ role: "user", content: [...(recalled.block ? [recalled.block] : []), ...content, ...files] });
+    const goal: ContentBlock[] = this.goal ? [{ type: "text", text: `[Session goal] ${this.goal}\nKeep working until this holds; an independent check decides when you stop.` }] : [];
+    this.messages.push({ role: "user", content: [...(recalled.block ? [recalled.block] : []), ...content, ...files, ...goal] });
     const startTurn = this.turn;
     let outcome: RunOutcome = "completed";
     let error: string | undefined;
@@ -281,6 +317,16 @@ export class Agent {
           this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt: cutoffs, reason: "reply hit the output limit without a tool call", delayMs: 0, t: Date.now() });
           this.messages.push({ role: "user", content: [{ type: "text", text: "[ah] Your reply was cut off at the output limit. Think less per turn: take the next concrete step with a tool now (write or run code), then continue." }] });
           continue;
+        }
+        // Goal gate: the model wants to stop; an independent judge decides whether the goal holds.
+        if (!calls.length && this.goal && res.stopReason !== "max_tokens") {
+          const j = await this.verify(this.goal);
+          this.emit({ type: "goal", runId: this.runId, turn: this.turn, goal: this.goal, status: j.met ? "met" : "not_met", reason: j.reason, t: Date.now() });
+          if (!j.met) {
+            this.messages.push({ role: "user", content: [{ type: "text", text: `[ah] Goal not met yet, per an independent check: ${j.reason}\n\nKeep working toward the goal: ${this.goal}` }] });
+            continue;
+          }
+          this.goal = null;
         }
         if (!calls.length) {
           finalText = textOf(res.message);

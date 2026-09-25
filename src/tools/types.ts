@@ -39,6 +39,8 @@ export interface ToolContext {
   computer?: "off" | "ask" | "auto";
   // Persistent memory; scopes[0] is where new memories are written.
   memory?: { store: MemoryStore; scopes: string[] };
+  // Second opinion from the configured advisor model (set only when one is configured).
+  advise?: (question?: string) => Promise<string>;
 }
 
 export interface Tool {

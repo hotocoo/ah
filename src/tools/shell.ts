@@ -112,7 +112,7 @@ export async function exec(command: string, ctx: Pick<ToolContext, "root" | "sig
   return { stdout, stderr, code: timedOut ? null : code, timedOut, durationMs: performance.now() - start };
 }
 
-const formatExec = (r: ExecResult) => {
+export const formatExec = (r: ExecResult) => {
   const parts = [];
   if (r.stdout) parts.push(r.stdout.trimEnd());
   if (r.stderr) parts.push(`[stderr]\n${r.stderr.trimEnd()}`);

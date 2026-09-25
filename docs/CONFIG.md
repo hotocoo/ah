@@ -7,6 +7,7 @@ Optional. Precedence: built-in defaults < `~/.ah/config.json` < `<workspace>/.ah
   "defaultModel": "llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF",        // AH_MODEL; unset = auto-select a local model
   "imageModel": "comfyui/sd_xl_base_1.0.safetensors", // AH_IMAGE_MODEL; unset = first local backend
   "model3d": "llamacpp/my-model",            // AH_3D_MODEL; unset = the session's model
+  "advisorModel": "llamacpp/bigger-model",   // AH_ADVISOR_MODEL; reviewer for /goal, /verify, /advisor; unset = session model, fresh context
   "runtimes": { "endpoints": ["http://gpu-box:11434"], "scan": true },  // AH_SCAN=0 disables port scan
   "contextWindow": 65536,                    // AH_CONTEXT; capped by trained max and memory
   "maxTokens": 32000,

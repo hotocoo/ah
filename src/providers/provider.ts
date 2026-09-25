@@ -115,11 +115,22 @@ export async function ensureOk(res: Response, provider: string): Promise<Respons
 }
 
 // Parses a text/event-stream body into `data:` payloads (joined per event).
+// A connection dropped mid-stream (server closed the socket) is as transient as one refused
+// at connect time: surface it as a retryable "unavailable" error. Aborts pass through.
+async function* chunks(body: ReadableStream<Uint8Array>): AsyncGenerator<Uint8Array> {
+  try {
+    for await (const chunk of body) yield chunk;
+  } catch (err) {
+    if ((err as Error).name === "AbortError" || err instanceof ProviderError) throw err;
+    throw new ProviderError(`stream interrupted: ${(err as Error).message}`, "stream", undefined, true, "unavailable");
+  }
+}
+
 export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator<string> {
   const decoder = new TextDecoder();
   let buf = "";
   let data: string[] = [];
-  for await (const chunk of body) {
+  for await (const chunk of chunks(body)) {
     buf += decoder.decode(chunk, { stream: true });
     let nl: number;
     while ((nl = buf.indexOf("\n")) >= 0) {
@@ -140,7 +151,7 @@ export async function* sseData(body: ReadableStream<Uint8Array>): AsyncGenerator
 export async function* ndjson(body: ReadableStream<Uint8Array>): AsyncGenerator<unknown> {
   const decoder = new TextDecoder();
   let buf = "";
-  for await (const chunk of body) {
+  for await (const chunk of chunks(body)) {
     buf += decoder.decode(chunk, { stream: true });
     let nl: number;
     while ((nl = buf.indexOf("\n")) >= 0) {

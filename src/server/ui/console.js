@@ -87,7 +87,7 @@ export function markdown(src) {
 }
 
 // ---------- tool rows ----------
-const KIND = { read_file: "read", list_dir: "read", repo_map: "read", git_status: "read", glob: "find", grep: "find", memory_search: "find", edit_file: "edit", multi_edit: "edit", write_file: "edit", bash: "run", run_tests: "test", web_fetch: "web", todo_write: "plan", screenshot: "screen", computer: "screen", generate_image: "media", generate_3d: "media", memory_save: "note" };
+const KIND = { read_file: "read", list_dir: "read", graph: "read", git_status: "read", glob: "find", grep: "find", memory_search: "find", edit_file: "edit", multi_edit: "edit", write_file: "edit", bash: "run", run_tests: "test", web_fetch: "web", todo_write: "plan", screenshot: "screen", computer: "screen", generate_image: "media", generate_3d: "media", memory_save: "note" };
 const VERB = { read: ["read", "file"], find: ["searched", "time"], edit: ["edited", "file"], run: ["ran", "command"], test: ["ran tests", ""], web: ["fetched", "page"], plan: ["updated plan", ""], screen: ["used screen", ""], media: ["generated", "asset"], note: ["saved", "note"], tool: ["called", "tool"] };
 const kindOf = (name) => KIND[name] ?? "tool";
 
@@ -391,6 +391,20 @@ function createView(log) {
         where().insertAdjacentHTML("beforeend", `<div class="note-row k-${ev.type}">${esc(text)}</div>`);
         if (ev.type === "compaction" && !replay) inst.ctx(ev.afterTokens, run.ctxWindow);
         if (!replay) inst.trace(text, ev.type === "retry" ? "bad" : "gold");
+        break;
+      }
+      case "notice":
+        agentMsg().insertAdjacentHTML("beforeend", `<pre class="notice">${esc(ev.text)}</pre>`);
+        break;
+      case "goal":
+      case "review": {
+        const text =
+          ev.type === "goal"
+            ? `Goal ${ev.status.replace("_", " ")}${ev.status === "set" && ev.goal ? `: ${ev.goal}` : ""}${ev.status === "not_met" && ev.reason ? `: ${ev.reason}` : ""}`
+            : ev.kind === "verify" ? `Verify: ${ev.met ? "met" : "not met"}${ev.met ? "" : ` · ${ev.text}`}` : `Advisor: ${ev.text}`;
+        const ok = ev.status === "met" || ev.met === true;
+        where().insertAdjacentHTML("beforeend", `<div class="note-row k-${ev.type}">${esc(text)}</div>`);
+        if (!replay) inst.trace(text.split("\n")[0].slice(0, 120), ok ? "ok" : "gold");
         break;
       }
       case "evidence":

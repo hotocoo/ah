@@ -237,6 +237,15 @@ export interface SessionOptions {
   toolContextExtras?: Partial<AgentOptions["toolContext"]>;
 }
 
+// The configured advisor model, resolved like any model ref (provider from discovery or catalog).
+async function resolveReviewer(env: Environment, sessionRef: string): Promise<AgentOptions["reviewer"]> {
+  const ref = env.cfg.advisorModel;
+  if (!ref || ref === sessionRef) return undefined;
+  const { provider, model } = parseModelRef(ref);
+  const { context } = await resolveModelContext(env, ref);
+  return { provider: env.registry.get(provider), model, contextWindow: context.window };
+}
+
 export interface GenerationOverrides {
   reasoning?: "off" | "low" | "medium" | "high" | "max";
   temperature?: number;
@@ -348,7 +357,10 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     resetAfterFailures: f.evidence === false ? 0 : env.cfg.resetAfterFailures,
     testCommand,
     memory: memory && { ...memory, recallLimit: env.cfg.recall.limit },
+    reviewer: await resolveReviewer(env, modelRef),
   });
+  // The advisor tool is offered only when a distinct reviewer model is configured.
+  if (env.cfg.advisorModel && env.cfg.advisorModel !== modelRef) toolContext.advise = (q) => agent.advise(q);
   return { agent, modelRef, info, context, compactTools, toolProtocol, generation: { ...gen, params } };
 }
 

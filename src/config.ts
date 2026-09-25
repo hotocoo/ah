@@ -20,6 +20,8 @@ export interface AhConfig {
   defaultModel?: string;
   imageModel?: string;
   model3d?: string;
+  // Reviewer for the advisor tool, /advisor, /verify and the /goal judge. Empty: the session's model.
+  advisorModel?: string;
   // Extra runtime endpoints to probe (e.g. a remote Ollama); local ports are scanned automatically.
   runtimes: { endpoints: string[]; scan: boolean };
   // Desired context window for local models; capped by the model's trained maximum.
@@ -87,6 +89,7 @@ export const defaultConfig = (): AhConfig => ({
   defaultModel: process.env.AH_MODEL,
   imageModel: process.env.AH_IMAGE_MODEL,
   model3d: process.env.AH_3D_MODEL,
+  advisorModel: process.env.AH_ADVISOR_MODEL,
   runtimes: { endpoints: [], scan: process.env.AH_SCAN !== "0" },
   contextWindow: process.env.AH_CONTEXT ? Number(process.env.AH_CONTEXT) : undefined,
   maxTokens: 32_000,
@@ -173,6 +176,7 @@ export const SETTINGS: SettingSpec[] = [
   { key: "toolProtocol", type: "string", choices: ["auto", "native", "text"], group: "Models", help: "Native tool calls, tools described in the prompt, or auto (native when the runtime reports tool support)." },
   { key: "imageModel", type: "string", group: "Models", help: "provider/model for image generation. Empty: first discovered image backend." },
   { key: "model3d", type: "string", group: "Models", help: "provider/model that designs 3D scenes. Empty: the chat model." },
+  { key: "advisorModel", type: "string", group: "Models", help: "provider/model for second opinions: the advisor tool, /advisor, /verify and the /goal judge. Empty: the chat model (fresh context)." },
   { key: "permissionMode", type: "string", choices: ["ask", "auto", "read-only"], group: "Agent", help: "Default permissions for new sessions. auto still asks for dangerous commands and paths outside the workspace." },
   { key: "maxTurns", type: "number", group: "Agent", help: "Model calls allowed per task before it stops." },
   { key: "evidenceGate", type: "boolean", group: "Agent", help: "A task that changed files must pass a check (tests, build) before it may finish." },

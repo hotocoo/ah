@@ -1,6 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, extname, join } from "node:path";
-import { walkFiles } from "./search.ts";
 import { exec } from "./shell.ts";
 import { confine, rel, str, ToolError, truncate, type TodoItem, type Tool } from "./types.ts";
 
@@ -85,43 +84,17 @@ export const webFetchTool: Tool = {
   },
 };
 
-// Language-agnostic outline: top-level declarations per file, for fast orientation.
-const DECL = /^\s*(export\s+)?(default\s+)?(async\s+)?(pub(\(crate\))?\s+)?(function\*?|class|interface|type|enum|struct|trait|impl|fn|def|func|const|let|module|object)\s+([A-Za-z_$][\w$]*)/;
-const SOURCE_EXT = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".py", ".rs", ".go", ".java", ".kt", ".rb", ".swift", ".c", ".h", ".cpp", ".hpp", ".cs", ".php", ".scala"]);
-
-export function repoMap(root: string, base: string, maxFiles = 300): string {
-  const out: string[] = [];
-  let files = 0;
-  for (const f of walkFiles(base)) {
-    if (!SOURCE_EXT.has(extname(f))) continue;
-    if (++files > maxFiles) {
-      out.push(`[... more files omitted]`);
-      break;
-    }
-    const lines = readFileSync(f, "utf8").split("\n");
-    const decls: string[] = [];
-    lines.forEach((l, i) => {
-      const m = l.match(DECL);
-      if (m && l.search(/\S/) <= 4) decls.push(`  ${i + 1}: ${m[6]} ${m[7]}`);
-    });
-    out.push(`${rel(root, f)} (${lines.length} lines)`);
-    out.push(...decls.slice(0, 40));
-    if (decls.length > 40) out.push(`  ... ${decls.length - 40} more`);
-  }
-  return out.join("\n") || "no source files";
-}
-
-export const repoMapTool: Tool = {
+export const advisorTool: Tool = {
   readOnly: true,
-  optional: true,
   spec: {
-    name: "repo_map",
-    description: "Outline source files under a path: each file with line count and its top-level declarations (functions, classes, types) with line numbers. Use first to orient in an unfamiliar codebase.",
-    inputSchema: { type: "object", properties: { path: { type: "string" } } },
+    name: "advisor",
+    description: "Ask a stronger reviewer model for advice. It sees your whole transcript and the harness's evidence. Call it before committing to an approach on a hard task, when stuck on a recurring error, and before you declare the task done.",
+    inputSchema: { type: "object", properties: { question: { type: "string", description: "optional specific question" } } },
   },
-  summarize: (i) => `repo map ${i.path ?? "."}`,
+  summarize: (i) => `ask advisor${i.question ? `: ${String(i.question).slice(0, 80)}` : ""}`,
+  available: (ctx) => Boolean(ctx.advise),
   async run(input, ctx) {
-    return { content: truncate(repoMap(ctx.root, confine(ctx.root, (input.path as string) || "."))) };
+    return { content: await ctx.advise!(typeof input.question === "string" ? input.question : undefined) };
   },
 };
 

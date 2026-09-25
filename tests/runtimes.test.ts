@@ -121,7 +121,7 @@ describe("tool availability", () => {
     const withMedia = reg.specs("auto", { ...ctx, media: { generateImage: async () => [] } }).map((s) => s.name);
     expect(withMedia).toContain("generate_image");
     const compact = reg.specs("auto", ctx, true).map((s) => s.name);
-    expect(compact).not.toContain("repo_map");
+    expect(compact).not.toContain("graph");
     expect(compact).toContain("edit_file");
     expect(compact).toContain("bash");
   });

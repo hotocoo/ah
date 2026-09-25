@@ -16,6 +16,7 @@ import { discoverBackend } from "../tools/computer.ts";
 import { checkSetting, defaultConfig, getPath, parseModelRef, SETTINGS } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
 import { compileScene, designScene } from "../media/model3d.ts";
+import { runCommand } from "../agent/commands.ts";
 import { sampleHardware } from "../runtimes/hardware.ts";
 import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../telemetry/metrics.ts";
 import { dim, green } from "../cli/render.ts";
@@ -383,9 +384,12 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     const res = subscribe(cs, req, false);
     publish(cs, { type: "user", text: prompt, t: Date.now() });
     publish(cs, { type: "session", sessionId: id, model: cs.session.modelRef, contextWindow: cs.session.context.window, mode: cs.mode });
-    void agent
-      .run(prompt)
-      .then((r) => void (cs.lastOutcome = r.outcome))
+    // Built-in commands (/goal, /verify, /advisor, /loop, /graph) run inside the same busy
+    // window, so stop and steer work on them too.
+    const print = (text: string) => publish(cs, { type: "notice", runId: "", turn: 0, text, t: Date.now() });
+    const run = (p: string) => agent.run(p).then((r) => ((cs.lastOutcome = r.outcome), r));
+    void runCommand(prompt, { agent, root: opts.root, run, print, signal: ac.signal })
+      .then((handled) => (handled ? undefined : run(prompt)))
       .catch((err) => publish(cs, { type: "error", runId: "", turn: 0, message: (err as Error).message, t: Date.now() }))
       .finally(() => {
         cs.busy = false;

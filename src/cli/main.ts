@@ -7,6 +7,7 @@ import { runtimeBinaries } from "../runtimes/discover.ts";
 import { sampleHardware } from "../runtimes/hardware.ts";
 import { bold, cyan, dim, green, red, terminalRenderer, yellow } from "./render.ts";
 import type { ApprovalFn } from "../tools/types.ts";
+import { COMMAND_HELP, runCommand } from "../agent/commands.ts";
 
 export const VERSION = "0.1.0";
 
@@ -38,8 +39,12 @@ Common options:
   --read-only                   Only read tools
   --max-turns N                 Turn limit
   --budget USD                  Stop when spend exceeds USD (cloud models)
+  --goal CONDITION              Keep working until an independent check says CONDITION holds
   -v, --verbose                 Per-turn stats and reasoning
   --json                        Emit events as JSON lines
+
+Chat commands (ah chat, web console):
+${COMMAND_HELP.replace(/^/gm, "  ")}
 `;
 
 // "a" allows the tool for the rest of the session (e.g. a run of desktop actions).
@@ -91,6 +96,7 @@ function common(argv: string[]) {
       "read-only": { type: "boolean" },
       "max-turns": { type: "string" },
       budget: { type: "string" },
+      goal: { type: "string" },
       verbose: { type: "boolean", short: "v" },
       json: { type: "boolean" },
       offline: { type: "boolean" },
@@ -130,6 +136,7 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
       process.stderr.write(red('usage: ah run "<task>"\n'));
       return 2;
     }
+    if (v.goal) s.agent.setGoal(v.goal as string);
     const r = await s.agent.run(task);
     code = r.outcome === "completed" ? 0 : 1;
   } else {
@@ -138,7 +145,8 @@ async function cmdRun(argv: string[], interactive: boolean): Promise<number> {
       const line = (await rl.question(bold("\n› "))).trim();
       if (!line) continue;
       if (line === "/exit" || line === "/quit") break;
-      await s.agent.run(line);
+      const host = { agent: s.agent, root, run: (p: string) => s.agent.run(p), print: (t: string) => process.stdout.write(`${t}\n`), signal: ac.signal };
+      if (!(await runCommand(line, host).catch((err) => (process.stderr.write(red(`  ${(err as Error).message}\n`)), true)))) await s.agent.run(line);
     }
     rl.close();
   }

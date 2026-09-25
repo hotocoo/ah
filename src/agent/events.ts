@@ -53,6 +53,10 @@ export type AgentEvent =
   | { type: "tool_image"; runId: string; turn: number; id: string; name: string; mediaType: string; data: string }
   | { type: "memory_recall"; runId: string; turn: number; memories: { id: number; kind: string; trust: number; text: string }[]; t: number }
   | { type: "evidence_gate"; runId: string; turn: number; files: string[]; lastFailed: boolean; t: number }
+  // Second opinions (advisor, independent verifier) and the session goal's state.
+  | { type: "review"; runId: string; turn: number; kind: "advisor" | "verify"; text: string; met?: boolean; t: number }
+  | { type: "notice"; runId: string; turn: number; text: string; t: number }
+  | { type: "goal"; runId: string; turn: number; goal: string | null; status: "set" | "cleared" | "met" | "not_met"; reason?: string; t: number }
   | { type: "evidence"; runId: string; verdict: Verdict; surprises: number; checksPassed: number; checksFailed: number; lessons: string[]; t: number }
   | { type: "run_end"; runId: string; result: RunSummary; t: number };
 

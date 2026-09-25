@@ -1,6 +1,7 @@
 import type { ToolSpec } from "../core/types.ts";
 import { editFileTool, listDirTool, multiEditTool, readFileTool, writeFileTool } from "./fs.ts";
-import { generate3dTool, generateImageTool, gitTool, repoMapTool, todoTool, webFetchTool } from "./misc.ts";
+import { advisorTool, generate3dTool, generateImageTool, gitTool, todoTool, webFetchTool } from "./misc.ts";
+import { graphTool } from "./graph.ts";
 import { computerTool, screenshotTool } from "./computer.ts";
 import { memorySaveTool, memorySearchTool } from "./memory.ts";
 import { validate } from "./schema.ts";
@@ -16,10 +17,11 @@ export const ALL_TOOLS: Tool[] = [
   listDirTool,
   globTool,
   grepTool,
-  repoMapTool,
+  graphTool,
   bashTool,
   runTestsTool,
   gitTool,
+  advisorTool,
   todoTool,
   webFetchTool,
   generateImageTool,

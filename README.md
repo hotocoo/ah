@@ -31,7 +31,8 @@ bun run build            # single binary: dist/ah
 ah doctor                                   # runtimes, models, hardware found on this machine
 ah run "the tests in src/ fail, fix them"   # one task in the current directory (asks before writes)
 ah run --yes -m llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF "add a --json flag to the CLI and a test for it"
-ah chat                                     # interactive session
+ah chat                                     # interactive session (commands below)
+ah run --yes --goal "bun test passes and README documents --json" "add a --json flag"   # work until an independent check agrees
 ah models coder --local --tools             # search the catalog
 ah bench run --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF --trials 3
 ah bench throughput --model llamacpp/ggml-org/MiMo-V2.6-Distill-Qwen-9B-GGUF
@@ -45,6 +46,16 @@ ah plugins                                  # plugins and skills that load here
 ah trust                                    # allow this workspace's own .mcp.json / plugins / skills
 AH_COMPUTER=auto ah run --yes "open Safari and search for bun release notes"   # desktop control without prompts
 ```
+
+Chat commands (`ah chat` and the web console):
+
+| command | what it does |
+|---|---|
+| `/goal <condition>` | keep working until an independent judge (fresh context, the check re-run, the diff) says the condition holds; its reasons go back to the model; `/goal clear` |
+| `/verify [criterion]` | the same judge on demand, against the last task or a criterion; a failing check is never overruled |
+| `/advisor [question]` | second opinion from `advisorModel` (or the session model with a fresh context); the advice joins the next request. With `advisorModel` set, the agent also gets an `advisor` tool |
+| `/loop [30s\|5m\|1h] [Nx] <task>` | repeat a task on an interval, or back to back until the judge says done |
+| `/graph [symbol\|path]` | code graph without a model call: outline, or a symbol's definitions, callers and calls (also the agent's `graph` tool) |
 
 ### Web app
 
@@ -163,6 +174,7 @@ Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/b
 | Benchmarks | none, or external | built in, sandboxed, hidden graders, pass@k/pass^k/Wilson, ablation, throughput |
 | Media | none | image generation + procedural 3D modelling as agent tools |
 | MCP tool cost | often every schema in every request (Hermes has lazy `tool_search`) | deferred: one `mcp` tool + index (42 tools: 6,329 to 1,348 tokens), schema on first bad call |
+| Stopping | model decides it is done (Claude Code `/goal` asks a model about the transcript) | `/goal` judge re-runs the check and reads the diff; a failing check always means "not met" |
 | Repeated tool mistakes | re-made every session | tool-error coaching: a model's recurring error classes become up to 3 prompt hints; zero tokens for a clean model (gain not yet measured) |
 | Edit slips | fail, retry | copied line numbers / `>` markers stripped, "already applied" detected, root-echo paths resolved |
 | Other harnesses | n/a | `ah bench run --agent-cmd` grades them on the same sandbox and hidden tests (`scripts/h2h.sh`) |
