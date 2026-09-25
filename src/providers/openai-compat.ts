@@ -3,6 +3,7 @@ import {
   ensureOk,
   parseToolArgs,
   CONTEXT_OVERFLOW,
+  TOOL_PARSE_FAILURE,
   isRetryableStatus,
   ProviderError,
   sseData,
@@ -245,7 +246,8 @@ export class OpenAICompatProvider implements Provider {
       if (chunk.error) {
         const e = typeof chunk.error === "string" ? { message: chunk.error } : chunk.error;
         const status = typeof e.code === "number" ? e.code : 500;
-        throw new ProviderError(`${this.key}: server error in stream: ${e.message ?? "unknown"}`, this.key, status, isRetryableStatus(status), CONTEXT_OVERFLOW.test(e.message ?? "") ? "context_overflow" : undefined);
+        const m = e.message ?? "";
+        throw new ProviderError(`${this.key}: server error in stream: ${m || "unknown"}`, this.key, status, isRetryableStatus(status), CONTEXT_OVERFLOW.test(m) ? "context_overflow" : TOOL_PARSE_FAILURE.test(m) ? "tool_parse" : undefined);
       }
       if (chunk.timings) {
         const t = chunk.timings;

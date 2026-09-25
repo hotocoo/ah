@@ -61,7 +61,7 @@ export class ProviderError extends Error {
     readonly provider: string,
     readonly status?: number,
     readonly retryable = false,
-    readonly code?: "invalid_tool_json" | "context_overflow" | "unavailable",
+    readonly code?: "invalid_tool_json" | "context_overflow" | "unavailable" | "tool_parse",
   ) {
     super(message);
     this.name = "ProviderError";
@@ -100,6 +100,10 @@ export async function streamFetch(url: string | URL, init: RequestInit = {}): Pr
 // Error-body patterns that mean the request exceeded the model's context window.
 export const CONTEXT_OVERFLOW = /context[_ ]length|maximum context|context window|too many tokens|prompt is too long|exceeds the (maximum|context)|input token count/i;
 
+// Error-body patterns that mean the server could not parse the model's output as tool calls
+// (llama.cpp: "The model produced output that does not match the expected ... format").
+export const TOOL_PARSE_FAILURE = /does not match the expected .{0,40}format|failed to parse (?:the )?(?:tool|model output)/i;
+
 // Throws a ProviderError for non-2xx responses, keeping the body for diagnosis.
 export async function ensureOk(res: Response, provider: string): Promise<Response> {
   if (res.ok) return res;
@@ -110,7 +114,7 @@ export async function ensureOk(res: Response, provider: string): Promise<Respons
     provider,
     res.status,
     isRetryableStatus(res.status),
-    overflow ? "context_overflow" : undefined,
+    overflow ? "context_overflow" : TOOL_PARSE_FAILURE.test(body) ? "tool_parse" : undefined,
   );
 }
 

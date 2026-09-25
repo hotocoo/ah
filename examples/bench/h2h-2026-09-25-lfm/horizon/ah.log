@@ -1,0 +1,8 @@
+bench llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0 · 2 tasks × 2 trials · {} · /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/ah
+  FAIL py-optimal-scheduler #1 250.7s · 15 turns · 16 tools (3 err) · grader
+  FAIL py-optimal-scheduler #2 1638.7s · 90 turns · 88 tools (21 err) · grader
+  FAIL ts-sql-engine #1 3599.8s · 145 turns · 146 tools (37 err) · timeout
+  FAIL ts-sql-engine #2 832.4s · 65 turns · 65 tools (14 err) · grader
+
+result 0/4 trials · pass@1 0% · pass^2 0% · 0/2 tasks solved
+report: /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/ah/report.md

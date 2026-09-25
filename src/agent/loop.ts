@@ -485,6 +485,12 @@ export class Agent {
           else this.messages.push({ role: "user", content: [note] });
           continue;
         }
+        // The server could not parse the model's tool calls: ah parses them itself from here on.
+        if (err instanceof ProviderError && err.code === "tool_parse" && this.o.recoveries !== false && !this.textProtocolFallback && this.o.toolProtocol !== "text") {
+          this.textProtocolFallback = true;
+          this.emit({ type: "retry", runId: this.runId, turn: this.turn, attempt, reason: "server could not parse the model's tool calls; switching to text tool protocol", delayMs: 0, t: Date.now() });
+          continue;
+        }
         const retryable = err instanceof ProviderError && err.retryable && err.code !== "invalid_tool_json";
         if (!retryable || attempt > maxRetries) throw err;
         // An unreachable server is usually restarting or reloading a model: wait longer.

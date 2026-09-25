@@ -1,0 +1,214 @@
+{
+  "benchRunId": "bench_2026-09-25T12-18-06_external_dsh",
+  "model": "external/dsh",
+  "startedAt": "2026-09-25T12:18:06.312Z",
+  "finishedAt": "2026-09-25T12:30:40.861Z",
+  "trials": 2,
+  "features": {},
+  "agentCmd": "cd {dir} && NODE_OPTIONS='--import file:///Users/acotech/.dsh/net-timeouts.mjs' dsh --profile headless {prompt}",
+  "hardware": {
+    "t": 1790338686312,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 17249173504,
+    "load1": 4.13671875,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 7937589248,
+    "gpuInUseBytes": 6462406656,
+    "gpuName": "Apple M4 Max"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "ac30c5f",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "tags": [
+        "python",
+        "algorithm",
+        "long-horizon"
+      ],
+      "id": "py-optimal-scheduler",
+      "language": "python",
+      "prompt": "Implement schedule() in scheduler.py as specified in SPEC.md. The makespan must be optimal, not approximate. Hidden tests check optimality against known optima, plan validity, error handling and a 5 s time limit per call.",
+      "grader": {
+        "cmd": "python3 grade.py",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 60,
+        "timeoutMs": 2700000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/py-optimal-scheduler",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/py-optimal-scheduler/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/py-optimal-scheduler/hidden"
+    },
+    {
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "tags": [
+        "bun",
+        "typescript",
+        "project",
+        "long-horizon"
+      ],
+      "id": "ts-sql-engine",
+      "language": "typescript",
+      "prompt": "Build the in-memory SQL engine specified in SPEC.md, starting from the stub in src/db.ts. It must match SQLite's answers for the whole subset in the spec: parser, joins, grouping, aggregates, NULL semantics, ordering, writes and error messages. Hidden tests compare your engine with SQLite on many queries, including 5,000-row tables. db.test.ts is only a starting point; add your own tests.",
+      "grader": {
+        "cmd": "bun grade.ts",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 120,
+        "timeoutMs": 3600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/ts-sql-engine",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/ts-sql-engine/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/ts-sql-engine/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 22,
+      "toolCalls": 27,
+      "toolErrors": 7,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 225603.107666,
+      "ttftMs": null,
+      "graderMs": 30.639041999995243,
+      "graderTail": "FAIL case 18: NotImplementedError: \nFAIL case 19: NotImplementedError: \nFAIL case 20: NotImplementedError: \nFAIL case 21: NotImplementedError: \nFAIL case 22: NotImplementedError: \nFAIL case 23: NotImplementedError: \nFAIL case 24: NotImplementedError: \nFAIL cycle: NotImplementedError: \nFAIL unknown dep: NotImplementedError: \nFAIL zero workers: NotImplementedError: \nFAIL bad duration: NotImplementedError: \nAH_SCORE 0 29",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 2,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 14,
+      "toolCalls": 17,
+      "toolErrors": 9,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 98052.17366700002,
+      "ttftMs": null,
+      "graderMs": 29.086374999955297,
+      "graderTail": "FAIL case 18: NotImplementedError: \nFAIL case 19: NotImplementedError: \nFAIL case 20: NotImplementedError: \nFAIL case 21: NotImplementedError: \nFAIL case 22: NotImplementedError: \nFAIL case 23: NotImplementedError: \nFAIL case 24: NotImplementedError: \nFAIL cycle: NotImplementedError: \nFAIL unknown dep: NotImplementedError: \nFAIL zero workers: NotImplementedError: \nFAIL bad duration: NotImplementedError: \nAH_SCORE 0 29",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 1,
+      "passed": false,
+      "failReason": "agent_error",
+      "score": 0,
+      "outcome": "error",
+      "runId": "",
+      "turns": 9,
+      "toolCalls": 13,
+      "toolErrors": 3,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 373293.45670800004,
+      "ttftMs": null,
+      "graderMs": 20.335291999974288,
+      "graderTail": "FAIL error: SELECT nope FROM users: this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL error: SELECT missing FROM empty_t: this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL error: CREATE TABLE users (x INTEGER): this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL error: SELECT FROM users: this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL error: SELECT * FROM users WHERE: this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL error: INSERT INTO users VALUES (1, 'x'): this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL error: SELECT id FROM users u JOIN orders o ON u.id = o.user_id: this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL scale: insert 5,000 rows: this.tokenize is not a function. (In 'this.tokenize(columnsPart)', 'this.tokenize' is undefined)\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: setup failed\nFAIL scale: SELECT n, s FROM nums ORDER BY s DESC, n LIMIT 5: setup failed\nFAIL scale: SELECT label, count(*) FROM nums JOIN groups ON nums.g = groups.g WHERE n > 2500 GROUP BY label ORDER BY label: setup failed\nAH_SCORE 0 61",
+      "changedFiles": [
+        "src/db.ts"
+      ],
+      "diffStat": "1 file changed, 406 insertions(+), 1 deletion(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "exit 1: ",
+      "measured": true
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 2,
+      "passed": false,
+      "failReason": "agent_error",
+      "score": 0,
+      "outcome": "error",
+      "runId": "",
+      "turns": 6,
+      "toolCalls": 10,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 0,
+        "outputTokens": 0,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 56981.171875,
+      "ttftMs": null,
+      "graderMs": 19.896124999970198,
+      "graderTail": "FAIL error: SELECT nope FROM users: not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT missing FROM empty_t: not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: CREATE TABLE users (x INTEGER): not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT FROM users: not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT * FROM users WHERE: not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: INSERT INTO users VALUES (1, 'x'): not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT id FROM users u JOIN orders o ON u.id = o.user_id: not implemented: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL scale: insert 5,000 rows: not implemented: CREATE TABLE nums (n INTEGER, g INTEGER, s TEXT)\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: setup failed\nFAIL scale: SELECT n, s FROM nums ORDER BY s DESC, n LIMIT 5: setup failed\nFAIL scale: SELECT label, count(*) FROM nums JOIN groups ON nums.g = groups.g WHERE n > 2500 GROUP BY label ORDER BY label: setup failed\nAH_SCORE 0 61",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "exit 1: dsh: PI_AI_ERROR: The model produced output that does not match the expected peg-native format",
+      "measured": true
+    }
+  ]
+}

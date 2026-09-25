@@ -307,3 +307,28 @@ describe("tool-error coaching", () => {
     expect(classify("edited a.ts (old_string matched after removing copied line numbers or '>' markers; do not include them)")).toBe("copied-prefix");
   });
 });
+
+describe("server tool-call parse failures", () => {
+  test("switch the session to the text tool protocol instead of ending the run", async () => {
+    const { TOOL_PARSE_FAILURE } = await import("../src/providers/provider.ts");
+    expect(TOOL_PARSE_FAILURE.test("The model produced output that does not match the expected peg-native format")).toBe(true);
+    const seen: number[] = [];
+    const provider = {
+      key: "flaky",
+      kind: "mock",
+      capabilities: new MockProvider().capabilities,
+      listModels: async () => [],
+      async *stream(req: { tools: unknown[] }): AsyncGenerator<StreamEvent> {
+        seen.push(req.tools.length);
+        if (req.tools.length) throw new ProviderError("flaky: server error in stream: The model produced output that does not match the expected peg-native format", "flaky", 500, true, "tool_parse");
+        yield { type: "done", message: { role: "assistant", content: [{ type: "text", text: "Done without tools." }] }, stopReason: "end_turn", usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0, reasoningTokens: 0 } };
+      },
+    } as unknown as Provider;
+    const { agent, events } = setup([], { provider, tools: new ToolRegistry([...(await import("../src/tools/index.ts")).ALL_TOOLS]) });
+    const r = await agent.run("hi");
+    expect(r.outcome).toBe("completed");
+    expect(seen[0]).toBeGreaterThan(0);
+    expect(seen.at(-1)).toBe(0);
+    expect(events.some((e) => e.type === "retry" && e.reason.includes("text tool protocol"))).toBe(true);
+  });
+});

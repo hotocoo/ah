@@ -1,0 +1,218 @@
+{
+  "benchRunId": "bench_2026-09-25T11-33-12_external_hermes",
+  "model": "external/hermes",
+  "startedAt": "2026-09-25T11:33:12.637Z",
+  "finishedAt": "2026-09-25T12:17:59.657Z",
+  "trials": 2,
+  "features": {},
+  "agentCmd": "cd {dir} && TERMINAL_CWD={dir} HERMES_HOME='/Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/hermes-home' hermes -z {prompt} --yolo",
+  "hardware": {
+    "t": 1790335992637,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 18824265728,
+    "load1": 6.091796875,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 7961411584,
+    "gpuInUseBytes": 6450249728,
+    "gpuName": "Apple M4 Max"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "ac30c5f",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "tags": [
+        "python",
+        "algorithm",
+        "long-horizon"
+      ],
+      "id": "py-optimal-scheduler",
+      "language": "python",
+      "prompt": "Implement schedule() in scheduler.py as specified in SPEC.md. The makespan must be optimal, not approximate. Hidden tests check optimality against known optima, plan validity, error handling and a 5 s time limit per call.",
+      "grader": {
+        "cmd": "python3 grade.py",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 60,
+        "timeoutMs": 2700000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/py-optimal-scheduler",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/py-optimal-scheduler/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/py-optimal-scheduler/hidden"
+    },
+    {
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "tags": [
+        "bun",
+        "typescript",
+        "project",
+        "long-horizon"
+      ],
+      "id": "ts-sql-engine",
+      "language": "typescript",
+      "prompt": "Build the in-memory SQL engine specified in SPEC.md, starting from the stub in src/db.ts. It must match SQLite's answers for the whole subset in the spec: parser, joins, grouping, aggregates, NULL semantics, ordering, writes and error messages. Hidden tests compare your engine with SQLite on many queries, including 5,000-row tables. db.test.ts is only a starting point; add your own tests.",
+      "grader": {
+        "cmd": "bun grade.ts",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 120,
+        "timeoutMs": 3600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/ts-sql-engine",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/ts-sql-engine/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/horizon/ts-sql-engine/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0.1724137931034483,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 29,
+      "toolCalls": 35,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 610995,
+        "outputTokens": 52011,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 682561.165916,
+      "ttftMs": null,
+      "graderMs": 32.36100000003353,
+      "graderTail": "FAIL case 14: AssertionError: plan must cover every task\nFAIL case 15: AssertionError: makespan 42, optimum 14\nFAIL case 16: AssertionError: plan must cover every task\nFAIL case 17: AssertionError: makespan 28, optimum 10\nFAIL case 18: AssertionError: makespan 29, optimum 16\nFAIL case 19: AssertionError: makespan 31, optimum 17\nFAIL case 20: AssertionError: makespan 50, optimum 17\nFAIL case 21: AssertionError: plan must cover every task\nFAIL case 22: AssertionError: plan must cover every task\nFAIL case 23: AssertionError: plan must cover every task\nFAIL case 24: AssertionError: makespan 35, optimum 12\nAH_SCORE 5 29",
+      "changedFiles": [
+        "scheduler.py"
+      ],
+      "diffStat": "1 file changed, 138 insertions(+), 2 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "py-optimal-scheduler",
+      "trial": 2,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 27,
+      "toolCalls": 43,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 500680,
+        "outputTokens": 26360,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 403493.9510420001,
+      "ttftMs": null,
+      "graderMs": 30.75387499993667,
+      "graderTail": "FAIL case 18: NotImplementedError: \nFAIL case 19: NotImplementedError: \nFAIL case 20: NotImplementedError: \nFAIL case 21: NotImplementedError: \nFAIL case 22: NotImplementedError: \nFAIL case 23: NotImplementedError: \nFAIL case 24: NotImplementedError: \nFAIL cycle: NotImplementedError: \nFAIL unknown dep: NotImplementedError: \nFAIL zero workers: NotImplementedError: \nFAIL bad duration: NotImplementedError: \nAH_SCORE 0 29",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 1,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 35,
+      "toolCalls": 36,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 1496690,
+        "outputTokens": 85780,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 931718.3406250002,
+      "ttftMs": null,
+      "graderMs": 26914.01841699984,
+      "graderTail": "DEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nDEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nDEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nDEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nDEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nDEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nDEBUG: Catch block - error: syntax error in: CREATE TABLE nums ()\nFAIL scale: insert 5,000 rows: syntax error in: CREATE TABLE nums (n INTEGER, g INTEGER, s TEXT)\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: setup failed\nFAIL scale: SELECT n, s FROM nums ORDER BY s DESC, n LIMIT 5: setup failed\nFAIL scale: SELECT label, count(*) FROM nums JOIN groups ON nums.g = groups.g WHERE n > 2500 GROUP BY label ORDER BY label: setup failed\nAH_SCORE 0 61",
+      "changedFiles": [
+        "src/db.ts"
+      ],
+      "diffStat": "1 file changed, 312 insertions(+), 2 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 2,
+      "passed": false,
+      "failReason": "grader",
+      "score": 0,
+      "outcome": "completed",
+      "runId": "",
+      "turns": 36,
+      "toolCalls": 38,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 1237707,
+        "outputTokens": 61161,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 641114.6777909999,
+      "ttftMs": null,
+      "graderMs": 21.4591669999063,
+      "graderTail": "FAIL error: SELECT nope FROM users: Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT missing FROM empty_t: Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: CREATE TABLE users (x INTEGER): Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT FROM users: Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT * FROM users WHERE: Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: INSERT INTO users VALUES (1, 'x'): Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL error: SELECT id FROM users u JOIN orders o ON u.id = o.user_id: Error executing: CREATE TABLE users (id INTEGER, name TEXT, age INTEGER, city TEXT)\nFAIL scale: insert 5,000 rows: Error executing: INSERT INTO nums VALUES (0, 0, 's0'), (1, 1, 's2919'), (2, 2, 's838'), (3, 3, 's3757'), (4, 4, 's1676'), (5, 5, 's4595'), (6, 6, 's2514'), (7, 7, 's433'), (8, 8, 's3352'), (9, 9, 's1271'), (10, 10, 's4190'), (11, 11, 's2109'), (12, 12, 's28'), (13, 13, 's2947'), (14, 14, 's866'), (15, 15, 's3785'), (16, 16, 's1704'), (17, 17, 's4623'), (18, 18, 's2542'), (19, 19, 's461'), (20, 20,\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: setup failed\nFAIL scale: SELECT n, s FROM nums ORDER BY s DESC, n LIMIT 5: setup failed\nFAIL scale: SELECT label, count(*) FROM nums JOIN groups ON nums.g = groups.g WHERE n > 2500 GROUP BY label ORDER BY label: setup failed\nAH_SCORE 0 61",
+      "changedFiles": [
+        "src/db.ts"
+      ],
+      "diffStat": "1 file changed, 252 insertions(+), 2 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    }
+  ]
+}

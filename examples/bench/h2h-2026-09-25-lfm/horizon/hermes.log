@@ -1,0 +1,8 @@
+bench external/hermes · 2 tasks × 2 trials · {} · /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/hermes
+  FAIL py-optimal-scheduler #1 682.6s · 29 turns · 35 tools · grader
+  FAIL py-optimal-scheduler #2 403.5s · 27 turns · 43 tools · grader
+  FAIL ts-sql-engine #1 931.7s · 35 turns · 36 tools · grader
+  FAIL ts-sql-engine #2 641.1s · 36 turns · 38 tools · grader
+
+result 0/4 trials · pass@1 0% · pass^2 0% · 0/2 tasks solved
+report: /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/hermes/report.md

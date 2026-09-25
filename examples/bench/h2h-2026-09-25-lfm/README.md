@@ -46,6 +46,21 @@ Same model, server, suite and turn caps as the `85cc190` run above (`bash script
 - 11 against 8 is still inside the intervals: it points the right way, but it does not prove an accuracy gain.
 - Every remaining failure is the turn cap. Hermes and dsh never had that cap in the table above.
 
+## Horizon suite
+
+`py-optimal-scheduler` (29 hidden checks) and `ts-sql-engine` (61 checks against SQLite), 2 trials each. ah ran at `ac30c5f` with the time-only budget (`--no-turn-limit`), so all three harnesses had the same limits. Details: [`horizon/`](horizon/).
+
+| harness | trials passed | scheduler checks (t1, t2) | SQL engine checks (t1, t2) | wall time total | prompt tokens |
+|---|---|---|---|---|---|
+| ah `ac30c5f` | 0/4 | 8/29, 5/29 | 0/61 (hit the 60 min limit, then its engine hung the grader), 0/61 | 105 min | 7.52M |
+| Hermes Agent | 0/4 | 5/29, 0/29 | 0/61, 0/61 | 44 min | 3.85M |
+| dsh | 0/4 | 0/29, 0/29 | 0/61, 0/61 (both ended with `PI_AI_ERROR`) | 13 min | not recorded |
+
+- At 2.6B, nobody solves either task. That is the grounding working: the naive baselines fail these graders too, so the suite does not hand out passes.
+- On partial credit, ah earned 13 of 58 scheduler checks, Hermes 5 and dsh 0. With two trials each this is a small signal, not a ranking.
+- ah used the budget. It kept working for up to 145 turns, twice Hermes' wall time and tokens. On these tasks that bought partial credit on the scheduler and nothing on the SQL engine.
+- dsh's SQL-engine trials ended when llama-server's tool-call parser rejected the model's output ([log](horizon/dsh-ts-sql-engine-2.agent.log): "The model produced output that does not match the expected peg-native format"; the message comes from llama.cpp's `libllama-common`). ah never hit this error with this model, but checking showed it would have ended an ah run the same way: three retries, then `agent_error`. Since D41, ah switches the session to its own text tool protocol when the server cannot parse the model's tool calls.
+
 ## Caveats
 
 - n = 3 per task on a 2.6B model: the intervals are wide.

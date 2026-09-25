@@ -1,0 +1,8 @@
+bench external/dsh · 2 tasks × 2 trials · {} · /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/dsh
+  FAIL py-optimal-scheduler #1 225.6s · 22 turns · 27 tools (7 err) · grader
+  FAIL py-optimal-scheduler #2 98.1s · 14 turns · 17 tools (9 err) · grader
+  FAIL ts-sql-engine #1 373.3s · 9 turns · 13 tools (3 err) · agent_error
+  FAIL ts-sql-engine #2 57.0s · 6 turns · 10 tools (1 err) · agent_error
+
+result 0/4 trials · pass@1 0% · pass^2 0% · 0/2 tasks solved
+report: /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-horizon/dsh/report.md

@@ -1,0 +1,87 @@
+{
+  "model": "external/hermes",
+  "benchRunId": "bench_2026-09-25T11-33-12_external_hermes",
+  "k": 2,
+  "tasks": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "language": "python",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 543027.5584790001,
+      "p95WallMs": 668607.8051723,
+      "meanTurns": 28,
+      "meanToolErrors": 0,
+      "meanTokens": 595023,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "language": "typescript",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 786416.509208,
+      "p95WallMs": 917188.1574833002,
+      "meanTurns": 35.5,
+      "meanToolErrors": 0,
+      "meanTokens": 1440669,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    }
+  ],
+  "overall": {
+    "trials": 4,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.48990002040399916
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "meanScore": 0.04310344827586207,
+    "verdictAgreement": null,
+    "totalWallMs": 2685886.727833,
+    "p50WallMs": 661837.9218535,
+    "p95WallMs": 894344.7644186501,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 3846072,
+    "outputTokens": 225312,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0
+  }
+}

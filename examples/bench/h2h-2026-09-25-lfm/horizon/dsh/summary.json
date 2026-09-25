@@ -1,0 +1,87 @@
+{
+  "model": "external/dsh",
+  "benchRunId": "bench_2026-09-25T12-18-06_external_dsh",
+  "k": 2,
+  "tasks": [
+    {
+      "taskId": "py-optimal-scheduler",
+      "name": "Provably optimal DAG scheduler",
+      "category": "reasoning",
+      "difficulty": 5,
+      "language": "python",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 161827.64066650002,
+      "p95WallMs": 219225.56096605,
+      "meanTurns": 18,
+      "meanToolErrors": 8,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "language": "typescript",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 215137.31429150002,
+      "p95WallMs": 357477.84246635,
+      "meanTurns": 7.5,
+      "meanToolErrors": 2,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "agent_error": 2
+      }
+    }
+  ],
+  "overall": {
+    "trials": 4,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.48990002040399916
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "meanScore": 0,
+    "verdictAgreement": null,
+    "totalWallMs": 754029.8667499999,
+    "p50WallMs": 161827.64066650002,
+    "p95WallMs": 351139.9043517,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.29850746268656714
+  }
+}
