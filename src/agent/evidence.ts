@@ -51,7 +51,7 @@ const firstLine = (s: string) =>
 export class EvidenceLedger {
   private dirty = new Set<string>(); // files changed since the last passing check
   private everChanged = false;
-  private lastCheck: { passed: boolean; turn: number; summary: string } | null = null;
+  private lastCheck: { passed: boolean; turn: number; summary: string; error?: string } | null = null;
   private open = new Map<string, Anomaly>();
   private resolved: Lesson[] = [];
   surprises = 0;
@@ -79,7 +79,7 @@ export class EvidenceLedger {
     // A syntax warning after a write is a failed action even though the write succeeded.
     const failed = o.isError || /WARNING: the file now has a syntax error/.test(o.content);
     if (check) {
-      this.lastCheck = { passed: !o.isError, turn: o.turn, summary: o.summary };
+      this.lastCheck = { passed: !o.isError, turn: o.turn, summary: o.summary, ...(o.isError ? { error: failureExcerpt(o.content) } : {}) };
       if (o.isError) this.checksFailed++;
       else {
         this.checksPassed++;
@@ -106,9 +106,10 @@ export class EvidenceLedger {
   }
 
   // Files are changed and no check has passed since. `lastFailed` says a check ran and failed.
-  unverified(): { files: string[]; lastFailed: boolean } | null {
+  unverified(): { files: string[]; lastFailed: boolean; check?: string; error?: string } | null {
     if (!this.dirty.size) return null;
-    return { files: [...this.dirty].sort(), lastFailed: this.lastCheck ? !this.lastCheck.passed : false };
+    const failed = this.lastCheck && !this.lastCheck.passed ? this.lastCheck : null;
+    return { files: [...this.dirty].sort(), lastFailed: Boolean(failed), ...(failed ? { check: failed.summary, error: failed.error } : {}) };
   }
 
   // Harness-known state for a rebuilt context: what is true regardless of what the model
@@ -134,6 +135,13 @@ export class EvidenceLedger {
   lessons(verdict: Verdict, max = 3): Lesson[] {
     return verdict === "verified" ? this.resolved.slice(-max) : [];
   }
+}
+
+// The lines of a failing check that say what failed (error/fail/assert lines), else its tail.
+function failureExcerpt(content: string, max = 12): string {
+  const lines = content.split("\n").map((l) => l.trimEnd()).filter(Boolean);
+  const hits = lines.filter((l) => /\b(error|fail(ed|ure)?|assert|expected|panic|exception|traceback)\b/i.test(l));
+  return (hits.length ? hits : lines.slice(-max)).slice(0, max).join("\n").slice(0, 1500);
 }
 
 function lessonText(a: Anomaly, fixed: Observation): string {

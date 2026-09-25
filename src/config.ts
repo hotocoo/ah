@@ -52,6 +52,8 @@ export interface AhConfig {
   recall: { enabled: boolean; limit: number };
   // Ask a run that changed files to pass a check before finishing (see evidence.ts).
   evidenceGate: boolean;
+  // Extra asks while the last check is failing, before a run may end (0 = ask once).
+  gateRetries: number;
   // Rebuild context from task + evidence after this many consecutive failed actions (0 = off).
   resetAfterFailures: number;
   // Desktop control tools (screenshot, computer): off, ask (approve every action), auto.
@@ -114,6 +116,7 @@ export const defaultConfig = (): AhConfig => ({
   hardwareSampling: { enabled: process.env.AH_HW !== "0", intervalMs: 1000 },
   recall: { enabled: process.env.AH_MEMORY !== "0", limit: 5 },
   evidenceGate: true,
+  gateRetries: 3,
   resetAfterFailures: 4,
   computerUse: (process.env.AH_COMPUTER as "off" | "ask" | "auto" | undefined) ?? "ask",
   mcpTools: "auto",
@@ -180,6 +183,7 @@ export const SETTINGS: SettingSpec[] = [
   { key: "permissionMode", type: "string", choices: ["ask", "auto", "read-only"], group: "Agent", help: "Default permissions for new sessions. auto still asks for dangerous commands and paths outside the workspace." },
   { key: "maxTurns", type: "number", group: "Agent", help: "Model calls allowed per task before it stops." },
   { key: "evidenceGate", type: "boolean", group: "Agent", help: "A task that changed files must pass a check (tests, build) before it may finish." },
+  { key: "gateRetries", type: "number", group: "Agent", help: "While the last check is failing, send the model back this many more times before the task may finish (0 = ask once)." },
   { key: "resetAfterFailures", type: "number", group: "Agent", help: "Rebuild the context from the task and evidence after this many failed actions in a row (0 = off)." },
   { key: "contextBudgetRatio", type: "number", group: "Agent", help: "Compact the conversation when it fills this share of the context window (0-1)." },
   { key: "compactToolsRatio", type: "number", group: "Agent", help: "Offer only core tools when the window is smaller than this many times the prompt plus tool definitions." },

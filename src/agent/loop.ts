@@ -48,6 +48,8 @@ export interface AgentOptions {
   // may end (default on). testCommand is the project's detected test command.
   evidenceGate?: boolean;
   testCommand?: string | null;
+  // Extra completion-gate asks while the last check is failing (D43).
+  gateRetries?: number;
   // Persistent memory: recalled into each request, written from verified lessons,
   // reinforced by run verdicts. scopes[0] is where new memories are written.
   memory?: { store: MemoryStore; scopes: string[]; recallLimit?: number };
@@ -210,7 +212,7 @@ export class Agent {
     let truncationRetries = 0;
     let overflowRetried = false;
     let nudges = 0;
-    let gated = false;
+    let gated = 0;
     let cutoffs = 0;
 
     try {
@@ -311,13 +313,16 @@ export class Agent {
         }
         // Evidence gate: the model wants to finish, but files changed and no check has
         // passed since. Ask once; the verdict records what happened either way.
-        const debt = !calls.length && res.stopReason !== "max_tokens" && this.o.evidenceGate !== false && !gated ? this.ledger.unverified() : null;
+        // A failing check is re-asked up to gateRetries times (the model has usually stopped on a
+        // wrong belief that it is done); "no check has run" is asked once, since "none applies" is legitimate.
+        const owed = !calls.length && res.stopReason !== "max_tokens" && this.o.evidenceGate !== false ? this.ledger.unverified() : null;
+        const debt = owed && (owed.lastFailed ? gated < 1 + (this.o.gateRetries ?? 0) : gated < 1) ? owed : null;
         if (debt) {
-          gated = true;
+          gated++;
           this.emit({ type: "evidence_gate", runId: this.runId, turn: this.turn, files: debt.files, lastFailed: debt.lastFailed, t: Date.now() });
           const how = this.o.testCommand ? `\`${this.o.testCommand}\` (run_tests) or the build/type check` : "the project's tests, build or type check";
           const text = debt.lastFailed
-            ? `[ah] The last check failed and ${debt.files.join(", ")} changed without a passing check since. Fix the failure and re-run ${how}. If it cannot pass, say exactly why in your final reply.`
+            ? `[ah] You are not done: the last check (\`${debt.check}\`) FAILED and ${debt.files.join(", ")} changed without a passing check since.${debt.error ? `\n\nWhat failed:\n${debt.error}\n` : " "}\nFix the failure and re-run ${how}. Only if it truly cannot pass, say exactly why in your final reply.`
             : `[ah] You changed ${debt.files.join(", ")} but no check has passed since. Run ${how} now and fix any failure. If no check applies, say so explicitly in your final reply.`;
           this.messages.push({ role: "user", content: [{ type: "text", text }] });
           continue;

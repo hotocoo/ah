@@ -54,7 +54,7 @@ test("syntaxNote flags broken TS and ignores other files", () => {
   expect(syntaxNote("/x/a.md", "(((")).toBe("");
 });
 
-function setup(script: MockTurn[], memory?: MemoryStore) {
+function setup(script: MockTurn[], memory?: MemoryStore, gateRetries?: number) {
   const root = mkdtempSync(join(tmpdir(), "ah-evidence-"));
   roots.push(root);
   writeFileSync(join(root, "math.ts"), "export const add = (a: number, b: number) => a - b;\n");
@@ -70,6 +70,7 @@ function setup(script: MockTurn[], memory?: MemoryStore) {
     maxTokens: 1000,
     onEvent: (e) => events.push(e),
     memory: memory ? { store: memory, scopes: [root, "global"] } : undefined,
+    gateRetries,
   });
   return { root, agent, events };
 }
@@ -87,6 +88,28 @@ describe("evidence gate and memory", () => {
     expect(r.outcome).toBe("completed");
     expect(r.verdict).toBe("verified");
     expect(events.filter((e) => e.type === "evidence_gate")).toHaveLength(1);
+  });
+
+  test("a failing check sends the model back, with the failure, up to gateRetries more times", async () => {
+    const failing = { toolCalls: [{ name: "bash", input: { command: "bun build nope.ts --outdir out" } }] };
+    const { agent, events } = setup(
+      [
+        { toolCalls: [{ name: "read_file", input: { path: "math.ts" } }] },
+        { toolCalls: [{ name: "edit_file", input: { path: "math.ts", old_string: "a - b", new_string: "a + b" } }] },
+        failing,
+        { text: "Done." },
+        failing,
+        { text: "Done, really." },
+        failing,
+        { text: "Still done." },
+      ],
+      undefined,
+      2,
+    );
+    const r = await agent.run("fix add");
+    expect(events.filter((e) => e.type === "evidence_gate")).toHaveLength(3);
+    expect(r.verdict).toBe("failed");
+    expect(JSON.stringify(agent.messages)).toContain("What failed:");
   });
 
   test("verified lessons are stored, recalled and reinforced", async () => {

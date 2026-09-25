@@ -354,6 +354,7 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     },
     signal: o.signal,
     evidenceGate: f.evidence !== false && env.cfg.evidenceGate,
+    gateRetries: env.cfg.gateRetries,
     resetAfterFailures: f.evidence === false ? 0 : env.cfg.resetAfterFailures,
     testCommand,
     memory: memory && { ...memory, recallLimit: env.cfg.recall.limit },
