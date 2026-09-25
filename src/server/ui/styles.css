@@ -604,3 +604,7 @@ button.sm { height: 26px; padding: 0 var(--s-2); font-size: var(--fs-12); }
 .diff-body summary.diff-head { cursor: pointer; list-style: none; }
 .diff .dh { color: var(--accent); background: var(--bg-subtle); }
 .stats .chip.review { cursor: pointer; border-color: var(--accent); color: var(--accent); background: none; }
+.composer { position: relative; }
+.mention { position: absolute; left: var(--s-3); right: var(--s-3); bottom: calc(100% + 6px); z-index: 5; margin: 0; padding: 4px; list-style: none; max-height: 260px; overflow: auto; border: 1px solid var(--border-strong); border-radius: var(--r-3); background: var(--surface); box-shadow: var(--shadow-pop); font: 400 var(--fs-12) var(--mono); }
+.mention li { padding: 5px var(--s-2); border-radius: var(--r-2); cursor: pointer; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mention li[aria-selected="true"], .mention li:hover { background: var(--bg-subtle); color: var(--text); }

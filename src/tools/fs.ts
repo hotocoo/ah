@@ -60,7 +60,7 @@ function notFound(root: string, path: unknown, kind: "file" | "directory" = "fil
   throw new ToolError(`${kind} not found: ${String(path)}${hits.length ? `. Similar paths: ${hits.join(", ")}` : ". Nothing with that name exists in the workspace."}`);
 }
 
-const numbered = (lines: string[], offset: number) => lines.map((l, i) => `${offset + i}\t${l.length > MAX_LINE_CHARS ? `${l.slice(0, MAX_LINE_CHARS)}…` : l}`).join("\n");
+export const numbered = (lines: string[], offset: number): string => lines.map((l, i) => `${offset + i}\t${l.length > MAX_LINE_CHARS ? `${l.slice(0, MAX_LINE_CHARS)}…` : l}`).join("\n");
 const NEEDS_READ_LINES = 400;
 
 // An unread file may still be edited when old_string matches its text exactly and once (the model

@@ -69,7 +69,8 @@
                 <div id="chat-plan" class="plan" hidden></div>
                 <form id="chat-form" class="composer">
                   <label for="chat-input" class="sr">Message</label>
-                  <textarea id="chat-input" rows="2" placeholder="Describe a task. Enter sends, Shift+Enter adds a line."></textarea>
+                  <ul id="mention-list" class="mention" role="listbox" aria-label="Files" hidden></ul>
+                  <textarea id="chat-input" rows="2" placeholder="Describe a task. @ attaches a file. Enter sends, Shift+Enter adds a line." aria-autocomplete="list" aria-controls="mention-list"></textarea>
                   <div class="composer-bar">
                     <label class="pick" title="What the agent may do without asking">
                       <span class="sr">Permissions</span>

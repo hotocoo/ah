@@ -146,6 +146,12 @@ describe("chat sessions", () => {
     expect((await get("/api/diff?files=../../etc/passwd")).status).toBe(500);
   });
 
+  test("@file in a message attaches the file", async () => {
+    (srv.env.registry.get("mock") as MockProvider).setScript([{ text: "ok" }], "scripted");
+    const ev = (await chat({ prompt: "summarise @a.txt", model: "mock/scripted" })) as { type: string; files?: string[] }[];
+    expect(ev.find((e) => e.type === "attachments")?.files).toEqual(["a.txt"]);
+  });
+
   test("stop and steer need a busy session", async () => {
     const post = (p: string, b: unknown) => fetch(`${base}${p}`, { method: "POST", headers: h, body: JSON.stringify(b) });
     expect((await post("/api/stop", { sessionId: "nope" })).status).toBe(404);

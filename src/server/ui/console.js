@@ -367,6 +367,9 @@ function createView(log) {
       case "memory_recall":
         agentMsg().append(html(`<details class="recall"><summary>Recalled ${ev.memories.length === 1 ? "1 memory" : `${ev.memories.length} memories`}</summary><ul>${ev.memories.map((m) => `<li><span class="tag ${m.kind === "lesson" ? "gold" : ""}">${esc(m.kind)} ${esc(num(m.trust, 2))}</span> ${esc(m.text)}</li>`).join("")}</ul></details>`));
         break;
+      case "attachments":
+        agentMsg().insertAdjacentHTML("beforeend", `<div class="note-row">Attached ${esc(ev.files.join(", "))}</div>`);
+        break;
       case "retry":
       case "compaction":
       case "tool_calls_recovered":
@@ -633,8 +636,60 @@ $("#diff-dlg").addEventListener("click", (e) => e.target === $("#diff-dlg") && $
 
 // ---------- composer ----------
 $("#chat-new").addEventListener("click", newSession);
-$("#chat-input").addEventListener("input", syncComposer);
+// @-mentions: complete workspace paths; the server attaches mentioned files to the task.
+const mention = { items: [], sel: 0, start: 0, seq: 0 };
+const mentionOpen = () => !$("#mention-list").hidden;
+function closeMention() {
+  mention.seq++;
+  $("#mention-list").hidden = true;
+  $("#chat-input").removeAttribute("aria-activedescendant");
+}
+function renderMention() {
+  const ul = $("#mention-list");
+  ul.innerHTML = mention.items.map((p, i) => `<li role="option" id="mention-${i}" data-i="${i}" aria-selected="${i === mention.sel}">${esc(p)}</li>`).join("");
+  ul.hidden = !mention.items.length;
+  if (mention.items.length) $("#chat-input").setAttribute("aria-activedescendant", `mention-${mention.sel}`);
+}
+async function updateMention() {
+  const ta = $("#chat-input");
+  const m = /(?:^|\s)@([\w./-]*)$/.exec(ta.value.slice(0, ta.selectionStart));
+  if (!m) return closeMention();
+  mention.start = ta.selectionStart - m[1].length;
+  const seq = ++mention.seq;
+  const items = await api(`/api/files?q=${encodeURIComponent(m[1])}`, undefined, true).catch(() => []);
+  if (seq !== mention.seq) return;
+  mention.items = items;
+  mention.sel = 0;
+  renderMention();
+}
+function pickMention(i) {
+  const ta = $("#chat-input");
+  const path = mention.items[i];
+  if (!path) return;
+  ta.value = `${ta.value.slice(0, mention.start)}${path} ${ta.value.slice(ta.selectionStart)}`;
+  const caret = mention.start + path.length + 1;
+  ta.setSelectionRange(caret, caret);
+  closeMention();
+  syncComposer();
+}
+$("#mention-list").addEventListener("mousedown", (e) => {
+  const li = e.target.closest("[data-i]");
+  if (li) e.preventDefault(), pickMention(Number(li.dataset.i));
+});
+$("#chat-input").addEventListener("blur", () => setTimeout(closeMention, 100));
+
+$("#chat-input").addEventListener("input", () => (syncComposer(), updateMention()));
 $("#chat-input").addEventListener("keydown", (e) => {
+  if (mentionOpen()) {
+    const n = mention.items.length;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      mention.sel = (mention.sel + (e.key === "ArrowDown" ? 1 : n - 1)) % n;
+      return renderMention();
+    }
+    if (e.key === "Enter" || e.key === "Tab") return e.preventDefault(), pickMention(mention.sel);
+    if (e.key === "Escape") return e.preventDefault(), e.stopPropagation(), closeMention();
+  }
   if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
     e.preventDefault();
     $("#chat-form").requestSubmit();

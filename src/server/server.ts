@@ -7,6 +7,7 @@ import { autoSelectModel, buildEnvironment, createSession, loadExtensions, resol
 import { isTrusted, setTrusted } from "../plugins/index.ts";
 import type { PermissionMode } from "../tools/index.ts";
 import { confine } from "../tools/types.ts";
+import { walkFiles } from "../tools/search.ts";
 import { discoverBackend } from "../tools/computer.ts";
 import { parseModelRef } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
@@ -186,6 +187,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
           return sessions();
         case "/api/diff":
           return workspaceDiff(q);
+        case "/api/files":
+          return json(findFiles(opts.root, q.get("q") ?? ""));
         case "/api/approve":
             return await approve(req);
           case "/api/memory":
@@ -469,6 +472,33 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
   }
 
   return { server, token, env };
+}
+
+// Workspace files for @-mention completion: basename prefix, then basename, then path
+// substring, then the query's characters in order within the file name. Bounded walk.
+const MAX_WALK = 20_000;
+export function findFiles(root: string, query: string, limit = 20): string[] {
+  const q = query.toLowerCase();
+  const scored: [number, string][] = [];
+  let n = 0;
+  for (const abs of walkFiles(root)) {
+    if (++n > MAX_WALK) break;
+    const path = relative(root, abs);
+    const p = path.toLowerCase();
+    const base = p.slice(p.lastIndexOf("/") + 1);
+    let score = base.startsWith(q) ? 0 : base.includes(q) ? 1 : p.includes(q) ? 2 : -1;
+    if (score < 0) {
+      let i = 0;
+      for (const c of base) if (c === q[i]) i++;
+      if (i < q.length) continue;
+      score = 3;
+    }
+    scored.push([score * 1000 + path.length, path]);
+  }
+  return scored
+    .sort((a, b) => a[0] - b[0])
+    .slice(0, limit)
+    .map(([, p]) => p);
 }
 
 // A stable default port so the URL can be bookmarked; falls back to any free port if taken.

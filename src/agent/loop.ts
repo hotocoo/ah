@@ -7,6 +7,7 @@ import { RepetitionGuard } from "./repetition.ts";
 import { recoverToolCalls, textProtocolInstructions, toTextProtocol } from "./toolcall-parser.ts";
 import { COMPACTION_PROMPT, elideOldToolResults, estimateTokens, renderTranscript, safeCutIndex, stripThinking } from "./context.ts";
 import type { AgentEvent, AgentEventHandler, RunOutcome, RunSummary } from "./events.ts";
+import { mentionedFiles } from "./mentions.ts";
 import { EvidenceLedger } from "./evidence.ts";
 import type { MemoryStore } from "../memory/store.ts";
 
@@ -148,7 +149,11 @@ export class Agent {
     // Recalled memory rides on the user message, not the system prompt, so the cached
     // system prefix stays byte-stable (D4).
     const recalled = this.recall(promptText);
-    this.messages.push({ role: "user", content: recalled.block ? [recalled.block, ...content] : content });
+    const attached = mentionedFiles(this.o.toolContext.root, promptText);
+    for (const a of attached) this.o.toolContext.readFiles.add(a.abs);
+    if (attached.length) this.emit({ type: "attachments", runId: this.runId, turn: this.turn, files: attached.map((a) => a.path), t: Date.now() });
+    const files: ContentBlock[] = attached.map((a) => ({ type: "text", text: `<file path="${a.path}">\n${a.text}\n</file>` }));
+    this.messages.push({ role: "user", content: [...(recalled.block ? [recalled.block] : []), ...content, ...files] });
     const startTurn = this.turn;
     let outcome: RunOutcome = "completed";
     let error: string | undefined;
