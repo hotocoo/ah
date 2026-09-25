@@ -141,6 +141,11 @@ describe("chat sessions", () => {
     expect(performance.now() - t0).toBeLessThan(4000);
   });
 
+  test("diff reports a non-git workspace and refuses paths outside it", async () => {
+    expect(await (await get("/api/diff")).json()).toEqual({ git: false, diff: "" });
+    expect((await get("/api/diff?files=../../etc/passwd")).status).toBe(500);
+  });
+
   test("stop and steer need a busy session", async () => {
     const post = (p: string, b: unknown) => fetch(`${base}${p}`, { method: "POST", headers: h, body: JSON.stringify(b) });
     expect((await post("/api/stop", { sessionId: "nope" })).status).toBe(404);

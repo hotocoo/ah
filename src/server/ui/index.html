@@ -61,6 +61,7 @@
                   <span class="sr">Preset</span>
                   <select id="chat-preset"><option value="">no preset</option></select>
                 </label>
+                <button id="chat-diff" class="ghost" type="button" title="Uncommitted changes in this workspace">Changes</button>
                 <button id="chat-new" class="ghost" type="button">New session</button>
               </header>
               <div id="chat-log" class="chat-log" aria-live="polite"></div>
@@ -301,6 +302,10 @@
         </ul>
       </div>
     </template>
+    <dialog id="diff-dlg" class="diff-dlg" aria-labelledby="diff-title">
+      <header><h2 id="diff-title">Changes</h2><span id="diff-sum" class="meta"></span><button type="button" class="ghost sm" id="diff-close" aria-label="Close">Close</button></header>
+      <div id="diff-body" class="diff-body"></div>
+    </dialog>
     <dialog id="cmdk" class="cmdk" aria-label="Command palette">
       <input id="cmdk-q" type="text" placeholder="Type a command or page" autocomplete="off" spellcheck="false" aria-controls="cmdk-list" />
       <ul id="cmdk-list" role="listbox"></ul>

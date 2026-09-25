@@ -592,3 +592,15 @@ button.sm { height: 26px; padding: 0 var(--s-2); font-size: var(--fs-12); }
 .instrument > * { flex-shrink: 0; }
 .instrument > .trace { flex: 1 1 0; min-height: 120px; overflow: auto; }
 .trace time { color: var(--muted); margin-right: var(--s-2); }
+.diff-dlg { width: min(980px, calc(100vw - 32px)); max-height: 86dvh; margin: 6dvh auto auto; padding: 0; border: 1px solid var(--border-strong); border-radius: var(--r-4); background: var(--surface); color: var(--text); box-shadow: var(--shadow-pop); overflow: hidden; }
+.diff-dlg[open] { display: flex; flex-direction: column; }
+.diff-dlg::backdrop { background: rgb(0 0 0 / 0.45); }
+.diff-dlg header { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); border-bottom: 1px solid var(--border); }
+.diff-dlg header h2 { font-size: var(--fs-14); }
+.diff-dlg header .meta { font: 400 var(--fs-12) var(--mono); color: var(--muted); }
+.diff-dlg header button { margin-left: auto; }
+.diff-body { overflow: auto; padding: var(--s-3) var(--s-4) var(--s-4); display: grid; gap: var(--s-3); }
+.diff-body .diff pre { margin: 0; font: 400 var(--fs-12) / 1.5 var(--mono); overflow: auto; }
+.diff-body summary.diff-head { cursor: pointer; list-style: none; }
+.diff .dh { color: var(--accent); background: var(--bg-subtle); }
+.stats .chip.review { cursor: pointer; border-color: var(--accent); color: var(--accent); background: none; }

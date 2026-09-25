@@ -1,11 +1,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { randomBytes } from "node:crypto";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentEvent } from "../agent/events.ts";
 import { autoSelectModel, buildEnvironment, createSession, loadExtensions, resolveModelContext, type Environment, type Session } from "../app/session.ts";
 import { isTrusted, setTrusted } from "../plugins/index.ts";
 import type { PermissionMode } from "../tools/index.ts";
+import { confine } from "../tools/types.ts";
 import { discoverBackend } from "../tools/computer.ts";
 import { parseModelRef } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
@@ -183,6 +184,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
           return await control(req, "steer");
         case "/api/sessions":
           return sessions();
+        case "/api/diff":
+          return workspaceDiff(q);
         case "/api/approve":
             return await approve(req);
           case "/api/memory":
@@ -347,6 +350,21 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
         .map(([id, c]) => ({ id, title: c.title, model: c.session.modelRef, busy: c.busy, runs: c.runs, mode: c.mode, createdAt: c.createdAt, updatedAt: c.updatedAt, lastOutcome: c.lastOutcome }))
         .sort((a, b) => b.updatedAt - a.updatedAt),
     );
+  }
+
+  // Uncommitted changes in the workspace (optionally only some files), for review in the console.
+  function workspaceDiff(q: URLSearchParams): Response {
+    const files = (q.get("files") ?? "").split(",").filter(Boolean).map((f) => relative(opts.root, confine(opts.root, f)) || ".");
+    const git = (args: string[]) => Bun.spawnSync(["git", ...args], { cwd: opts.root, stdout: "pipe", stderr: "pipe" });
+    if (git(["rev-parse", "--is-inside-work-tree"]).exitCode !== 0) return json({ git: false, diff: "" });
+    const hasHead = git(["rev-parse", "--verify", "-q", "HEAD"]).exitCode === 0;
+    const tracked = git(["diff", "--no-color", "--no-ext-diff", ...(hasHead ? ["HEAD"] : []), "--", ...files]).stdout.toString();
+    const untracked = git(["ls-files", "--others", "--exclude-standard", "--", ...files]).stdout.toString().split("\n").filter(Boolean);
+    const added = untracked
+      .slice(0, 50)
+      .map((f) => git(["diff", "--no-color", "--no-index", "--", "/dev/null", f]).stdout.toString())
+      .join("");
+    return json({ git: true, diff: (tracked + added).slice(0, 400_000) });
   }
 
   // GET replays a session's events (and follows a live run); DELETE forgets an idle session.

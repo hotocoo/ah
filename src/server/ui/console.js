@@ -210,7 +210,7 @@ function createView(log) {
   }
   function stats() {
     const cache = run.input ? run.cacheRead / run.input : null;
-    const wall = (run.end || performance.now()) - run.start;
+    const wall = (run.end || Date.now()) - run.start;
     $("#chat-stats").innerHTML = run.start
       ? [plural(run.turns, "turn"), plural(run.tools, "tool"), run.tps ? `${num(run.tps, 1)} tok/s` : "", `${compact(run.input + run.output)} tok`, cache !== null && run.cacheRead ? `cache ${num(cache * 100)}%` : "", run.ctxWindow && run.ctxUsed ? `context ${num((100 * run.ctxUsed) / run.ctxWindow)}%` : "", ms(wall)].filter(Boolean).map((s) => `<span>${esc(s)}</span>`).join("")
       : "";
@@ -263,7 +263,7 @@ function createView(log) {
         inst.ctx(0, run.ctxWindow);
         break;
       case "run_start":
-        Object.assign(run, { turns: 0, tools: 0, input: 0, output: 0, cacheRead: 0, tps: null, start: now, end: 0 });
+        Object.assign(run, { turns: 0, tools: 0, input: 0, output: 0, cacheRead: 0, tps: null, start: ev.t ?? Date.now(), end: 0 });
         if (!replay) inst.reset(), inst.set("thinking"), inst.trace("task started", "gold"), ($("#run-tools").textContent = "0");
         break;
       case "turn_start":
@@ -385,11 +385,12 @@ function createView(log) {
         endThinking();
         endStep();
         endText();
-        run.end = now;
+        run.end = ev.t ?? Date.now();
         const r = ev.result;
         const chip = (v, cls = "") => `<span class="chip ${cls}">${esc(v)}</span>`;
         const verdict = r.verdict && r.verdict !== "unverified" ? chip(r.verdict, r.verdict === "verified" ? "ok" : "bad") : "";
-        agentMsg().insertAdjacentHTML("beforeend", `<div class="stats">${chip(r.outcome, r.outcome === "completed" ? "ok" : "bad")}${verdict}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${compact(r.usage.inputTokens)} in · ${compact(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
+        const review = r.changedFiles.length ? `<button type="button" class="chip review" data-files="${esc(r.changedFiles.join(","))}">Review changes</button>` : "";
+        agentMsg().insertAdjacentHTML("beforeend", `<div class="stats">${review}${chip(r.outcome, r.outcome === "completed" ? "ok" : "bad")}${verdict}${chip(plural(r.turns, "turn"))}${chip(plural(r.toolCalls, "tool"))}${chip(ms(r.wallMs))}${chip(`${compact(r.usage.inputTokens)} in · ${compact(r.usage.outputTokens)} out`)}${r.changedFiles.length ? chip(`changed ${r.changedFiles.join(", ")}`) : ""}</div>`);
         if (!replay) inst.set(r.outcome === "completed" ? "done" : "error"), inst.trace(`run ${r.outcome} · ${ms(r.wallMs)}`, r.outcome === "completed" ? "ok" : "bad"), notify(`Run ${r.outcome}`, `${state.title} · ${plural(r.turns, "turn")} · ${ms(r.wallMs)}`);
         msg = null;
         break;
@@ -518,8 +519,8 @@ async function openSession(id) {
 
 async function send(prompt) {
   if (state.busy) return steer(prompt);
-  // Asked once, on the first task (a user gesture), so long runs can report back.
-  if ("Notification" in window && Notification.permission === "default") Notification.requestPermission().catch(() => {});
+  // Only long runs are worth a notification: ask once a run has gone on for a while.
+  if ("Notification" in window && Notification.permission === "default") setTimeout(() => state.busy && Notification.requestPermission().catch(() => {}), 20_000);
   const ac = new AbortController();
   state.follow?.abort();
   state.follow = ac;
@@ -589,6 +590,46 @@ $("#ses-list").addEventListener("click", async (e) => {
 });
 $("#ses-new").addEventListener("click", () => ((location.hash = "chat"), newSession(), $("#chat-input").focus()));
 setInterval(() => document.visibilityState === "visible" && refreshSessions(), 5000);
+
+// ---------- change review (git diff of the workspace) ----------
+function renderDiff(text) {
+  const files = [];
+  let cur = null;
+  for (const line of text.split("\n")) {
+    if (line.startsWith("diff --git")) {
+      cur = { name: line.replace(/^diff --git a\/(.*) b\/.*$/, "$1").replace(/^diff --git \S+ b\//, ""), rows: [], add: 0, del: 0 };
+      files.push(cur);
+    } else if (!cur || /^(index |--- |\+\+\+ |new file|deleted file|similarity|rename |old mode|new mode)/.test(line)) continue;
+    else if (line.startsWith("@@")) cur.rows.push(`<span class="dh">${esc(line)}</span>`);
+    else if (line.startsWith("+")) cur.add++, cur.rows.push(`<span class="da">${esc(line)}</span>`);
+    else if (line.startsWith("-")) cur.del++, cur.rows.push(`<span class="dd">${esc(line)}</span>`);
+    else if (line) cur.rows.push(`<span class="dc">${esc(line)}</span>`);
+  }
+  const fix = (n) => n.replace(/^\/dev\/null b\//, "");
+  return { files, html: files.map((f) => `<details class="diff" open><summary class="diff-head">${esc(fix(f.name))} <span class="add">+${f.add}</span> <span class="del">-${f.del}</span></summary><pre>${f.rows.slice(0, 2000).join("")}</pre></details>`).join("") };
+}
+async function openDiff(files = []) {
+  const dlg = $("#diff-dlg");
+  $("#diff-body").innerHTML = `<div class="sk sk-block"></div>`;
+  $("#diff-sum").textContent = "";
+  dlg.showModal();
+  try {
+    const d = await api(`/api/diff${files.length ? `?files=${encodeURIComponent(files.join(","))}` : ""}`, undefined, true);
+    if (!d.git) return void ($("#diff-body").innerHTML = `<p class="empty-note">This workspace is not a git repository, so there is nothing to diff against.</p>`);
+    const r = renderDiff(d.diff);
+    $("#diff-sum").textContent = r.files.length ? `${plural(r.files.length, "file")} · +${r.files.reduce((a, f) => a + f.add, 0)} -${r.files.reduce((a, f) => a + f.del, 0)}` : "";
+    $("#diff-body").innerHTML = r.html || `<p class="empty-note">No uncommitted changes.</p>`;
+  } catch (err) {
+    $("#diff-body").replaceChildren(alertBox("Could not load changes", err.message, () => openDiff(files)));
+  }
+}
+$("#chat-diff").addEventListener("click", () => openDiff());
+$("#chat-log").addEventListener("click", (e) => {
+  const b = e.target.closest("button.review");
+  if (b) openDiff(b.dataset.files.split(","));
+});
+$("#diff-close").addEventListener("click", () => $("#diff-dlg").close());
+$("#diff-dlg").addEventListener("click", (e) => e.target === $("#diff-dlg") && $("#diff-dlg").close());
 
 // ---------- composer ----------
 $("#chat-new").addEventListener("click", newSession);
