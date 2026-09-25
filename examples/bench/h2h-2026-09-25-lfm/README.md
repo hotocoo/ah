@@ -33,6 +33,19 @@ From ah's own telemetry for these 24 trials (215 tool errors):
 | server closed the connection mid-stream | 1 trial ended `agent_error` | stream read errors are retryable (D38) |
 | trial sandboxes at `work/<task>/<n>`: sibling trials visible, the model ran `cargo build` inside trial 1's directory from trial 3 | shared by all harnesses | each trial in a private `$TMPDIR/ah-trial-XXXX/<task-id>` (D40) |
 
+## After the fixes: ah at `ac30c5f`, same conditions
+
+Same model, server, suite and turn caps as the `85cc190` run above (`bash scripts/h2h.sh --only ah --trials 3 --turn-limit`), with D38 to D40 applied. Details: [`ah-head/report.md`](ah-head/report.md), [`ah-before-vs-after.md`](ah-before-vs-after.md).
+
+| ah build | trials passed (95% CI) | tool error rate | verdict agrees with grader | failures |
+|---|---|---|---|---|
+| `85cc190` | 8/24 (18%–53%) | 42% | 17/22 | max_turns 12, grader 3, agent_error 1 |
+| `ac30c5f` | 11/24 (28%–65%) | 27% | 20/22 | max_turns 13 |
+
+- The tool error rate fell by more than a third, and `ts-multifile-rename` went from 0/3 to 2/3. That task's failures had been path-escape loops.
+- 11 against 8 is still inside the intervals: it points the right way, but it does not prove an accuracy gain.
+- Every remaining failure is the turn cap. Hermes and dsh never had that cap in the table above.
+
 ## Caveats
 
 - n = 3 per task on a 2.6B model: the intervals are wide.

@@ -1,0 +1,28 @@
+bench llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0 · 8 tasks × 3 trials · {} · /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-core-head/ah
+  PASS ts-bugfix-pagination #1 45.5s · 10 turns · 13 tools (3 err)
+  PASS ts-bugfix-pagination #2 30.9s · 9 turns · 11 tools (1 err)
+  PASS ts-bugfix-pagination #3 36.3s · 9 turns · 14 tools (2 err)
+  FAIL go-feature-stack #1 110.3s · 15 turns · 29 tools (13 err) · max_turns
+  FAIL go-feature-stack #2 151.6s · 15 turns · 19 tools (5 err) · max_turns
+  FAIL go-feature-stack #3 231.8s · 15 turns · 19 tools (9 err) · max_turns
+  PASS py-bugfix-duration #1 88.9s · 15 turns · 17 tools (6 err)
+  PASS py-bugfix-duration #2 78.7s · 15 turns · 16 tools (7 err)
+  PASS py-bugfix-duration #3 33.4s · 9 turns · 10 tools
+  FAIL rust-fix-compile-and-logic #1 387.2s · 20 turns · 21 tools (4 err) · max_turns
+  FAIL rust-fix-compile-and-logic #2 192.5s · 20 turns · 22 tools (8 err) · max_turns
+  FAIL rust-fix-compile-and-logic #3 279.9s · 20 turns · 21 tools (5 err) · max_turns
+  PASS ts-debug-cross-file #1 40.9s · 9 turns · 11 tools (1 err)
+  PASS ts-debug-cross-file #2 30.3s · 10 turns · 11 tools (1 err)
+  PASS ts-debug-cross-file #3 49.9s · 11 turns · 12 tools (1 err)
+  FAIL ts-feature-lru #1 462.4s · 20 turns · 23 tools (7 err) · max_turns
+  FAIL ts-feature-lru #2 491.9s · 20 turns · 23 tools (7 err) · max_turns
+  FAIL ts-feature-lru #3 329.9s · 20 turns · 22 tools (6 err) · max_turns
+  FAIL ts-multifile-rename #1 171.6s · 25 turns · 44 tools (11 err) · max_turns
+  PASS ts-multifile-rename #2 55.8s · 12 turns · 23 tools (1 err)
+  PASS ts-multifile-rename #3 56.2s · 17 turns · 29 tools (8 err)
+  FAIL ts-write-tests #1 242.1s · 15 turns · 17 tools (4 err) · max_turns
+  FAIL ts-write-tests #2 69.8s · 15 turns · 17 tools (3 err) · max_turns
+  FAIL ts-write-tests #3 223.8s · 15 turns · 19 tools (11 err) · max_turns
+
+result 11/24 trials · pass@1 46% · pass^3 38% · 4/8 tasks solved
+report: /Users/acotech/workspace/ah-bench-ac30c5f/examples/bench/h2h-lfm-core-head/ah/report.md

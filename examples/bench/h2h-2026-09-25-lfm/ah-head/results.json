@@ -1,0 +1,1326 @@
+{
+  "benchRunId": "bench_2026-09-25T08-37-36_llamacpp_DavidAU_LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF_Q8_",
+  "model": "llamacpp/DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0",
+  "startedAt": "2026-09-25T08:37:36.094Z",
+  "finishedAt": "2026-09-25T09:42:32.024Z",
+  "trials": 3,
+  "features": {},
+  "hardware": {
+    "t": 1790325456094,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 7329742848,
+    "load1": 5.67431640625,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 8029470720,
+    "gpuInUseBytes": 5707595776,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "llamacpp",
+    "version": "b10621-c1d0e7a00",
+    "baseURL": "http://127.0.0.1:8080"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "ac30c5f",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "Fix pagination off-by-one",
+      "category": "bugfix",
+      "difficulty": 1,
+      "tags": [
+        "bun"
+      ],
+      "id": "ts-bugfix-pagination",
+      "language": "typescript",
+      "prompt": "Users report that page 1 from `paginate` in src/paginate.ts skips the first items. Pages are 1-based. Fix the bug and add a regression test in src/paginate.test.ts.",
+      "grader": {
+        "cmd": "bun test",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-bugfix-pagination",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-bugfix-pagination/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-bugfix-pagination/hidden"
+    },
+    {
+      "name": "Implement a generic Go stack",
+      "category": "feature",
+      "difficulty": 2,
+      "tags": [
+        "go"
+      ],
+      "id": "go-feature-stack",
+      "language": "go",
+      "prompt": "Implement the generic Stack[T] type in stack.go as documented in the comments (Push, Pop, Peek, Len, IsEmpty). Pop and Peek on an empty stack return the zero value and false. Add tests and run `go test ./...`.",
+      "grader": {
+        "cmd": "go test ./...",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/go-feature-stack",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/go-feature-stack/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/go-feature-stack/hidden"
+    },
+    {
+      "name": "Fix a Python duration parser",
+      "category": "bugfix",
+      "difficulty": 2,
+      "tags": [
+        "python"
+      ],
+      "id": "py-bugfix-duration",
+      "language": "python",
+      "prompt": "`parse_duration` in duration.py should convert strings like '1h30m', '45s', '2h', '1h2m3s' into total seconds, but mixed units give wrong results. Fix it and verify with pytest.",
+      "grader": {
+        "cmd": "python3 -m pytest -q",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/py-bugfix-duration",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/py-bugfix-duration/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/py-bugfix-duration/hidden"
+    },
+    {
+      "name": "Fix a Rust crate that does not compile and has a logic bug",
+      "category": "bugfix",
+      "difficulty": 3,
+      "tags": [
+        "rust"
+      ],
+      "id": "rust-fix-compile-and-logic",
+      "language": "rust",
+      "prompt": "This Rust crate does not compile, and once it does, `cargo test` has a failing test. Make it compile and fix the logic so all tests pass. Do not change the tests.",
+      "grader": {
+        "cmd": "cargo test --quiet 2>&1",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/rust-fix-compile-and-logic",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/rust-fix-compile-and-logic/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/rust-fix-compile-and-logic/hidden"
+    },
+    {
+      "name": "Debug a failing test whose cause is in another module",
+      "category": "debugging",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "debugging",
+        "multi-file"
+      ],
+      "id": "ts-debug-cross-file",
+      "language": "typescript",
+      "prompt": "`bun test` fails in tests/checkout.test.ts. Find the root cause and fix it. Do not modify the tests.",
+      "grader": {
+        "cmd": "bun test && git diff --quiet -- tests",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-debug-cross-file",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-debug-cross-file/fixture"
+    },
+    {
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "spec"
+      ],
+      "id": "ts-feature-lru",
+      "language": "typescript",
+      "prompt": "Implement the LRU cache described in SPEC.md. Write your own tests in src/lru.test.ts and make sure they pass.",
+      "grader": {
+        "cmd": "bun test",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 20,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-feature-lru",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-feature-lru/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-feature-lru/hidden"
+    },
+    {
+      "name": "Rename a function across a codebase",
+      "category": "refactor",
+      "difficulty": 3,
+      "tags": [
+        "bun",
+        "multi-file"
+      ],
+      "id": "ts-multifile-rename",
+      "language": "typescript",
+      "prompt": "Rename the function `getUserName` to `getDisplayName` everywhere (definition, all call sites, imports, tests). Keep behaviour identical and make sure `bun test` passes.",
+      "grader": {
+        "cmd": "bun test && ! grep -rn getUserName src tests",
+        "timeoutMs": 60000
+      },
+      "limits": {
+        "maxTurns": 25,
+        "timeoutMs": 900000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-multifile-rename",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-multifile-rename/fixture"
+    },
+    {
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "tags": [
+        "bun",
+        "mutation-testing"
+      ],
+      "id": "ts-write-tests",
+      "language": "typescript",
+      "prompt": "Write a thorough test suite for `slugify` (src/slugify.ts) in src/slugify.test.ts. It must pass against the current implementation and should catch regressions: accents, case, punctuation runs, leading/trailing separators, digits, empty input.",
+      "grader": {
+        "cmd": "bash grade.sh",
+        "timeoutMs": 120000
+      },
+      "limits": {
+        "maxTurns": 15,
+        "timeoutMs": 600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-write-tests",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-write-tests/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-ac30c5f/bench/suites/core/ts-write-tests/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugpjv91_wo48gr",
+      "turns": 10,
+      "toolCalls": 13,
+      "toolErrors": 3,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 34374,
+        "outputTokens": 5140,
+        "cacheReadTokens": 29665,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 45462.53425,
+      "ttftMs": 1025.1916249999995,
+      "graderMs": 7.483332999996492,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 7 pass\n 0 fail\n 13 expect() calls\nRan 7 tests across 2 files. [2.00ms]",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 28 insertions(+), 1 deletion(-)",
+      "prefillTps": 1900.1580785975748,
+      "decodeTps": 118.86303045892687,
+      "gpuUtilAvg": 90.71739130434783,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugpkue6_0l4wf0",
+      "turns": 9,
+      "toolCalls": 11,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 30720,
+        "outputTokens": 3408,
+        "cacheReadTokens": 26138,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 30878.489166,
+      "ttftMs": 1011.0029590000049,
+      "graderMs": 7.185916999995243,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 6 pass\n 0 fail\n 10 expect() calls\nRan 6 tests across 2 files. [2.00ms]",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 20 insertions(+), 1 deletion(-)",
+      "prefillTps": 1968.2734506317736,
+      "decodeTps": 118.47515312573007,
+      "gpuUtilAvg": 90.03225806451613,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-bugfix-pagination",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugplia5_l1jzsj",
+      "turns": 9,
+      "toolCalls": 14,
+      "toolErrors": 2,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 35172,
+        "outputTokens": 3988,
+        "cacheReadTokens": 29600,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 36293.789124999996,
+      "ttftMs": 1011.696082999988,
+      "graderMs": 7.327084000004106,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 8 pass\n 0 fail\n 16 expect() calls\nRan 8 tests across 2 files. [2.00ms]",
+      "changedFiles": [
+        "src/paginate.test.ts",
+        "src/paginate.ts"
+      ],
+      "diffStat": "2 files changed, 38 insertions(+), 1 deletion(-)",
+      "prefillTps": 2069.489221872246,
+      "decodeTps": 118.20375785337413,
+      "gpuUtilAvg": 90.56756756756756,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "none",
+      "outcome": "max_turns",
+      "runId": "run_mugpmad7_4r9p1c",
+      "turns": 15,
+      "toolCalls": 29,
+      "toolErrors": 13,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 62319,
+        "outputTokens": 10084,
+        "cacheReadTokens": 56649,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 110349.52870800001,
+      "ttftMs": 1008.5699160000077,
+      "graderMs": 147.5445840000175,
+      "graderTail": "FAIL\texample.com/stack [build failed]\nFAIL\n\n# example.com/stack [example.com/stack.test]\n./stack_hidden_test.go:7:8: s.IsEmpty undefined (type Stack[int] has no field or method IsEmpty)\n./stack_hidden_test.go:7:23: s.Len undefined (type Stack[int] has no field or method Len)\n./stack_hidden_test.go:8:16: s.Pop undefined (type Stack[int] has no field or method Pop)\n./stack_hidden_test.go:9:4: s.Push undefined (type Stack[int] has no field or method Push)\n./stack_hidden_test.go:10:16: s.Peek undefined (type Stack[int] has no field or method Peek)\n./stack_hidden_test.go:11:15: s.Pop undefined (type Stack[int] has no field or method Pop)\n./stack_hidden_test.go:12:7: s.Len undefined (type Stack[int] has no field or method Len)\n./stack_hidden_test.go:14:16: z.Peek undefined (type Stack[string] has no field or method Peek)",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": 1806.9160047885682,
+      "decodeTps": 117.73427879788716,
+      "gpuUtilAvg": 92.2072072072072,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugponom_syi0iw",
+      "turns": 15,
+      "toolCalls": 19,
+      "toolErrors": 5,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 75123,
+        "outputTokens": 10037,
+        "cacheReadTokens": 68491,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 151574.24970900003,
+      "ttftMs": 1005.4425000000047,
+      "graderMs": 21.035291000036523,
+      "graderTail": "FAIL\texample.com/stack [setup failed]\nFAIL\n\n# example.com/stack\nstack_test.go:25:19: expected ']', found '}'",
+      "changedFiles": [
+        "stack.go",
+        "stack_test.go"
+      ],
+      "diffStat": "2 files changed, 130 insertions(+)",
+      "prefillTps": 1636.88978597552,
+      "decodeTps": 117.23633320307735,
+      "gpuUtilAvg": 92.32894736842105,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "go-feature-stack",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugprwps_v0amje",
+      "turns": 15,
+      "toolCalls": 19,
+      "toolErrors": 9,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 63437,
+        "outputTokens": 25693,
+        "cacheReadTokens": 51046,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 231829.22158399998,
+      "ttftMs": 1007.8383750000503,
+      "graderMs": 66.18712499993853,
+      "graderTail": "FAIL\texample.com/stack [build failed]\nFAIL\n\n# example.com/stack [example.com/stack.test]\n./stack.go:55:5: syntax error: unexpected keyword default, expected expression\n./stack.go:56:9: syntax error: unexpected keyword return, expected :",
+      "changedFiles": [
+        "stack.go"
+      ],
+      "diffStat": "1 file changed, 49 insertions(+)",
+      "prefillTps": 1829.7434100707962,
+      "decodeTps": 117.60513474892281,
+      "gpuUtilAvg": 92.55603448275862,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugpwvr8_5yvzar",
+      "turns": 15,
+      "toolCalls": 17,
+      "toolErrors": 6,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 53715,
+        "outputTokens": 10089,
+        "cacheReadTokens": 48951,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 88949.25404199993,
+      "ttftMs": 1015.4810000000289,
+      "graderMs": 134.38704099995084,
+      "graderTail": ".......                                                                  [100%]\n7 passed in 0.01s",
+      "changedFiles": [
+        "duration.py"
+      ],
+      "diffStat": "3 files changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 1710.6894738962633,
+      "decodeTps": 118.0094978345185,
+      "gpuUtilAvg": 91.6067415730337,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugpysjw_ir3otj",
+      "turns": 15,
+      "toolCalls": 16,
+      "toolErrors": 7,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 54386,
+        "outputTokens": 8784,
+        "cacheReadTokens": 45731,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 78717.12704200007,
+      "ttftMs": 1005.3575829999754,
+      "graderMs": 138.07458300003782,
+      "graderTail": ".......                                                                  [100%]\n7 passed in 0.01s",
+      "changedFiles": [
+        "duration.py"
+      ],
+      "diffStat": "3 files changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 1884.3795091091092,
+      "decodeTps": 118.2311308709812,
+      "gpuUtilAvg": 91.79746835443038,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugq0hgk_fkqh3l",
+      "turns": 9,
+      "toolCalls": 10,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 29000,
+        "outputTokens": 3671,
+        "cacheReadTokens": 24823,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 33445.645541999955,
+      "ttftMs": 1001.9135829999577,
+      "graderMs": 135.6003329999512,
+      "graderTail": ".......                                                                  [100%]\n7 passed in 0.01s",
+      "changedFiles": [
+        "duration.py"
+      ],
+      "diffStat": "3 files changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 1831.3357895912154,
+      "decodeTps": 118.13264211619922,
+      "gpuUtilAvg": 90.38235294117646,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugq17ic_wgdahu",
+      "turns": 20,
+      "toolCalls": 21,
+      "toolErrors": 4,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 104146,
+        "outputTokens": 44417,
+        "cacheReadTokens": 95719,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 387213.5716250001,
+      "ttftMs": 1004.0190419999417,
+      "graderMs": 199.24150000000373,
+      "graderTail": "assertion `left == right` failed\n  left: [(\"dog\", 1), (\"end\", 1)]\n right: [(\"the\", 3), (\"cat\", 2)]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::counts_and_orders\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `--lib`",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "187 files changed, 23 insertions(+), 1 deletion(-)",
+      "prefillTps": 1908.0152112223773,
+      "decodeTps": 117.14355764495676,
+      "gpuUtilAvg": 92.29974160206719,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugq9imc_qttjmz",
+      "turns": 20,
+      "toolCalls": 22,
+      "toolErrors": 8,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 109823,
+        "outputTokens": 21828,
+        "cacheReadTokens": 101495,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 192517.388208,
+      "ttftMs": 1011.7394999999087,
+      "graderMs": 127.25970799988136,
+      "graderTail": "assertion `left == right` failed\n  left: [(\"dog\", 1), (\"end\", 1)]\n right: [(\"the\", 3), (\"cat\", 2)]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    tests::counts_and_orders\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `--lib`",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "650 files changed, 33 insertions(+), 1 deletion(-)",
+      "prefillTps": 1966.8331933853544,
+      "decodeTps": 117.23705948421295,
+      "gpuUtilAvg": 91.58031088082902,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugqdnlp_jc6tmi",
+      "turns": 20,
+      "toolCalls": 21,
+      "toolErrors": 5,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 105525,
+        "outputTokens": 31867,
+        "cacheReadTokens": 97144,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 279909.68025,
+      "ttftMs": 1016.7491250000894,
+      "graderMs": 104.79787499993108,
+      "graderTail": "assertion `left == right` failed\n  left: [(\"b\", 2), (\"a\", 2), (\"c\", 1)]\n right: [(\"a\", 2), (\"b\", 2), (\"c\", 1)]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\n\n\nfailures:\n    ties_sorted_alphabetically\n\ntest result: FAILED. 1 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nerror: test failed, to rerun pass `--test hidden`",
+      "changedFiles": [
+        "src/lib.rs"
+      ],
+      "diffStat": "650 files changed, 34 insertions(+), 2 deletions(-)",
+      "prefillTps": 1964.2572077834989,
+      "decodeTps": 116.84720564900677,
+      "gpuUtilAvg": 91.94642857142857,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 1,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugqjnzk_ejx81o",
+      "turns": 9,
+      "toolCalls": 11,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 31962,
+        "outputTokens": 4583,
+        "cacheReadTokens": 27652,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 40906.741084000096,
+      "ttftMs": 1005.8005829998292,
+      "graderMs": 14.388957999879494,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 1 pass\n 0 fail\n 2 expect() calls\nRan 1 test across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 1865.5856922276953,
+      "decodeTps": 117.79321698531764,
+      "gpuUtilAvg": 90.8048780487805,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugqkjmd_p573n1",
+      "turns": 10,
+      "toolCalls": 11,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 35300,
+        "outputTokens": 3329,
+        "cacheReadTokens": 30956,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 30306.56379200006,
+      "ttftMs": 1003.8402909999713,
+      "graderMs": 15.535625000018626,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 1 pass\n 0 fail\n 2 expect() calls\nRan 1 test across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 1823.4947536561008,
+      "decodeTps": 117.89933055730921,
+      "gpuUtilAvg": 90.19354838709677,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugql72v_cnwhn7",
+      "turns": 11,
+      "toolCalls": 12,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 39602,
+        "outputTokens": 5639,
+        "cacheReadTokens": 35143,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 49892.20287499996,
+      "ttftMs": 1004.4145420000423,
+      "graderMs": 14.600374999921769,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 1 pass\n 0 fail\n 2 expect() calls\nRan 1 test across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/tax.ts"
+      ],
+      "diffStat": "1 file changed, 1 insertion(+), 1 deletion(-)",
+      "prefillTps": 1800.6892881497429,
+      "decodeTps": 118.17268017102496,
+      "gpuUtilAvg": 91.26,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugqm9n9_gv7e7d",
+      "turns": 20,
+      "toolCalls": 23,
+      "toolErrors": 7,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 160050,
+        "outputTokens": 52144,
+        "cacheReadTokens": 146107,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 462354.728042,
+      "ttftMs": 978.1030420002062,
+      "graderMs": 7.910583000164479,
+      "graderTail": "+ []\n\n- Expected  - 4\n+ Received  + 1\n\n      at <anonymous> (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-VJpPnz/ts-feature-lru/src/lru.test.ts:93:29)\n(fail) LRUCache > capacity enforcement evicts LRU when over capacity [0.04ms]\n\n 11 pass\n 7 fail\n 26 expect() calls\nRan 18 tests across 2 files. [3.00ms]",
+      "changedFiles": [
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "2 files changed, 207 insertions(+)",
+      "prefillTps": 1968.5074755157475,
+      "decodeTps": 115.35865530357437,
+      "gpuUtilAvg": 92.3961038961039,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugqw6fq_uqjgqm",
+      "turns": 20,
+      "toolCalls": 23,
+      "toolErrors": 7,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 304473,
+        "outputTokens": 51389,
+        "cacheReadTokens": 266938,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 491878.293875,
+      "ttftMs": 986.28125,
+      "graderMs": 14.005291000008583,
+      "graderTail": "      at onEvict (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ZaJwgr/ts-feature-lru/src/lru.ts:89:14)\n      at onEvict (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ZaJwgr/ts-feature-lru/src/lru.ts:89:14)\n      at onEvict (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ZaJwgr/ts-feature-lru/src/lru.ts:89:14)\n      at onEvict (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ZaJwgr/ts-feature-lru/src/lru.ts:89:14)\n      at onEvict (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ZaJwgr/ts-feature-lru/src/lru.ts:89:14)\n      at onEvict (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ZaJwgr/ts-feature-lru/src/lru.ts:89:14)\n(fail) LRUCache > onEvict callback is called during eviction [0.70ms]\n\n 2 pass\n 13 fail\n 14 expect() calls\nRan 15 tests across 2 files. [8.00ms]",
+      "changedFiles": [
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "2 files changed, 236 insertions(+)",
+      "prefillTps": 1900.2912960625993,
+      "decodeTps": 112.1691691149035,
+      "gpuUtilAvg": 93.07520325203252,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugr6q1p_p6f1dl",
+      "turns": 20,
+      "toolCalls": 22,
+      "toolErrors": 6,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 156581,
+        "outputTokens": 24980,
+        "cacheReadTokens": 142967,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 329873.92633299995,
+      "ttftMs": 1018.3086250000633,
+      "graderMs": 7.89850000012666,
+      "graderTail": "error: expect(received).toContain(expected)\n\nExpected to contain: \"a\"\nReceived: []\n\n      at <anonymous> (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-ODRMZZ/ts-feature-lru/src/lru.test.ts:89:23)\n(fail) LRUCache > onEvict is called on eviction [0.04ms]\n\n 6 pass\n 8 fail\n 28 expect() calls\nRan 14 tests across 2 files. [3.00ms]",
+      "changedFiles": [
+        "src/lru.test.ts",
+        "src/lru.ts"
+      ],
+      "diffStat": "2 files changed, 213 insertions(+)",
+      "prefillTps": 1951.6947357132635,
+      "decodeTps": 115.54226645500202,
+      "gpuUtilAvg": 63.70909090909091,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugrdsnz_qexkhr",
+      "turns": 25,
+      "toolCalls": 44,
+      "toolErrors": 11,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 129646,
+        "outputTokens": 19439,
+        "cacheReadTokens": 121406,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 171600.6220829999,
+      "ttftMs": 1013.083833000157,
+      "graderMs": 7.455792000051588,
+      "graderTail": "                                              ^\nReferenceError: getUserName is not defined\n      at <anonymous> (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-rl54C3/ts-multifile-rename/src/report.ts:4:43)\n      at map (1:11)\n      at report (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-rl54C3/ts-multifile-rename/src/report.ts:4:16)\n      at <anonymous> (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-rl54C3/ts-multifile-rename/tests/user.test.ts:8:29)\n(fail) report [0.10ms]\n\n 1 pass\n 2 fail\n 1 expect() calls\nRan 3 tests across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 5 insertions(+), 5 deletions(-)",
+      "prefillTps": 1798.8962068519606,
+      "decodeTps": 117.0182309767561,
+      "gpuUtilAvg": 92.45930232558139,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 2,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugrhh51_8ktl2c",
+      "turns": 12,
+      "toolCalls": 23,
+      "toolErrors": 1,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 52777,
+        "outputTokens": 6211,
+        "cacheReadTokens": 47152,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 55768.150167000014,
+      "ttftMs": 1007.1345420000143,
+      "graderMs": 9.061166000086814,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 7 insertions(+), 7 deletions(-)",
+      "prefillTps": 1866.1632907309213,
+      "decodeTps": 117.391125492284,
+      "gpuUtilAvg": 91.48214285714286,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "trial": 3,
+      "passed": true,
+      "failReason": null,
+      "score": 1,
+      "verdict": "verified",
+      "outcome": "completed",
+      "runId": "run_mugrio8j_fxihyq",
+      "turns": 17,
+      "toolCalls": 29,
+      "toolErrors": 8,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 83443,
+        "outputTokens": 6144,
+        "cacheReadTokens": 76117,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 56153.30120899994,
+      "ttftMs": 1006.2369160000235,
+      "graderMs": 9.201541000045836,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\n\n 3 pass\n 0 fail\n 3 expect() calls\nRan 3 tests across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/greet.ts",
+        "src/report.ts",
+        "src/user.ts",
+        "tests/user.test.ts"
+      ],
+      "diffStat": "4 files changed, 7 insertions(+), 7 deletions(-)",
+      "prefillTps": 1858.5985379651497,
+      "decodeTps": 117.32893741270045,
+      "gpuUtilAvg": 91.50877192982456,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 1,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugrjvmn_gak4wv",
+      "turns": 15,
+      "toolCalls": 17,
+      "toolErrors": 4,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 76952,
+        "outputTokens": 27588,
+        "cacheReadTokens": 68217,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 242054.9821250001,
+      "ttftMs": 1014.2332089999691,
+      "graderMs": 9.151041000150144,
+      "graderTail": "error: expect(received).toBe(expected)\n\nExpected: \"cafe resume\"\nReceived: \"cafe-resume\"\n\n      at <anonymous> (/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-IShVZZ/ts-write-tests/src/slugify.test.ts:74:36)\n(fail) slugify > should handle non-Latin Unicode characters gracefully [0.03ms]\n\n 10 pass\n 3 fail\n 22 expect() calls\nRan 13 tests across 1 file. [2.00ms]",
+      "changedFiles": [
+        "src/slugify.test.ts"
+      ],
+      "diffStat": "1 file changed, 77 insertions(+)",
+      "prefillTps": 1873.9633942081505,
+      "decodeTps": 116.70819099253553,
+      "gpuUtilAvg": 92.60330578512396,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 2,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "failed",
+      "outcome": "max_turns",
+      "runId": "run_mugrp2gs_upbonp",
+      "turns": 15,
+      "toolCalls": 17,
+      "toolErrors": 3,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 72631,
+        "outputTokens": 7668,
+        "cacheReadTokens": 65169,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 69814.07908299984,
+      "ttftMs": 1015.1972500002012,
+      "graderMs": 8.600542000029236,
+      "graderTail": "-------------------------------\n39 |       expect(slugify(\"---test\").toBe(\"test\");\n                                                 ^\nerror: Expected \")\" but found \";\"\n    at /private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-RpZ0bY/ts-write-tests/src/slugify.test.ts:39:45\n-------------------------------\n\n\n 0 pass\n 1 fail\n 1 error\nRan 1 test across 1 file. [1.00ms]",
+      "changedFiles": [
+        "src/slugify.test.ts"
+      ],
+      "diffStat": "1 file changed, 64 insertions(+)",
+      "prefillTps": 1950.1253602457512,
+      "decodeTps": 117.07466777944445,
+      "gpuUtilAvg": 91.81428571428572,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    },
+    {
+      "taskId": "ts-write-tests",
+      "trial": 3,
+      "passed": false,
+      "failReason": "max_turns",
+      "score": null,
+      "verdict": "none",
+      "outcome": "max_turns",
+      "runId": "run_mugrqkec_11zgkq",
+      "turns": 15,
+      "toolCalls": 19,
+      "toolErrors": 11,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 62180,
+        "outputTokens": 25681,
+        "cacheReadTokens": 52409,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 223846.60654200008,
+      "ttftMs": 1015.203209000174,
+      "graderMs": 8.141084000002593,
+      "graderTail": "bun test v1.4.0 (34cbb9a40)\n\nThe following filters did not match any test files in --cwd=\"/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-oTgti1/ts-write-tests\":\n src/slugify.test.ts\n10 files were searched [1.00ms]\n\nnote: Tests need \".test\", \"_test_\", \".spec\" or \"_spec_\" in the filename (ex: \"MyApp.test.ts\")\nnote: To treat the \"src/slugify.test.ts\" filter as a path, run \"bun test ./src/slugify.test.ts\"",
+      "changedFiles": [],
+      "diffStat": "",
+      "prefillTps": 1901.6835558005557,
+      "decodeTps": 117.42686145878936,
+      "gpuUtilAvg": 92.20535714285714,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 0.1,
+        "sampling": {
+          "topK": 50
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card LiquidAI/LFM2.5-2.6B"
+      },
+      "toolProtocol": "native"
+    }
+  ]
+}
