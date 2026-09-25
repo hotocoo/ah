@@ -257,3 +257,8 @@ Two more robustness features came out of these runs: project facts in the system
 
 - **Found by:** the D44 core run. `run_tests` with `filter: "stack"` ran `go test ./... "stack"`; Go read the filter as a package ("package stack is not in std"). The same thing happened to pytest, where a bare word is read as a path.
 - **Chosen:** `go test` gets `-run <filter>`, pytest gets `-k <filter>`, and other runners keep the positional pattern (bun, cargo, jest and vitest accept one). This is the runners' documented CLI, not project data.
+
+## D46. New files beside the root
+
+- **Found by:** the D44 core run. In a `ts-feature-lru` trial the model wrote `…/ah-trial-X/src/lru.ts` for the root `…/ah-trial-X/ts-feature-lru` 30 times. The error hint named the root, but the file did not exist yet, so D39's tail rule could not apply, and the model kept retrying.
+- **Chosen:** a path under the root's own parent directory, whose directory part exists inside the root, is placed in the root (`src/lru.ts`). Paths further away, or into directories the root does not have, still error with the hint. The path stays confined to the workspace.

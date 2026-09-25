@@ -82,6 +82,13 @@ function misplacedAbsolute(absRoot: string, p: string): string | null {
   if (!(r === ".." || r.startsWith(`..${sep}`) || isAbsolute(r))) return null;
   const segs = p.split(/[\\/]+/).filter(Boolean);
   for (let k = 1; k < segs.length; k++) if (existsSync(join(absRoot, ...segs.slice(k)))) return segs.slice(k).join("/");
+  // A new file beside the root, under the root's own parent (".../trial/src/new.ts" for root
+  // ".../trial/task"): the model dropped the root's last segment. Place it in the root when that
+  // directory exists there. Never for paths further away.
+  const parent = dirname(absRoot);
+  const fromParent = relative(parent, resolve(p));
+  const dir = dirname(fromParent);
+  if (!fromParent.startsWith("..") && !isAbsolute(fromParent) && dir !== "." && existsSync(join(absRoot, dir))) return fromParent.split(sep).join("/");
   return null;
 }
 

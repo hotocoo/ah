@@ -41,7 +41,10 @@ describe("path confinement", () => {
     // The model dropped the root's last segment (".../task/1/src/a.ts" written as ".../task/src/a.ts").
     expect(confine(root, join(dirname(root), "src", "a.ts"))).toBe(join(root, "src", "a.ts"));
     expect(confine(root, "/elsewhere/project/src/a.ts")).toBe(join(root, "src", "a.ts"));
-    expect(() => confine(root, join(dirname(root), "src", "missing.ts"))).toThrow(/relative to the workspace root .*"src\/missing.ts" does not exist there either/);
+    expect(() => confine(root, join(dirname(root), "nodir", "missing.ts"))).toThrow(/relative to the workspace root .*"nodir\/missing.ts" does not exist there either/);
+    // A new file one level up from the root, in a directory the root has: placed in the root.
+    expect(confine(root, join(dirname(root), "src", "new.ts"))).toBe(join(root, "src", "new.ts"));
+    expect(() => confine(root, join(dirname(root), "nodir", "new.ts"))).toThrow(/escapes/);
     expect(() => confine(root, dirname(root))).toThrow(/above the workspace; the workspace root is .*use "\."/);
   });
 
