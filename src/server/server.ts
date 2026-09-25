@@ -16,7 +16,7 @@ import { discoverBackend } from "../tools/computer.ts";
 import { checkSetting, defaultConfig, getPath, parseModelRef, SETTINGS } from "../config.ts";
 import { resolveImageBackend } from "../media/image.ts";
 import { compileScene, designScene } from "../media/model3d.ts";
-import { runCommand } from "../agent/commands.ts";
+import { COMMAND_HELP, runCommand } from "../agent/commands.ts";
 import { sampleHardware } from "../runtimes/hardware.ts";
 import { byModel, byTool, recentRuns, runDetail, summary, timeseries } from "../telemetry/metrics.ts";
 import { dim, green } from "../cli/render.ts";
@@ -224,6 +224,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
             return json(timeseries(db(), Number(q.get("bucket") ?? 3_600_000), filter));
           case "/api/bench":
             return json(listBenchRuns(env));
+          case "/api/commands":
+            return json(COMMAND_HELP.split("\n").filter((l) => l.startsWith("/")).map((l) => l.split(/\s{2,}/)[0]));
           case "/api/chat":
             return await chat(req);
           case "/api/stop":

@@ -664,6 +664,7 @@ $("#diff-dlg").addEventListener("click", (e) => e.target === $("#diff-dlg") && $
 $("#chat-new").addEventListener("click", newSession);
 // @-mentions: complete workspace paths; the server attaches mentioned files to the task.
 const mention = { items: [], sel: 0, start: 0, seq: 0 };
+let commands = null;
 const mentionOpen = () => !$("#mention-list").hidden;
 function closeMention() {
   mention.seq++;
@@ -678,7 +679,18 @@ function renderMention() {
 }
 async function updateMention() {
   const ta = $("#chat-input");
-  const m = /(?:^|\s)@([\w./-]*)$/.exec(ta.value.slice(0, ta.selectionStart));
+  const before = ta.value.slice(0, ta.selectionStart);
+  // A leading "/word" completes built-in commands (listed by the server).
+  if (/^\/\w*$/.test(before)) {
+    const seq = ++mention.seq;
+    commands ??= await api("/api/commands", undefined, true).catch(() => []);
+    if (seq !== mention.seq) return;
+    mention.start = 0;
+    mention.items = commands.filter((c) => c.startsWith(before));
+    mention.sel = 0;
+    return renderMention();
+  }
+  const m = /(?:^|\s)@([\w./-]*)$/.exec(before);
   if (!m) return closeMention();
   mention.start = ta.selectionStart - m[1].length;
   const seq = ++mention.seq;
@@ -690,8 +702,9 @@ async function updateMention() {
 }
 function pickMention(i) {
   const ta = $("#chat-input");
-  const path = mention.items[i];
-  if (!path) return;
+  const item = mention.items[i];
+  if (!item) return;
+  const path = mention.start === 0 && item.startsWith("/") ? item.split(" ")[0] : item;
   ta.value = `${ta.value.slice(0, mention.start)}${path} ${ta.value.slice(ta.selectionStart)}`;
   const caret = mention.start + path.length + 1;
   ta.setSelectionRange(caret, caret);
