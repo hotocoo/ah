@@ -613,3 +613,20 @@ button.sm { height: 26px; padding: 0 var(--s-2); font-size: var(--fs-12); }
 .writing { margin: var(--s-1) var(--s-2); font: 400 var(--fs-12) var(--mono); color: var(--accent); }
 .writing::after { content: ""; display: inline-block; width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: currentColor; vertical-align: middle; animation: ses-pulse 1s var(--ease) infinite; }
 .state[data-state="writing"]::before { background: var(--accent); animation: pulse 1.2s var(--ease) infinite; }
+.lazy-sentinel { height: 1px; }
+.prov-list { display: grid; gap: 2px; max-height: 480px; overflow: auto; margin-top: var(--s-2); }
+.prov { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 260px) auto auto; align-items: center; gap: var(--s-2); padding: 6px var(--s-2); border-radius: var(--r-2); }
+.prov:hover { background: var(--bg-subtle); }
+.prov-name { display: flex; flex-direction: column; min-width: 0; }
+.prov-name .meta { font-size: var(--fs-11); color: var(--muted); }
+.prov input { height: 28px; min-height: 28px; font: 400 var(--fs-12) var(--mono); }
+.model-pick input { height: 28px; min-height: 28px; width: 300px; max-width: 34vw; font: 400 var(--fs-12) var(--mono); border-color: transparent; background: var(--surface-2); }
+.model-pick input:hover, .model-pick input:focus { border-color: var(--border); }
+.tune { position: relative; }
+.tune > summary { list-style: none; cursor: pointer; height: 28px; line-height: 28px; padding: 0 var(--s-2); border-radius: var(--r-2); font-size: var(--fs-12); color: var(--text-2); background: var(--surface-2); }
+.tune > summary::-webkit-details-marker { display: none; }
+.tune-panel { position: absolute; bottom: calc(100% + 8px); left: 0; z-index: 6; width: 280px; display: grid; gap: var(--s-2); padding: var(--s-3); border: 1px solid var(--border-strong); border-radius: var(--r-3); background: var(--surface); box-shadow: var(--shadow-pop); }
+.tune-panel label { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: var(--s-2); font-size: var(--fs-12); color: var(--text-2); }
+.tune-panel input, .tune-panel select { height: 28px; min-height: 28px; font-size: var(--fs-12); }
+.tune-panel .help { margin: 0; font-size: var(--fs-11); color: var(--muted); }
+.prov-name { align-items: flex-start; }

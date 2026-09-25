@@ -291,24 +291,105 @@ function showBench(r) {
 
 // ---------- models ----------
 let mTimer;
+// Big result sets render in chunks as you scroll, so nothing is capped and nothing stalls.
+const CHUNK = 250;
+function lazyTable(sel, cols, rows, empty) {
+  const box = $(sel);
+  const cell = (c, r) => `<td class="${c.num ? "num" : c.clip ? "clip" : ""}"${c.clip && c.get ? ` title="${esc(c.get(r))}"` : ""}>${c.html ? c.html(r) : esc(c.get(r))}</td>`;
+  box.innerHTML = `<table><thead><tr>${cols.map((c) => `<th class="${c.num ? "num" : ""}" scope="col">${esc(c.label)}</th>`).join("")}</tr></thead><tbody></tbody></table>`;
+  const body = box.querySelector("tbody");
+  if (!rows.length) return void (body.innerHTML = `<tr><td colspan="${cols.length}" class="empty-cell">${esc(empty)}</td></tr>`);
+  let shown = 0;
+  const sentinel = Object.assign(document.createElement("div"), { className: "lazy-sentinel" });
+  const more = () => {
+    body.insertAdjacentHTML("beforeend", rows.slice(shown, shown + CHUNK).map((r) => `<tr>${cols.map((c) => cell(c, r)).join("")}</tr>`).join(""));
+    shown = Math.min(rows.length, shown + CHUNK);
+    if (shown >= rows.length) sentinel.remove();
+  };
+  box.append(sentinel);
+  new IntersectionObserver((es, obs) => (sentinel.isConnected ? es.some((e) => e.isIntersecting) && more() : obs.disconnect()), { root: box, rootMargin: "400px" }).observe(sentinel);
+  more();
+}
+
+let kindsFilled = false;
 loaders.models = async () => {
   shimmer("#models");
-  const q = new URLSearchParams({ q: $("#m-q").value, kind: $("#m-kind").value, limit: "300", ...($("#m-local").checked ? { local: "1" } : {}), ...($("#m-tools").checked ? { tools: "1" } : {}) });
+  const q = new URLSearchParams({ q: $("#m-q").value, kind: $("#m-kind").value, ...($("#m-local").checked ? { local: "1" } : {}), ...($("#m-avail").checked ? { available: "1" } : {}), ...($("#m-tools").checked ? { tools: "1" } : {}) });
   const ms_ = await api(`/api/models?${q}`);
+  // Kind filter options come from the catalog itself.
+  if (!kindsFilled && !$("#m-kind").value) {
+    kindsFilled = true;
+    const kinds = [...new Set(ms_.flatMap((m) => m.kinds))].sort();
+    $("#m-kind").innerHTML = `<option value="">any</option>${kinds.map((k) => `<option>${esc(k)}</option>`).join("")}`;
+  }
   $("#m-count").textContent = `${num(ms_.length)} model${ms_.length === 1 ? "" : "s"}`;
-  mount("#models", table([
-    { label: "model", get: (m) => `${m.provider}/${m.id}`, html: (m) => `${m.local ? '<span class="tag gold">local</span> ' : ""}${esc(m.provider)}/${esc(m.id)}`, clip: 1 },
+  lazyTable("#models", [
+    { label: "model", get: (m) => `${m.provider}/${m.id}`, html: (m) => `${m.local ? '<span class="tag gold">local</span> ' : m.available ? '<span class="tag ok">ready</span> ' : ""}${esc(m.provider)}/${esc(m.id)}`, clip: 1 },
     { label: "kinds", get: (m) => m.kinds.join(", ") },
     { label: "context", get: (m) => compact(m.contextWindow), num: 1 },
     { label: "tools", html: (m) => (m.toolCall ? '<span class="ok">✓ yes</span>' : '<span class="muted">no</span>') },
+    { label: "reasoning", html: (m) => (m.reasoning ? '<span class="ok">✓</span>' : "") },
     { label: "in → out", get: (m) => `${m.inputModalities.join("+")} → ${m.outputModalities.join("+")}` },
-    { label: "quant", get: (m) => m.local?.quantization ?? "" },
+    { label: "released", get: (m) => m.releaseDate ?? "" },
     { label: "size", get: (m) => gb(m.local?.sizeBytes), num: 1 },
     { label: "$ in/out per M", get: (m) => (m.cost?.input !== undefined ? `${m.cost.input} / ${m.cost.output}` : ""), num: 1 },
-  ], ms_, null, "No models match these filters."));
+  ], ms_, "No models match these filters.");
   loaded("#models");
+  renderProviders();
 };
-["#m-q", "#m-kind", "#m-local", "#m-tools"].forEach((s) => $(s).addEventListener("input", () => (clearTimeout(mTimer), (mTimer = setTimeout(() => openTab("models"), 250)))));
+["#m-q", "#m-kind", "#m-local", "#m-avail", "#m-tools"].forEach((s) => $(s).addEventListener("input", () => (clearTimeout(mTimer), (mTimer = setTimeout(() => openTab("models"), 250)))));
+$("#m-refresh").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  b.disabled = true;
+  b.textContent = "Refreshing…";
+  try {
+    const r = await api("/api/models/refresh", {});
+    $("#m-count").textContent = `${num(r.models)} models · refreshed${r.errors.length ? ` · ${r.errors.length} source errors` : ""}`;
+    await openTab("models");
+  } catch (err) {
+    $("#m-count").textContent = err.message;
+  } finally {
+    b.disabled = false;
+    b.textContent = "Refresh";
+  }
+});
+
+let providers = [];
+async function renderProviders(reload = true) {
+  if (reload) providers = await api("/api/providers", undefined, true).catch(() => []);
+  const q = $("#p-q").value.trim().toLowerCase();
+  const list = providers.filter((p) => !q || p.name.toLowerCase().includes(q) || p.id.includes(q));
+  $("#p-count").textContent = `${num(providers.filter((p) => p.configured).length)} configured · ${num(providers.length)} available`;
+  $("#providers").innerHTML = list
+    .map(
+      (p) => `<form class="prov" data-id="${esc(p.id)}"><div class="prov-name"><strong>${esc(p.name)}</strong><span class="meta">${esc(p.id)} · ${num(p.models)} models</span></div><span class="tag ${p.active ? "ok" : p.configured ? "gold" : ""}">${p.active ? "active" : p.configured ? "key set" : "no key"}</span><label class="sr" for="k-${esc(p.id)}">${esc(p.env[0])}</label><input id="k-${esc(p.id)}" type="password" autocomplete="off" placeholder="${esc(p.env[0])}" /><button type="submit" class="ghost sm">Save</button>${p.configured ? `<button type="button" class="ghost sm" data-remove>Remove</button>` : ""}</form>`,
+    )
+    .join("");
+}
+$("#p-q").addEventListener("input", () => renderProviders(false));
+$("#providers").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target.closest("form");
+  const key = f.querySelector("input").value.trim();
+  if (!key) return;
+  f.querySelectorAll("button").forEach((b) => (b.disabled = true));
+  try {
+    const r = await api("/api/credentials", { provider: f.dataset.id, key });
+    f.querySelector("input").value = "";
+    await renderProviders();
+    $("#p-count").textContent = `${r.provider}: ${r.active ? `active, ${num(r.models)} models` : "saved"}${r.errors.length ? ` · ${r.errors[0]}` : ""}`;
+    openTab("models");
+  } catch (err) {
+    f.append(alertBox("Could not save key", err.message));
+  }
+});
+$("#providers").addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-remove]");
+  if (!b) return;
+  const id = b.closest("form").dataset.id;
+  await fetch("/api/credentials", { method: "DELETE", headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify({ provider: id }) });
+  renderProviders();
+});
 
 loaders.chat = loadConsole;
 

@@ -185,7 +185,7 @@ export interface CatalogOptions {
 }
 
 // The model catalog: every model ah knows about, from models.dev, OpenRouter,
-// live provider listings and a built-in fallback table.
+// and live provider/runtime listings (cached; `ah models --refresh` or the web app re-fetches).
 export class ModelCatalog {
   private models: ModelInfo[] = [];
   private loaded = false;

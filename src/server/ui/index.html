@@ -80,10 +80,22 @@
                         <option value="read-only">Read only</option>
                       </select>
                     </label>
-                    <label class="pick model-pick">
+                    <label class="pick model-pick" title="Any usable model: local runtimes and providers with a key (Models tab)">
                       <span class="sr">Model</span>
-                      <select id="chat-model"><option>discovering models</option></select>
+                      <input id="chat-model" list="chat-models" autocomplete="off" spellcheck="false" placeholder="auto: best local model" />
+                      <datalist id="chat-models"></datalist>
                     </label>
+                    <details class="tune" id="tune">
+                      <summary title="Reasoning effort, sampling and output cap for this session">Tune</summary>
+                      <div class="tune-panel">
+                        <label>Reasoning effort<select id="g-reasoning"><option value="">default</option><option>off</option><option>low</option><option>medium</option><option>high</option><option>max</option></select></label>
+                        <label>Temperature<input id="g-temperature" type="number" min="0" max="2" step="0.05" placeholder="model card" /></label>
+                        <label>Top p<input id="g-topP" type="number" min="0" max="1" step="0.01" placeholder="model card" /></label>
+                        <label>Top k<input id="g-topK" type="number" min="1" step="1" placeholder="model card" /></label>
+                        <label>Max output tokens<input id="g-maxTokens" type="number" min="256" step="256" placeholder="model limit" /></label>
+                        <p class="help" id="g-note">Blank uses the model card or runtime default. Applies from the next message.</p>
+                      </div>
+                    </details>
                     <span class="hint" id="chat-hint"></span>
                     <button type="submit" class="primary send" id="chat-send"><span class="btn-label">Send</span></button>
                   </div>
@@ -162,19 +174,25 @@
         <section id="tab-models" class="tab" role="tabpanel" aria-labelledby="h-models" hidden>
           <header class="page-head">
             <h1 id="h-models" class="title">Models</h1>
-            <p class="lede">Discovered at runtime across local runtimes and configured providers.</p>
+            <p class="lede">Looked up live: local runtimes, models.dev, OpenRouter and the listing endpoint of every provider you add a key for.</p>
           </header>
           <div class="cell">
             <div class="filters">
-              <label class="search"><span>Search</span><input id="m-q" type="search" placeholder="qwen, llama, coder" autocomplete="off" /></label>
-              <label><span>Kind</span>
-                <select id="m-kind"><option value="">any</option><option>chat</option><option>image-gen</option><option>3d-gen</option><option>embedding</option><option>tts</option></select>
-              </label>
+              <label class="search"><span>Search</span><input id="m-q" type="search" placeholder="Model or provider" autocomplete="off" /></label>
+              <label><span>Kind</span><select id="m-kind"><option value="">any</option></select></label>
               <label class="check"><input type="checkbox" id="m-local" /><span>Local only</span></label>
+              <label class="check"><input type="checkbox" id="m-avail" /><span>Usable now</span></label>
               <label class="check"><input type="checkbox" id="m-tools" /><span>Tool calling</span></label>
               <span id="m-count" class="meta"></span>
+              <button type="button" class="ghost sm" id="m-refresh" title="Re-discover runtimes and re-fetch every catalog">Refresh</button>
             </div>
             <div id="models" class="table-wrap tall"></div>
+          </div>
+          <div class="cell" style="margin-top: var(--s-4)">
+            <h2>Providers</h2>
+            <p class="help">Every provider models.dev lists that ah can call. Add a key and its models become usable immediately. Keys are stored in <code>~/.ah/credentials.json</code> (readable only by you); a key exported in your shell takes precedence.</p>
+            <div class="filters"><label class="search"><span>Search</span><input id="p-q" type="search" placeholder="anthropic, openai, groq" autocomplete="off" /></label><span id="p-count" class="meta"></span></div>
+            <div id="providers" class="prov-list"></div>
           </div>
         </section>
 

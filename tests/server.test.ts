@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildEnvironment } from "../src/app/session.ts";
@@ -180,6 +180,21 @@ describe("chat sessions", () => {
     }
   });
 
+  test("provider keys: listed from models.dev, saved 0600, providers rebuilt, removable", async () => {
+    srv.env.telemetry.store!.cacheSet("models.dev", JSON.stringify({ acme: { id: "acme", name: "Acme AI", env: ["ACME_TEST_API_KEY"], api: "http://127.0.0.1:9/v1", models: { m1: {} } } }));
+    const post = (m: string, b: unknown) => fetch(`${base}/api/credentials`, { method: m, headers: h, body: JSON.stringify(b) });
+    const before = (await (await get("/api/providers")).json()) as { id: string; configured: boolean; env: string[] }[];
+    expect(before).toEqual([expect.objectContaining({ id: "acme", configured: false, env: ["ACME_TEST_API_KEY"] })]);
+    expect((await post("POST", { provider: "nope", key: "k" })).status).toBe(404);
+    const r = (await (await post("POST", { provider: "acme", key: "sk-test" })).json()) as { active: boolean };
+    expect(r.active).toBe(true);
+    expect(statSync(join(home, "credentials.json")).mode & 0o777).toBe(0o600);
+    expect(JSON.parse(readFileSync(join(home, "credentials.json"), "utf8"))).toEqual({ ACME_TEST_API_KEY: "sk-test" });
+    await post("DELETE", { provider: "acme" });
+    expect(process.env.ACME_TEST_API_KEY).toBeUndefined();
+    expect(srv.env.registry.has("acme")).toBe(false);
+  });
+
   test("stop and steer need a busy session", async () => {
     const post = (p: string, b: unknown) => fetch(`${base}${p}`, { method: "POST", headers: h, body: JSON.stringify(b) });
     expect((await post("/api/stop", { sessionId: "nope" })).status).toBe(404);
@@ -235,4 +250,11 @@ describe("appearance", () => {
     expect(new Uint8Array(await img.arrayBuffer())).toEqual(PNG);
     expect(await (await fetch(`${base}/api/wallpaper`, { method: "DELETE", headers: H })).json()).toMatchObject({ hasWallpaper: false });
   });
+});
+
+test("generation settings from the page are range-checked", async () => {
+  const { parseGeneration } = await import("../src/server/server.ts");
+  expect(parseGeneration({ reasoning: "high", temperature: 0.7, topP: 0.9, topK: 20, maxTokens: 8192 })).toEqual({ reasoning: "high", temperature: 0.7, topP: 0.9, topK: 20, maxTokens: 8192 });
+  expect(parseGeneration({ reasoning: "ultra", temperature: 9, topK: 1.5 })).toBeUndefined();
+  expect(parseGeneration(undefined)).toBeUndefined();
 });

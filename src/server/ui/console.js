@@ -541,7 +541,7 @@ async function send(prompt) {
   state.follow = ac;
   if (!state.sessionId) setTitle(prompt.slice(0, 80)), $("#chat-log").querySelector(".welcome")?.remove();
   setBusy(true);
-  const body = { prompt, model: $("#chat-model").value, preset: $("#chat-preset").value, mode: $("#chat-mode").value, sessionId: state.sessionId };
+  const body = { prompt, model: $("#chat-model").value.trim(), preset: $("#chat-preset").value, mode: $("#chat-mode").value, sessionId: state.sessionId, generation: generation() };
   const known = state.sessionId;
   try {
     const res = await fetch("/api/chat", { method: "POST", headers: { "x-ah-token": TOKEN, "content-type": "application/json" }, body: JSON.stringify(body), signal: ac.signal });
@@ -721,24 +721,54 @@ $("#chat-form").addEventListener("submit", (e) => {
 });
 // A different model or preset starts a new session (a session keeps its model).
 const restart = () => state.sessionId && !state.busy && newSession();
-$("#chat-model").addEventListener("change", restart);
+$("#chat-model").addEventListener("change", () => (loadTune(), restart()));
 $("#chat-preset").addEventListener("change", async () => {
   const presets = await api("/api/presets", undefined, true).catch(() => []);
   const p = presets.find((x) => x.name === $("#chat-preset").value);
-  if (p?.model && [...$("#chat-model").options].some((o) => o.value === p.model)) $("#chat-model").value = p.model;
+  if (p?.model) $("#chat-model").value = p.model;
   restart();
 });
 
+// ---------- tune: per-session generation settings, remembered per model ----------
+const GEN = ["reasoning", "temperature", "topP", "topK", "maxTokens"];
+const tuneKey = () => `ah.tune.${$("#chat-model").value.trim() || "auto"}`;
+function generation() {
+  const g = {};
+  for (const k of GEN) {
+    const v = $(`#g-${k}`).value.trim();
+    if (v) g[k] = k === "reasoning" ? v : Number(v);
+  }
+  return Object.keys(g).length ? g : undefined;
+}
+function loadTune() {
+  const saved = JSON.parse(localStorage.getItem(tuneKey()) ?? "{}");
+  for (const k of GEN) $(`#g-${k}`).value = saved[k] ?? "";
+  const m = modelInfo.get($("#chat-model").value.trim());
+  $("#g-reasoning").disabled = m ? !m.reasoning && !m.local : false;
+  $("#g-maxTokens").placeholder = m?.maxOutput ? `up to ${compact(m.maxOutput)}` : "model limit";
+  $("#tune summary").textContent = Object.keys(saved).length ? "Tune •" : "Tune";
+}
+for (const k of GEN)
+  $(`#g-${k}`).addEventListener("change", () => {
+    localStorage.setItem(tuneKey(), JSON.stringify(generation() ?? {}));
+    loadTune();
+  });
+
 // ---------- loader ----------
 let filled = false;
+const modelInfo = new Map();
 export async function loadConsole() {
-  const [models, doc] = await Promise.all([api("/api/models?local=1&kind=chat&limit=100"), api("/api/doctor")]);
-  const sel = $("#chat-model");
-  const prev = sel.value;
-  sel.innerHTML = models.length
-    ? models.map((m) => `${m.provider}/${m.id}`).map((ref) => `<option ${(filled ? ref === prev : ref === doc.defaultModel) ? "selected" : ""}>${esc(ref)}</option>`).join("")
-    : `<option value="">no local chat model found</option>`;
+  // Every model ah can call right now: local runtimes plus providers with a key.
+  const [models, doc] = await Promise.all([api("/api/models?available=1&kind=chat"), api("/api/doctor")]);
+  modelInfo.clear();
+  for (const m of models) modelInfo.set(`${m.provider}/${m.id}`, m);
+  $("#chat-models").innerHTML = models
+    .sort((a, b) => Number(b.local) - Number(a.local))
+    .map((m) => `<option value="${esc(`${m.provider}/${m.id}`)}">${esc([m.local ? "local" : m.provider, m.contextWindow ? `${compact(m.contextWindow)} ctx` : "", m.reasoning ? "reasoning" : ""].filter(Boolean).join(" · "))}</option>`)
+    .join("");
+  if (!filled) $("#chat-model").value = doc.defaultModel ?? "";
   if (!filled && doc.permissionMode) $("#chat-mode").value = doc.permissionMode;
+  loadTune();
   const presets = await api("/api/presets", undefined, true).catch(() => []);
   $("#preset-pick").hidden = !presets.length;
   const cur = $("#chat-preset").value;

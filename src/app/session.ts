@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { applyCredentials } from "./credentials.ts";
 import { Agent, type AgentOptions } from "../agent/loop.ts";
 import { buildSystemPrompt } from "../agent/prompt.ts";
 import { deferMcpTools, shouldDefer } from "../mcp/deferred.ts";
@@ -37,6 +38,7 @@ export interface Environment {
   memory?: MemoryStore;
   // Plugins, skills and MCP connections per workspace root, loaded on first session.
   extensions: Map<string, Promise<LoadedExtensions>>;
+  offline?: boolean; // no network lookups (tests, air-gapped use)
 }
 
 export interface LoadedExtensions {
@@ -72,6 +74,7 @@ export function loadExtensions(env: Environment, root: string): Promise<LoadedEx
 
 export async function buildEnvironment(opts: { cwd?: string; offline?: boolean; live?: boolean; cfg?: AhConfig } = {}): Promise<Environment> {
   const cfg = opts.cfg ?? loadConfig(opts.cwd);
+  applyCredentials(cfg.dataDir);
   const telemetry = Telemetry.fromConfig(cfg);
   const runtimes = await discoverRuntimes({ endpoints: cfg.runtimes.endpoints, scan: cfg.runtimes.scan });
   // models.dev provider metadata (base URL, env var, SDK) for optional cloud providers.
@@ -80,7 +83,19 @@ export async function buildEnvironment(opts: { cwd?: string; offline?: boolean; 
   const catalog = new ModelCatalog({ store: telemetry.store, registry, offline: opts.offline });
   await catalog.load({ live: opts.live ?? true });
   const memory = cfg.recall.enabled ? new MemoryStore(join(cfg.dataDir, "memory.sqlite")) : undefined;
-  return { cfg, runtimes, registry, catalog, telemetry, memory, extensions: new Map() };
+  return { cfg, runtimes, registry, catalog, telemetry, memory, extensions: new Map(), offline: opts.offline };
+}
+
+// Re-discover runtimes, rebuild providers (e.g. after an API key was added) and reload the
+// catalog; `refresh` also re-fetches models.dev and OpenRouter instead of using the cache.
+export async function refreshProviders(env: Environment, opts: { refresh?: boolean } = {}): Promise<void> {
+  env.runtimes = await discoverRuntimes({ endpoints: env.cfg.runtimes.endpoints, scan: env.cfg.runtimes.scan });
+  // models.dev first (it names the providers), then the registry built from it lists live models.
+  if (opts.refresh && !env.offline) await new ModelCatalog({ store: env.telemetry.store }).load({ refresh: true, live: false });
+  const mdRaw = env.telemetry.store?.cacheGet("models.dev", Number.POSITIVE_INFINITY);
+  env.registry = ProviderRegistry.build({ cfg: env.cfg, runtimes: env.runtimes, catalog: mdRaw ? JSON.parse(mdRaw) : null, store: env.telemetry.store });
+  env.catalog = new ModelCatalog({ store: env.telemetry.store, registry: env.registry, offline: env.offline });
+  await env.catalog.load({ live: !env.offline });
 }
 
 // Facts about a runtime-served model: llama.cpp/LM Studio fix n_ctx at load time.
@@ -217,7 +232,16 @@ export interface SessionOptions {
   system?: string;
   preset?: string; // name in cfg.presets; explicit options win over it
   params?: Record<string, unknown>; // per-invocation request-body fields (e.g. `--param`), merged last
+  generation?: GenerationOverrides; // per-session reasoning effort, sampling and output cap (web app, CLI flags)
   toolContextExtras?: Partial<AgentOptions["toolContext"]>;
+}
+
+export interface GenerationOverrides {
+  reasoning?: "off" | "low" | "medium" | "high" | "max";
+  temperature?: number;
+  topP?: number;
+  topK?: number;
+  maxTokens?: number;
 }
 
 export interface Session {
@@ -228,6 +252,11 @@ export interface Session {
   modelRef: string;
   info?: ModelInfo;
   context: ContextDecision;
+}
+
+function withSampling(base: GenerationSettings["sampling"], g?: GenerationOverrides): GenerationSettings["sampling"] {
+  if (g?.topP === undefined && g?.topK === undefined) return base;
+  return { ...base, ...(g.topP !== undefined ? { topP: g.topP } : {}), ...(g.topK !== undefined ? { topK: g.topK } : {}) };
 }
 
 export async function createSession(env: Environment, opts: SessionOptions): Promise<Session> {
@@ -293,11 +322,11 @@ export async function createSession(env: Environment, opts: SessionOptions): Pro
     approve: o.approve,
     maxTurns: o.maxTurns ?? env.cfg.maxTurns,
     // Output cap: never more than a quarter of the window for local models.
-    maxTokens: Math.min(env.cfg.maxTokens, info?.maxOutput ?? Number.POSITIVE_INFINITY, facts ? Math.floor(context.window / 4) : Number.POSITIVE_INFINITY),
+    maxTokens: Math.min(o.generation?.maxTokens ?? env.cfg.maxTokens, info?.maxOutput ?? Number.POSITIVE_INFINITY, facts ? Math.floor(context.window / 4) : Number.POSITIVE_INFINITY),
     maxOutputTokens: info?.maxOutput,
-    reasoning: env.cfg.reasoning,
-    temperature: gen.temperature,
-    sampling: gen.sampling,
+    reasoning: o.generation?.reasoning ?? env.cfg.reasoning,
+    temperature: o.generation?.temperature ?? gen.temperature,
+    sampling: withSampling(gen.sampling, o.generation),
     templateKwargs: gen.templateKwargs,
     params,
     // Without context sizing the runtime default applies and no compaction happens.

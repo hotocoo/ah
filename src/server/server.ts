@@ -3,10 +3,12 @@ import { randomBytes } from "node:crypto";
 import { join, relative, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { AgentEvent } from "../agent/events.ts";
-import { autoSelectModel, buildEnvironment, createSession, loadExtensions, resolveModelContext, type Environment, type Session } from "../app/session.ts";
+import { autoSelectModel, buildEnvironment, createSession, loadExtensions, refreshProviders, resolveModelContext, type Environment, type GenerationOverrides, type Session } from "../app/session.ts";
 import { isTrusted, setTrusted } from "../plugins/index.ts";
 import type { PermissionMode } from "../tools/index.ts";
 import { confine } from "../tools/types.ts";
+import { adapterForNpm } from "../providers/registry.ts";
+import { saveCredential } from "../app/credentials.ts";
 import { walkFiles } from "../tools/search.ts";
 import { discoverBackend } from "../tools/computer.ts";
 import { parseModelRef } from "../config.ts";
@@ -76,6 +78,21 @@ interface PendingApproval {
 }
 const APPROVAL_TIMEOUT_MS = 10 * 60_000;
 type ApprovalEvent = { type: "approval_request"; id: string; tool: string; summary: string; input: string };
+
+// Validated per-session generation settings from the page; anything out of range is dropped.
+const EFFORTS = ["off", "low", "medium", "high", "max"] as const;
+export function parseGeneration(g: Record<string, unknown> | undefined): GenerationOverrides | undefined {
+  if (!g || typeof g !== "object") return undefined;
+  const numIn = (v: unknown, lo: number, hi: number, int = false) => (typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi && (!int || Number.isInteger(v)) ? v : undefined);
+  const out: GenerationOverrides = {
+    reasoning: EFFORTS.includes(g.reasoning as never) ? (g.reasoning as GenerationOverrides["reasoning"]) : undefined,
+    temperature: numIn(g.temperature, 0, 2),
+    topP: numIn(g.topP, 0, 1),
+    topK: numIn(g.topK, 1, 10_000, true),
+    maxTokens: numIn(g.maxTokens, 256, 2_000_000, true),
+  };
+  return Object.values(out).some((v) => v !== undefined) ? out : undefined;
+}
 
 // Every API call must carry the per-process token, and the Host header must be local:
 // this blocks cross-site requests and DNS rebinding from driving a tool-running agent.
@@ -162,12 +179,20 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
                   text: q.get("q") || undefined,
                   kind: (q.get("kind") || undefined) as never,
                   toolCall: q.get("tools") ? true : undefined,
-                  providers: q.get("local") ? [...env.registry.runtimes.keys()] : undefined,
+                  providers: q.get("local") ? [...env.registry.runtimes.keys()] : q.get("available") ? usableProviders() : undefined,
                   sort: (q.get("sort") as never) ?? "name",
-                  limit: Number(q.get("limit") ?? 200),
+                  limit: q.get("limit") ? Number(q.get("limit")) : undefined,
                 })
-                .map((m) => ({ ...m, local: env.registry.runtimes.has(m.provider) })),
+                .map((m) => ({ ...m, local: env.registry.runtimes.has(m.provider), available: env.registry.has(m.provider) })),
             );
+          case "/api/models/refresh":
+            if (req.method !== "POST") return json({ error: "POST required" }, 405);
+            await refreshProviders(env, { refresh: true });
+            return json({ models: env.catalog.all().length, providers: usableProviders(), errors: env.catalog.errors });
+          case "/api/providers":
+            return json(providerList());
+          case "/api/credentials":
+            return await credentials(req);
           case "/api/telemetry/summary":
             return json(summary(db(), filter));
           case "/api/telemetry/runs":
@@ -282,7 +307,8 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
 
   async function chat(req: Request): Promise<Response> {
     if (req.method !== "POST") return json({ error: "POST required" }, 405);
-    const body = (await req.json()) as { prompt?: string; model?: string; preset?: string; sessionId?: string; mode?: string };
+    const body = (await req.json()) as { prompt?: string; model?: string; preset?: string; sessionId?: string; mode?: string; generation?: Record<string, unknown> };
+    const generation = parseGeneration(body.generation);
     const prompt = body.prompt?.trim();
     if (!prompt) return json({ error: "prompt required" }, 400);
     const mode = PERMISSION_MODES.includes(body.mode as PermissionMode) ? (body.mode as PermissionMode) : undefined;
@@ -295,7 +321,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       const saved = stored?.root === opts.root ? stored : null;
       const m = mode ?? (saved?.mode as PermissionMode | undefined) ?? env.cfg.permissionMode;
       let cs!: ChatSession;
-      const s = await createSession(env, { model: saved?.model ?? body.model, preset: saved ? undefined : body.preset || undefined, root: opts.root, mode: m, approve: () => Promise.resolve(false), onEvent: (e) => publish(cs, e) });
+      const s = await createSession(env, { model: saved?.model ?? body.model, preset: saved ? undefined : body.preset || undefined, generation, root: opts.root, mode: m, approve: () => Promise.resolve(false), onEvent: (e) => publish(cs, e) });
       if (saved) s.agent.messages.push(...(saved.messages as typeof s.agent.messages));
       cs = { id: saved?.id ?? s.agent.sessionId, session: s, busy: false, alwaysAllow: new Set(), subs: new Set(), log: (saved?.log as StreamEvent[]) ?? [], ac: null, title: saved?.title ?? prompt.slice(0, 80), createdAt: saved?.createdAt ?? Date.now(), updatedAt: Date.now(), runs: saved?.runs ?? 0, mode: m, lastOutcome: saved?.lastOutcome ?? null };
       chats.set(cs.id, cs);
@@ -307,6 +333,7 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
     const cs = chatSession;
     const id = cs.id;
     const agent = cs.session.agent;
+    if (generation) agent.setGeneration(generation);
     // Approvals travel to the page as SSE events and come back through /api/approve.
     agent.setApprover(
       (tool, input, summary) =>
@@ -379,6 +406,34 @@ export async function startServer(opts: { port: number; root: string; env?: Envi
       .filter((m) => !chats.has(m.id))
       .map((m) => ({ ...m, busy: false }));
     return json([...live, ...saved].sort((a, b) => b.updatedAt - a.updatedAt));
+  }
+
+  // Chat-capable providers ah can call right now (runtimes and keyed cloud providers).
+  const usableProviders = () => env.registry.list().map((p) => p.key).filter((k) => k !== "mock");
+
+  // Every provider models.dev describes that ah has an adapter for, with the key variable it
+  // reads and whether that key is set. Straight from the catalog lookup, nothing listed by hand.
+  function providerList() {
+    const raw = env.telemetry.store?.cacheGet("models.dev", Number.POSITIVE_INFINITY);
+    const md = raw ? (JSON.parse(raw) as Record<string, { id: string; name?: string; env?: string[]; npm?: string; api?: string; doc?: string; models?: Record<string, unknown> }>) : {};
+    return Object.values(md)
+      .filter((p) => adapterForNpm(p.npm, p.api) && (p.env ?? []).length)
+      .map((p) => ({ id: p.id, name: p.name ?? p.id, env: p.env ?? [], doc: p.doc ?? null, models: Object.keys(p.models ?? {}).length, configured: (p.env ?? []).some((v) => Boolean(process.env[v])), active: env.registry.has(p.id) }))
+      .sort((a, b) => Number(b.configured) - Number(a.configured) || a.name.localeCompare(b.name));
+  }
+
+  // Save or remove a provider API key, then rebuild providers so its models are usable at once.
+  async function credentials(req: Request): Promise<Response> {
+    if (req.method !== "POST" && req.method !== "DELETE") return json({ error: "POST or DELETE required" }, 405);
+    const b = (await req.json()) as { provider?: string; key?: string };
+    const p = providerList().find((x) => x.id === b.provider);
+    if (!p) return json({ error: `unknown provider ${b.provider}` }, 404);
+    const key = req.method === "POST" ? b.key?.trim() : null;
+    if (req.method === "POST" && !key) return json({ error: "key required" }, 400);
+    saveCredential(env.cfg.dataDir, p.env[0]!, key ?? null);
+    await refreshProviders(env);
+    const listed = env.catalog.all().filter((m) => m.provider === p.id).length;
+    return json({ ok: true, provider: p.id, active: env.registry.has(p.id), models: listed, errors: env.catalog.errors.filter((e) => e.includes(p.id)) });
   }
 
   // Uncommitted changes in the workspace (optionally only some files), for review in the console.
