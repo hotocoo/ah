@@ -33,7 +33,7 @@ See D19 in `DECISIONS.md`. `ah run` prints the chosen window and why, e.g. `cont
 
 - `toolProtocol: "auto"` (default): native tool calls when the runtime reports tool support; **text protocol** when it reports none (tools described in the prompt, calls parsed from text).
 - Either way, tool calls a model writes as text (`<tool_call>`, Qwen3-Coder XML, `<invoke>`, Mistral `[TOOL_CALLS]`, Llama `<|python_tag|>`, fenced or bare JSON, ...) are recovered and validated.
-- Small windows get the compact tool profile (no `multi_edit`, `repo_map`, `todo_write`, `web_fetch`).
+- Small windows get the compact tool profile (no `multi_edit`, `graph`, `todo_write`, `web_fetch`).
 
 ## Cloud providers (optional)
 

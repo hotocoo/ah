@@ -19,7 +19,7 @@
  src/providers/          src/tools/ (15 tools, validated,            src/bench/
  anthropic · openai-     confined, permission-gated)                 task · runner · stats
  compatible · gemini ·   read/write/edit/multi_edit/list/glob/grep/  report · throughput
- ollama · mock           repo_map/bash/run_tests/git/todo/web/
+ ollama · mock           graph/bash/run_tests/git/todo/web/
         │                image/3d
         ▼                        │
  src/models/catalog.ts           ▼
