@@ -1,0 +1,6 @@
+bench external/hermes · 1 tasks × 2 trials · {} · /Users/acotech/workspace/ah-bench-71b5137/examples/bench/h2h-27b-sql/hermes
+  FAIL ts-sql-engine #1 3600.1s · 16 turns · 19 tools · timeout
+  FAIL ts-sql-engine #2 3600.1s · 25 turns · 29 tools · timeout
+
+result 0/2 trials · pass@1 0% · pass^2 0% · 0/1 tasks solved
+report: /Users/acotech/workspace/ah-bench-71b5137/examples/bench/h2h-27b-sql/hermes/report.md

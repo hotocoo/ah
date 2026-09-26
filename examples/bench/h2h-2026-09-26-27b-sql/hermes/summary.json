@@ -1,0 +1,61 @@
+{
+  "model": "external/hermes",
+  "benchRunId": "bench_2026-09-26T04-56-42_external_hermes",
+  "k": 2,
+  "tasks": [
+    {
+      "taskId": "ts-sql-engine",
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "language": "typescript",
+      "n": 2,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.6576280471103807
+      },
+      "meanWallMs": 3600086.1035415,
+      "p95WallMs": 3600087.57410415,
+      "meanTurns": 20.5,
+      "meanToolErrors": 0,
+      "meanTokens": 1000677,
+      "decodeTps": null,
+      "failReasons": {
+        "timeout": 2
+      }
+    }
+  ],
+  "overall": {
+    "trials": 2,
+    "passes": 0,
+    "passRate": 0,
+    "wilson": {
+      "low": 0,
+      "high": 0.6576280471103807
+    },
+    "meanPassAt1": 0,
+    "meanPassAtK": 0,
+    "meanPassHatK": 0,
+    "solvedAny": 0,
+    "solvedAll": 0,
+    "meanScore": 0.05737704918032787,
+    "verdictAgreement": null,
+    "totalWallMs": 7200243.907541,
+    "p50WallMs": 3600086.1035415,
+    "p95WallMs": 3600087.57410415,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 1936276,
+    "outputTokens": 65078,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0
+  }
+}

@@ -1,0 +1,6 @@
+bench llamacpp-8081/DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF:Q6_K · 1 tasks × 2 trials · {} · /Users/acotech/workspace/ah-bench-71b5137/examples/bench/h2h-27b-sql/ah
+  FAIL ts-sql-engine #1 3598.9s · 20 turns · 23 tools (4 err) · timeout
+  FAIL ts-sql-engine #2 3599.9s · 69 turns · 92 tools (17 err) · timeout
+
+result 0/2 trials · pass@1 0% · pass^2 0% · 0/1 tasks solved
+report: /Users/acotech/workspace/ah-bench-71b5137/examples/bench/h2h-27b-sql/ah/report.md

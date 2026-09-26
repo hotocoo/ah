@@ -181,6 +181,8 @@ ah beats Hermes significantly (non-overlapping intervals) and leads dsh (interva
 
 ah is highest (14/24 at `8cf94ee`, 12/24 at `0eb3f99` with 3.2× fewer prompt tokens than Hermes), and the intervals overlapped at 3 trials per task; the five-trial run above settles it against Hermes. On the horizon suite nobody passed a trial at this model size, and ah earned the most partial credit (13 of 58 scheduler checks, against 5 for Hermes and 0 for dsh). The fixes this run led to (D39 to D42), the before/after numbers and every raw result are in [`examples/bench/h2h-2026-09-25-lfm/`](examples/bench/h2h-2026-09-25-lfm/README.md). An earlier head-to-head on Qwen3.8-27B was a three-way tie on the core suite (ah 24/24, dsh 24/24, Hermes 23/24).
 
+**Long horizon on Qwen3.8-27B (2026-09-26):** on `ts-sql-engine` (an SQL engine from a spec, graded against SQLite on 61 checks, 60-minute limit) ah passed 33/61 and 32/61 hidden checks, Hermes 0/61 and 7/61. Every trial hit the time limit; two trials each. [`examples/bench/h2h-2026-09-26-27b-sql/`](examples/bench/h2h-2026-09-26-27b-sql/README.md).
+
 **Comparison with other harnesses:** Claude Code, Codex, OpenCode, Aider and Pi have not been run here; `ah` is not shown to be better than them. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
 
 Raw results, per-trial logs and Markdown reports: [`examples/bench/`](examples/bench/). Reproduce with the commands in each report.

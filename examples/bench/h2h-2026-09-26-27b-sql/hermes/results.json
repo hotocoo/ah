@@ -1,0 +1,131 @@
+{
+  "benchRunId": "bench_2026-09-26T04-56-42_external_hermes",
+  "model": "external/hermes",
+  "startedAt": "2026-09-26T04:56:42.536Z",
+  "finishedAt": "2026-09-26T06:56:43.058Z",
+  "trials": 2,
+  "features": {},
+  "agentCmd": "cd {dir} && TERMINAL_CWD={dir} HERMES_HOME='/Users/acotech/workspace/ah-bench-71b5137/examples/bench/h2h-27b-sql/hermes-home' hermes -z {prompt} --yolo",
+  "hardware": {
+    "t": 1790398602536,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 4435951616,
+    "load1": 2.154296875,
+    "cpuCount": 16,
+    "gpuUtilPct": 96,
+    "gpuAllocBytes": 41273081856,
+    "gpuInUseBytes": 3833118720,
+    "gpuName": "Apple M4 Max"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "419c871",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "tags": [
+        "bun",
+        "typescript",
+        "project",
+        "long-horizon"
+      ],
+      "id": "ts-sql-engine",
+      "language": "typescript",
+      "prompt": "Build the in-memory SQL engine specified in SPEC.md, starting from the stub in src/db.ts. It must match SQLite's answers for the whole subset in the spec: parser, joins, grouping, aggregates, NULL semantics, ordering, writes and error messages. Hidden tests compare your engine with SQLite on many queries, including 5,000-row tables. db.test.ts is only a starting point; add your own tests.",
+      "grader": {
+        "cmd": "bun grade.ts",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 120,
+        "timeoutMs": 3600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-71b5137/bench/suites/horizon/ts-sql-engine",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-71b5137/bench/suites/horizon/ts-sql-engine/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-71b5137/bench/suites/horizon/ts-sql-engine/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 1,
+      "passed": false,
+      "failReason": "timeout",
+      "score": 0,
+      "outcome": "aborted",
+      "runId": "",
+      "turns": 16,
+      "toolCalls": 19,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 545154,
+        "outputTokens": 28144,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 3600084.469583,
+      "ttftMs": null,
+      "graderMs": 21.10154200019315,
+      "graderTail": "FAIL import: Export named 'TokenType' not found in module '/private/var/folders/kl/flgfc94j1pd6d6pm3w6r_mrm0000gn/T/ah-trial-Tf52n1/ts-sql-engine/src/tokenizer.ts'.\nAH_SCORE 0 1",
+      "changedFiles": [
+        "src/db.ts",
+        "src/evaluator.ts",
+        "src/parser.ts",
+        "src/tokenizer.ts",
+        "src/types.ts"
+      ],
+      "diffStat": "5 files changed, 1796 insertions(+), 8 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 2,
+      "passed": false,
+      "failReason": "timeout",
+      "score": 0.11475409836065574,
+      "outcome": "aborted",
+      "runId": "",
+      "turns": 25,
+      "toolCalls": 29,
+      "toolErrors": 0,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 1391122,
+        "outputTokens": 36934,
+        "cacheReadTokens": 0,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": null,
+      "wallMs": 3600087.7375,
+      "ttftMs": null,
+      "graderMs": 50.598916000686586,
+      "graderTail": "FAIL update sets several columns: no such column: age\nFAIL update sees the old row: no such column: id\nFAIL delete with where: no such column: amount\nFAIL insert with columns and quotes: no such column: id\nFAIL delete everything: {} is not iterable\nFAIL error: SELECT nope FROM users: message \"{} is not iterable\" does not match /no such column/\nFAIL error: SELECT missing FROM empty_t: message \"{} is not iterable\" does not match /no such column/\nFAIL error: SELECT id FROM users u JOIN orders o ON u.id = o.user_id: message \"no such column: u.id\" does not match /ambiguous/\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: {} is not iterable\nFAIL scale: SELECT n, s FROM nums ORDER BY s DESC, n LIMIT 5: {} is not iterable\nFAIL scale: SELECT label, count(*) FROM nums JOIN groups ON nums.g = groups.g WHERE n > 2500 GROUP BY label ORDER BY label: {} is not iterable\nAH_SCORE 7 61",
+      "changedFiles": [
+        "db.test.ts",
+        "src/db.ts",
+        "src/parser.ts",
+        "src/tokenizer.ts"
+      ],
+      "diffStat": "4 files changed, 1768 insertions(+), 6 deletions(-)",
+      "prefillTps": null,
+      "decodeTps": null,
+      "gpuUtilAvg": null,
+      "energyJ": null,
+      "contextWindow": 0,
+      "error": "",
+      "measured": true
+    }
+  ]
+}

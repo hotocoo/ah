@@ -1,0 +1,165 @@
+{
+  "benchRunId": "bench_2026-09-26T02-51-30_llamacpp-8081_DavidAU_Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncens",
+  "model": "llamacpp-8081/DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NEO-CODER-MAX-MTP-GGUF:Q6_K",
+  "startedAt": "2026-09-26T02:51:30.255Z",
+  "finishedAt": "2026-09-26T04:51:30.729Z",
+  "trials": 2,
+  "features": {},
+  "noTurnLimit": true,
+  "hardware": {
+    "t": 1790391090255,
+    "memTotalBytes": 68719476736,
+    "memFreeBytes": 1569390592,
+    "load1": 5.3818359375,
+    "cpuCount": 16,
+    "gpuUtilPct": 0,
+    "gpuAllocBytes": 41997484032,
+    "gpuInUseBytes": 40255995904,
+    "gpuName": "Apple M4 Max"
+  },
+  "runtime": {
+    "kind": "llamacpp",
+    "version": "b10621-c1d0e7a00",
+    "baseURL": "http://127.0.0.1:8081"
+  },
+  "ahVersion": "0.1.0",
+  "gitSha": "71b5137",
+  "skipped": [],
+  "tasks": [
+    {
+      "name": "In-memory SQL engine from a spec",
+      "category": "project",
+      "difficulty": 5,
+      "tags": [
+        "bun",
+        "typescript",
+        "project",
+        "long-horizon"
+      ],
+      "id": "ts-sql-engine",
+      "language": "typescript",
+      "prompt": "Build the in-memory SQL engine specified in SPEC.md, starting from the stub in src/db.ts. It must match SQLite's answers for the whole subset in the spec: parser, joins, grouping, aggregates, NULL semantics, ordering, writes and error messages. Hidden tests compare your engine with SQLite on many queries, including 5,000-row tables. db.test.ts is only a starting point; add your own tests.",
+      "grader": {
+        "cmd": "bun grade.ts",
+        "timeoutMs": 300000
+      },
+      "limits": {
+        "maxTurns": 120,
+        "timeoutMs": 3600000
+      },
+      "dir": "/Users/acotech/workspace/ah-bench-71b5137/bench/suites/horizon/ts-sql-engine",
+      "fixtureDir": "/Users/acotech/workspace/ah-bench-71b5137/bench/suites/horizon/ts-sql-engine/fixture",
+      "hiddenDir": "/Users/acotech/workspace/ah-bench-71b5137/bench/suites/horizon/ts-sql-engine/hidden"
+    }
+  ],
+  "results": [
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 1,
+      "passed": false,
+      "failReason": "timeout",
+      "score": 0.5409836065573771,
+      "verdict": "failed",
+      "outcome": "aborted",
+      "runId": "run_muhsmnjz_nnc1yv",
+      "turns": 20,
+      "toolCalls": 23,
+      "toolErrors": 4,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 413309,
+        "outputTokens": 48830,
+        "cacheReadTokens": 366068,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 3598858.539667,
+      "ttftMs": 11932.567749999998,
+      "graderMs": 113.32220799988136,
+      "graderTail": "FAIL SELECT DISTINCT age FROM users ORDER BY age: rows [[null],[19],[25],[25],[31],[42]] expected [[null],[19],[25],[31],[42]]\nFAIL SELECT name, age FROM users ORDER BY 2, 1: rows [[\"Ann\",31],[\"Bob\",null],[\"Cid\",25],[\"Dee\",42],[\"Eve\",25],[\"fay\",19]] expected [[\"Bob\",null],[\"fay\",19],[\"Cid\",25],[\"Eve\",25],[\"Ann\",31],[\"Dee\",42]]\nFAIL SELECT name AS n FROM users ORDER BY n DESC LIMIT 2: no such column: n\nFAIL SELECT u.name, sum(o.amount) AS total, count(o.id) FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id ORDER BY total DESC, u.name: rows [[\"fay\",null,0],[\"Eve\",5,2],[\"Dee\",null,0],[\"Cid\",99,1],[\"Bob\",null,0],[\"Ann\",42,2]] expected [[\"Cid\",99,1],[\"Ann\",42,2],[\"Eve\",5,2],[\"Bob\",null,0],[\"Dee\",null,0],[\"fay\",null,0]]\nFAIL SELECT o.* FROM orders o WHERE o.amount > 20 ORDER BY o.id: rows [[10,1,30,\"book\"],[10,1,30,\"book\"],[10,1,30,\"book\"]] expected [[10,1,30,\"book\"],[12,3,99,\"lamp\"],[15,9,40,\"book\"]]\nFAIL update with where: syntax error: unexpected EQ\nFAIL update sets several columns: syntax error: unexpected EQ\nFAIL update sees the old row: syntax error: unexpected EQ\nFAIL delete with where: null is not an object (evaluating 'expr.kind')\nFAIL error: SELECT missing FROM empty_t: did not throw\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: syntax error: unexpected EQ\nAH_SCORE 33 61",
+      "changedFiles": [
+        "debug.ts",
+        "src/ast.ts",
+        "src/db.ts",
+        "src/evaluator.ts",
+        "src/executor.ts",
+        "src/lexer.ts",
+        "src/parser.ts"
+      ],
+      "diffStat": "7 files changed, 3079 insertions(+), 5 deletions(-)",
+      "prefillTps": 178.17536140278307,
+      "decodeTps": 16.207269695315414,
+      "gpuUtilAvg": 98.87979966611019,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NM-DAU"
+      },
+      "toolProtocol": "native",
+      "error": "aborted"
+    },
+    {
+      "taskId": "ts-sql-engine",
+      "trial": 2,
+      "passed": false,
+      "failReason": "timeout",
+      "score": 0.5245901639344263,
+      "verdict": "failed",
+      "outcome": "aborted",
+      "runId": "run_muhursqb_agia48",
+      "turns": 69,
+      "toolCalls": 92,
+      "toolErrors": 17,
+      "recoveredToolCalls": 0,
+      "usage": {
+        "inputTokens": 2909948,
+        "outputTokens": 41024,
+        "cacheReadTokens": 2834138,
+        "cacheWriteTokens": 0,
+        "reasoningTokens": 0
+      },
+      "costUsd": 0,
+      "wallMs": 3599943.6032080003,
+      "ttftMs": 3226.9537499998696,
+      "graderMs": 93.54854200035334,
+      "graderTail": "FAIL SELECT u.name, o.amount FROM users u LEFT JOIN orders o ON o.user_id = u.id ORDER BY u.id, o.id: syntax error: unexpected token COMMA at position 90\nFAIL SELECT u.name, sum(o.amount) AS total, count(o.id) FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id ORDER BY total DESC, u.name: syntax error: unexpected token COMMA at position 137\nFAIL SELECT o.* FROM orders o WHERE o.amount > 20 ORDER BY o.id: syntax error: expected IDENT, got STAR at position 10\nFAIL update sets several columns: syntax error: expected IDENT, got COMMA at position 25\nFAIL update sees the old row: syntax error: expected IDENT, got COMMA at position 26\nFAIL delete everything: rows [] expected [[0]]\nFAIL error: SELECT missing FROM empty_t: did not throw\nFAIL error: SELECT id FROM users u JOIN orders o ON u.id = o.user_id: did not throw\nFAIL scale: SELECT g, count(*), sum(n) FROM nums WHERE n % 3 = 0 GROUP BY g ORDER BY g: no such column: n\nFAIL scale: SELECT n, s FROM nums ORDER BY s DESC, n LIMIT 5: syntax error: unexpected token COMMA at position 38\nFAIL scale: SELECT label, count(*) FROM nums JOIN groups ON nums.g = groups.g WHERE n > 2500 GROUP BY label ORDER BY label: rows [[\"g0\",2],[\"g1\",2],[\"g10\",2],[\"g11\",2],[\"g12\",2],[\"g13\",2],[\"g14\",2],[\"g15\",2],[\"g16\",2],[\"g17\",2],[\"g18\",2],[\"g19\",2],[\"g2\",2],[\"g20\",2],[\"g21\",2],[\"g22\",2],[\"g23\",2],[\"g24\",2],[\"g25\",2],[\"g26\",2],[\"g27\",2],[\"g28\",2],[\"g29\",2],[\"g3\",2],[\"g30\",2],[\"g31\",2],[\"g32\",2],[\"g33\",2],[\"g34\",2],[\"g35\",2],[\"g36\",2],[\"g4\",2],[\"g5\",2],[\"g6\",2],[\"g7\",2],[\"g8\",2],[\"g9\",2]] expected [[\"g0\",68],[\"g1\",68],[\"g\nAH_SCORE 32 61",
+      "changedFiles": [
+        "db.test.ts",
+        "src/db.ts",
+        "src/parser.ts",
+        "src/tokenizer.ts",
+        "test_debug.ts",
+        "test_simple.ts",
+        "test_token.ts"
+      ],
+      "diffStat": "7 files changed, 1997 insertions(+), 3 deletions(-)",
+      "prefillTps": 145.8675648234951,
+      "decodeTps": 14.168572143487594,
+      "gpuUtilAvg": 97.13594662218516,
+      "energyJ": null,
+      "contextWindow": 131072,
+      "generation": {
+        "temperature": 1,
+        "sampling": {
+          "topP": 0.95,
+          "topK": 20
+        },
+        "templateKwargs": {
+          "enable_thinking": true
+        },
+        "source": "model card DavidAU/Qwen3.8-27B-TURBO-Fable-Cold-Fusion-735-882-Heretic-Uncensored-NM-DAU"
+      },
+      "toolProtocol": "native",
+      "error": "aborted"
+    }
+  ]
+}
