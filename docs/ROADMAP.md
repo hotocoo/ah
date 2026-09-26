@@ -11,9 +11,21 @@
 - Windows is untested; desktop control reports itself unavailable there.
 - Desktop control verified live on macOS (screenshot, cursor, move, scroll through the tool; approval flow in the web console with a scripted model). The Linux xdotool backend is implemented but not verified on a real X11 session. It needs the Screen Recording and Accessibility permissions for the terminal on macOS.
 - MCP client tested against fake stdio and HTTP servers; not yet against a large third-party server catalog.
-- Evidence-loop check detection is heuristic (detected test command + toolchain vocabulary); lessons record what was done, not why.
+- Evidence-loop check detection is heuristic: the detected test command, or a shell segment that runs a toolchain program (heredocs, quotes and text-only programs ignored, D44). Lessons record what was done, not why.
+- Head-to-head measured only against Hermes Agent and dsh (installed here). On LFM2.5-2.6B at 5 trials, ah is significantly ahead of Hermes (24/40 vs 10/40), not yet of dsh (13/40). Long horizon on Qwen3.8-27B was 2 trials on one task (ah 65/122 checks, Hermes 7/122), and no harness finished a long-horizon task within its limit.
+- `bash` reports the files it wrote only in git workspaces (D44).
+
+## Done since the last roadmap (2026-09-25/26)
+
+- `/goal`, `/verify`, `/advisor`, `/loop`, `/graph` (D38); the independent judge behind them answers MET / NOT MET / BLOCKED.
+- A failing check sends the model back with the failing lines, up to `gateRetries` times (D43); a heredoc write no longer counts as a passing check (D44).
+- Small-model slips found by benchmarking fixed: seconds as timeouts, misplaced absolute paths, new files beside the root, runner-specific test filters, broken tool-call JSON, server-side tool-parse failures, dropped streams (D39, D41, D42, D45, D46).
+- Bench trials run alone in private directories (D40); `--no-turn-limit` gives ah the external harnesses' time-only budget.
+- Recursive deletion of the workspace needs approval (D47); runtime refs survive another server stopping (D48).
 
 ## Next
+
+0. Settle ah vs dsh: point dsh at the same model and run more trials; run the 27B on the whole horizon suite with 3+ trials.
 
 1. Container sandbox (`--sandbox docker`) for agent shell commands and bench trials.
 2. Image-to-3D adapters (Hunyuan3D-2 API server, TRELLIS.2) and a text → image → 3D pipeline.
