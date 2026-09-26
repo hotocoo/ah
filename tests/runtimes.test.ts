@@ -136,3 +136,16 @@ describe("runtime product name", () => {
     expect(productName(null, "")).toBeUndefined();
   });
 });
+
+test("a runtime also answers to <kind>-<port>, so refs survive another server stopping", async () => {
+  const { ProviderRegistry } = await import("../src/providers/registry.ts");
+  const { defaultConfig } = await import("../src/config.ts");
+  const rt = (port: number) => ({ kind: "llamacpp", baseURL: `http://127.0.0.1:${port}`, models: ["m"], meta: {}, source: "scan" }) as never;
+  const both = ProviderRegistry.build({ cfg: defaultConfig(), runtimes: [rt(8080), rt(8081)] });
+  expect(both.has("llamacpp-8081")).toBe(true);
+  const one = ProviderRegistry.build({ cfg: defaultConfig(), runtimes: [rt(8081)] });
+  expect([...one.runtimes.keys()]).toEqual(["llamacpp"]);
+  expect(one.has("llamacpp-8081")).toBe(true);
+  expect(one.runtimes.get("llamacpp-8081")?.baseURL).toBe("http://127.0.0.1:8081");
+  expect(one.has("llamacpp-9999")).toBe(false);
+});

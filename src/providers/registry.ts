@@ -103,9 +103,25 @@ export function runtimeProviderKey(r: RuntimeInfo, taken: Set<string>): string {
   return `${base}-${new URL(r.baseURL).port}`;
 }
 
+// Runtime keys depend on which servers are up ("llamacpp" for the first llama.cpp server,
+// "llamacpp-8081" for the next). A ref saved while two servers ran must still resolve when one
+// stops, so every runtime also answers to "<kind>-<port>". Lookups only; listings are unchanged.
+class AliasMap<V> extends Map<string, V> {
+  constructor(private alias: Map<string, string>) {
+    super();
+  }
+  override get(k: string): V | undefined {
+    return super.get(k) ?? super.get(this.alias.get(k) ?? "");
+  }
+  override has(k: string): boolean {
+    return super.has(k) || (this.alias.has(k) && super.has(this.alias.get(k)!));
+  }
+}
+
 export class ProviderRegistry {
-  private providers = new Map<string, Provider>();
-  readonly runtimes = new Map<string, RuntimeInfo>();
+  private aliases = new Map<string, string>();
+  private providers = new AliasMap<Provider>(this.aliases);
+  readonly runtimes = new AliasMap<RuntimeInfo>(this.aliases);
 
   static build(opts: {
     cfg: AhConfig;
@@ -126,6 +142,8 @@ export class ProviderRegistry {
       if (p) {
         reg.register(p);
         reg.runtimes.set(key, r);
+        const port = `${r.kind}-${new URL(r.baseURL).port}`;
+        if (port !== key) reg.aliases.set(port, key);
       }
     }
     for (const [key, c] of Object.entries(opts.catalog ? cloudProvidersFromCatalog(opts.catalog) : {})) {

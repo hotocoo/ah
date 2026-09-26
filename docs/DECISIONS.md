@@ -267,3 +267,8 @@ Two more robustness features came out of these runs: project facts in the system
 
 - **Found by:** the 5-trial head-to-head at `9700548`. In a `go-feature-stack` trial the model ran `rm -rf <workspace root>` in auto mode, deleting `go.mod` and the task. It then spent the rest of the trial writing files into a directory that no longer existed.
 - **Chosen:** a recursive `rm` whose target is the workspace root or one of its ancestors (`.`, `..`, the absolute root) is dangerous: it needs approval in every mode, like `rm -rf /`. `rm` must be the program, not an argument to `echo`; deleting subdirectories (`build`, `node_modules`) is unaffected. In a benchmark trial, approval is never granted, so the model gets a denial instead of an empty workspace.
+
+## D48. Runtime refs survive another server stopping
+
+- **Found by:** the 27B long-horizon run. With llama-servers on :8080 and :8081, the 27B was `llamacpp-8081/...`. When the :8080 server went away, discovery renamed :8081 to plain `llamacpp`, and the saved ref no longer resolved ("is not served by a local runtime").
+- **Chosen:** keys stay as before (first server of a kind gets the bare kind), and every runtime also answers to `<kind>-<port>` for lookups (`get`, `has`). Listings do not show the alias twice.
