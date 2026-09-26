@@ -1,0 +1,44 @@
+bench external/dsh · 8 tasks × 5 trials · {} · /Users/acotech/workspace/ah-bench-9700548/examples/bench/h2h-lfm-core-t5/dsh
+  FAIL ts-bugfix-pagination #1 23.8s · 6 turns · 8 tools (1 err) · grader
+  PASS ts-bugfix-pagination #2 22.1s · 6 turns · 7 tools (2 err)
+  PASS ts-bugfix-pagination #3 32.9s · 7 turns · 10 tools (2 err)
+  FAIL ts-bugfix-pagination #4 22.5s · 6 turns · 8 tools (1 err) · grader
+  PASS ts-bugfix-pagination #5 22.1s · 6 turns · 8 tools (2 err)
+  FAIL go-feature-stack #1 60.6s · 13 turns · 15 tools (4 err) · grader
+  FAIL go-feature-stack #2 270.4s · 10 turns · 11 tools (4 err) · grader
+  FAIL go-feature-stack #3 78.6s · 13 turns · 15 tools (7 err) · grader
+  FAIL go-feature-stack #4 171.2s · 19 turns · 24 tools (8 err) · grader
+  FAIL go-feature-stack #5 42.3s · 10 turns · 12 tools (3 err) · grader
+  PASS py-bugfix-duration #1 52.5s · 13 turns · 12 tools (6 err)
+  FAIL py-bugfix-duration #2 110.6s · 19 turns · 22 tools (15 err) · grader
+  PASS py-bugfix-duration #3 82.0s · 22 turns · 21 tools (7 err)
+  PASS py-bugfix-duration #4 75.5s · 21 turns · 20 tools (3 err)
+  FAIL py-bugfix-duration #5 183.9s · 26 turns · 31 tools (5 err) · grader
+  FAIL rust-fix-compile-and-logic #1 212.0s · 23 turns · 27 tools (14 err) · grader
+  FAIL rust-fix-compile-and-logic #2 308.4s · 14 turns · 16 tools (7 err) · grader
+  FAIL rust-fix-compile-and-logic #3 203.7s · 17 turns · 21 tools (8 err) · grader
+  FAIL rust-fix-compile-and-logic #4 125.7s · 12 turns · 13 tools (6 err) · grader
+  FAIL rust-fix-compile-and-logic #5 133.6s · 20 turns · 22 tools (14 err) · grader
+  PASS ts-debug-cross-file #1 40.4s · 9 turns · 9 tools
+  FAIL ts-debug-cross-file #2 69.2s · 10 turns · 15 tools (10 err) · grader
+  PASS ts-debug-cross-file #3 38.2s · 10 turns · 15 tools (2 err)
+  PASS ts-debug-cross-file #4 26.5s · 8 turns · 8 tools
+  PASS ts-debug-cross-file #5 44.3s · 9 turns · 9 tools (2 err)
+  FAIL ts-feature-lru #1 216.4s · 18 turns · 19 tools (13 err) · grader
+  FAIL ts-feature-lru #2 123.0s · 15 turns · 22 tools (4 err) · grader
+  FAIL ts-feature-lru #3 86.2s · 16 turns · 22 tools (4 err) · grader
+  FAIL ts-feature-lru #4 334.0s · 7 turns · 7 tools · grader
+  FAIL ts-feature-lru #5 385.5s · 21 turns · 24 tools (20 err) · grader
+  FAIL ts-multifile-rename #1 106.3s · 12 turns · 27 tools (5 err) · grader
+  FAIL ts-multifile-rename #2 60.7s · 11 turns · 23 tools (2 err) · grader
+  PASS ts-multifile-rename #3 27.5s · 7 turns · 13 tools
+  PASS ts-multifile-rename #4 104.6s · 16 turns · 28 tools (2 err)
+  PASS ts-multifile-rename #5 138.5s · 21 turns · 43 tools (12 err)
+  FAIL ts-write-tests #1 46.0s · 8 turns · 8 tools (4 err) · grader
+  FAIL ts-write-tests #2 45.8s · 6 turns · 6 tools (3 err) · grader
+  FAIL ts-write-tests #3 58.7s · 9 turns · 9 tools (4 err) · grader
+  FAIL ts-write-tests #4 45.5s · 9 turns · 10 tools (5 err) · grader
+  FAIL ts-write-tests #5 45.9s · 8 turns · 9 tools (4 err) · grader
+
+result 13/40 trials · pass@1 33% · pass^5 0% · 4/8 tasks solved
+report: /Users/acotech/workspace/ah-bench-9700548/examples/bench/h2h-lfm-core-t5/dsh/report.md

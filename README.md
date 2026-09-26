@@ -162,6 +162,16 @@ Same model, server, suite and trial count as the rows above, with the evidence l
 
 Same model (`DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF:Q8_0`), same llama-server, same core tasks, hidden graders and time limits, 3 trials each:
 
+Five trials per task (40 each), ah at `9700548`:
+
+| harness | trials passed (95% CI) | tasks solved ≥1 | prompt tokens |
+|---|---|---|---|
+| ah | **24/40 (45%–74%)** | 6/8 | 14.50M |
+| dsh 0.1.1-rc.2 | 13/40 (20%–48%) | 4/8 | not recorded |
+| Hermes Agent 0.21.3 | 10/40 (14%–40%) | 4/8 | 20.47M |
+
+ah beats Hermes significantly (non-overlapping intervals) and leads dsh (intervals overlap by 3 points, so that lead is not yet significant). Earlier three-trial runs:
+
 | harness | trials passed (95% CI) | tasks solved ≥1 | prompt tokens |
 |---|---|---|---|
 | ah `8cf94ee` | 14/24 (39%–76%) | 5/8 | 8.12M |
@@ -169,7 +179,7 @@ Same model (`DavidAU/LFM2.5-2.6B-Qwen3.8-Turbo-Brilliance-Power-X12-NEO-MAX-GGUF
 | dsh 0.1.1-rc.2 | 9/24 (21%–57%) | 4/8 | not recorded |
 | Hermes Agent 0.21.3 | 7/24 (15%–49%) | 3/8 | 12.30M |
 
-ah is highest (14/24 at `8cf94ee`, 12/24 at `0eb3f99` with 3.2× fewer prompt tokens than Hermes), but the intervals still overlap: no lead is proven at 3 trials per task. On the horizon suite nobody passed a trial at this model size, and ah earned the most partial credit (13 of 58 scheduler checks, against 5 for Hermes and 0 for dsh). The fixes this run led to (D39 to D42), the before/after numbers and every raw result are in [`examples/bench/h2h-2026-09-25-lfm/`](examples/bench/h2h-2026-09-25-lfm/README.md). An earlier head-to-head on Qwen3.8-27B was a three-way tie on the core suite (ah 24/24, dsh 24/24, Hermes 23/24).
+ah is highest (14/24 at `8cf94ee`, 12/24 at `0eb3f99` with 3.2× fewer prompt tokens than Hermes), and the intervals overlapped at 3 trials per task; the five-trial run above settles it against Hermes. On the horizon suite nobody passed a trial at this model size, and ah earned the most partial credit (13 of 58 scheduler checks, against 5 for Hermes and 0 for dsh). The fixes this run led to (D39 to D42), the before/after numbers and every raw result are in [`examples/bench/h2h-2026-09-25-lfm/`](examples/bench/h2h-2026-09-25-lfm/README.md). An earlier head-to-head on Qwen3.8-27B was a three-way tie on the core suite (ah 24/24, dsh 24/24, Hermes 23/24).
 
 **Comparison with other harnesses:** Claude Code, Codex, OpenCode, Aider and Pi have not been run here; `ah` is not shown to be better than them. Published evidence on harness effects, and what a fair comparison would need, is collected in [`docs/COMPARISON.md`](docs/COMPARISON.md).
 

@@ -85,6 +85,21 @@ All four trials ended `verified` while failing the grader. That exposed D44: the
 
 [`ah-d44/report.md`](ah-d44/report.md): **14/24 (39%–76%), 5/8 tasks**. The verdict agrees with the grader on 21/24 trials, and all 14 passing trials were called `verified`. Against Hermes' 7/24 (15%–49%) the intervals now barely overlap, so it is still not a significant lead at n=3. The prompt tokens (8.12M) are higher than at `0eb3f99`: D43 keeps the model working after a failed check, so more turns are spent on hard tasks. The run found D45 (test filters) and D46 (new files beside the root), which are not in this build.
 
+## Five trials per task: ah `9700548` vs Hermes vs dsh
+
+`bash scripts/h2h.sh --trials 5`: same model, server, tasks and time-only budget for all three, 40 trials each, run one after another. Details: [`t5/`](t5/), per-task deltas in [`t5/ah-vs-hermes.md`](t5/ah-vs-hermes.md) and [`t5/ah-vs-dsh.md`](t5/ah-vs-dsh.md).
+
+| harness | trials passed (95% Wilson CI) | tasks solved ≥1 | pass^5 | wall time total | prompt tokens |
+|---|---|---|---|---|---|
+| ah `9700548` | **24/40 (45%–74%)** | 6/8 | 38% | 197 min | 14.50M |
+| dsh 0.1.1-rc.2 | 13/40 (20%–48%) | 4/8 | 0% | 71 min | not recorded |
+| Hermes Agent 0.21.3 | 10/40 (14%–40%) | 4/8 | 0% | 175 min | 20.47M |
+
+- **ah vs Hermes: significant.** The intervals do not overlap (45%–74% against 14%–40%), and `ah bench compare` marks it "better". ah also used 1.4× fewer prompt tokens.
+- **ah vs dsh: ahead, but not significant.** The intervals overlap by 3 points (45% against 48%). dsh is 2.8× faster in wall time: it stops early, and ah keeps working until the checks pass or time runs out.
+- **Consistency:** ah solved 3 of 8 tasks on every trial (pass^5 38%). Neither Hermes nor dsh solved any task on all 5 trials.
+- This build predates D45 to D47.
+
 ## Caveats
 
 - n = 3 per task on a 2.6B model: the intervals are wide.

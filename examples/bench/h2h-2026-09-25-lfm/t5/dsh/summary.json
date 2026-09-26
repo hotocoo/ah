@@ -1,0 +1,243 @@
+{
+  "model": "external/dsh",
+  "benchRunId": "bench_2026-09-26T01-36-50_external_dsh",
+  "k": 5,
+  "tasks": [
+    {
+      "taskId": "ts-bugfix-pagination",
+      "name": "Fix pagination off-by-one",
+      "category": "bugfix",
+      "difficulty": 1,
+      "language": "typescript",
+      "n": 5,
+      "passes": 3,
+      "passRate": 0.6,
+      "passAt1": 0.6,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.23071993220883708,
+        "high": 0.8823817688407467
+      },
+      "meanWallMs": 24679.656641999998,
+      "p95WallMs": 31056.1048504,
+      "meanTurns": 6.2,
+      "meanToolErrors": 1.6,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "go-feature-stack",
+      "name": "Implement a generic Go stack",
+      "category": "feature",
+      "difficulty": 2,
+      "language": "go",
+      "n": 5,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.43449149475208104
+      },
+      "meanWallMs": 124629.18255019998,
+      "p95WallMs": 250603.65223339997,
+      "meanTurns": 13,
+      "meanToolErrors": 5.2,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 5
+      }
+    },
+    {
+      "taskId": "py-bugfix-duration",
+      "name": "Fix a Python duration parser",
+      "category": "bugfix",
+      "difficulty": 2,
+      "language": "python",
+      "n": 5,
+      "passes": 3,
+      "passRate": 0.6,
+      "passAt1": 0.6,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.23071993220883708,
+        "high": 0.8823817688407467
+      },
+      "meanWallMs": 100906.75323320001,
+      "p95WallMs": 169235.2061329999,
+      "meanTurns": 20.2,
+      "meanToolErrors": 7.2,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "rust-fix-compile-and-logic",
+      "name": "Fix a Rust crate that does not compile and has a logic bug",
+      "category": "bugfix",
+      "difficulty": 3,
+      "language": "rust",
+      "n": 5,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.43449149475208104
+      },
+      "meanWallMs": 196684.45735840005,
+      "p95WallMs": 289114.99809180014,
+      "meanTurns": 17.2,
+      "meanToolErrors": 9.8,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 5
+      }
+    },
+    {
+      "taskId": "ts-debug-cross-file",
+      "name": "Debug a failing test whose cause is in another module",
+      "category": "debugging",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 5,
+      "passes": 4,
+      "passRate": 0.8,
+      "passAt1": 0.8,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.3755282641185388,
+        "high": 0.9637768390302125
+      },
+      "meanWallMs": 43735.74494159994,
+      "p95WallMs": 64228.68578319978,
+      "meanTurns": 9.2,
+      "meanToolErrors": 2.8,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 1
+      }
+    },
+    {
+      "taskId": "ts-feature-lru",
+      "name": "Implement an LRU cache from a spec",
+      "category": "feature",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 5,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.43449149475208104
+      },
+      "meanWallMs": 229033.1303746,
+      "p95WallMs": 375232.8332332002,
+      "meanTurns": 15.4,
+      "meanToolErrors": 8.2,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 5
+      }
+    },
+    {
+      "taskId": "ts-multifile-rename",
+      "name": "Rename a function across a codebase",
+      "category": "refactor",
+      "difficulty": 3,
+      "language": "typescript",
+      "n": 5,
+      "passes": 3,
+      "passRate": 0.6,
+      "passAt1": 0.6,
+      "passAtK": 1,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0.23071993220883708,
+        "high": 0.8823817688407467
+      },
+      "meanWallMs": 87515.61814139989,
+      "p95WallMs": 132030.5046993997,
+      "meanTurns": 13.4,
+      "meanToolErrors": 4.2,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 2
+      }
+    },
+    {
+      "taskId": "ts-write-tests",
+      "name": "Write tests that catch real bugs",
+      "category": "test-writing",
+      "difficulty": 4,
+      "language": "typescript",
+      "n": 5,
+      "passes": 0,
+      "passRate": 0,
+      "passAt1": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "wilson": {
+        "low": 0,
+        "high": 0.43449149475208104
+      },
+      "meanWallMs": 48386.46366660008,
+      "p95WallMs": 56175.89270780003,
+      "meanTurns": 8,
+      "meanToolErrors": 4,
+      "meanTokens": 0,
+      "decodeTps": null,
+      "failReasons": {
+        "grader": 5
+      }
+    }
+  ],
+  "overall": {
+    "trials": 40,
+    "passes": 13,
+    "passRate": 0.325,
+    "wilson": {
+      "low": 0.20084316962661725,
+      "high": 0.4798254191110201
+    },
+    "meanPassAt1": 0.325,
+    "meanPassAtK": 0.5,
+    "meanPassHatK": 0,
+    "solvedAny": 4,
+    "solvedAll": 0,
+    "meanScore": 1,
+    "verdictAgreement": null,
+    "totalWallMs": 4280331.600246999,
+    "p50WallMs": 72342.8837084999,
+    "p95WallMs": 309684.3618458001,
+    "meanTtftMs": null,
+    "meanPrefillTps": null,
+    "meanDecodeTps": null,
+    "inputTokens": 0,
+    "outputTokens": 0,
+    "costUsd": null,
+    "energyJ": null,
+    "recoveredToolCalls": 0,
+    "toolErrorRate": 0.3312788906009245
+  }
+}

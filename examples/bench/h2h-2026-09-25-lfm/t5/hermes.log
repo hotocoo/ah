@@ -1,0 +1,44 @@
+bench external/hermes · 8 tasks × 5 trials · {} · /Users/acotech/workspace/ah-bench-9700548/examples/bench/h2h-lfm-core-t5/hermes
+  FAIL ts-bugfix-pagination #1 32.7s · 5 turns · 6 tools · grader
+  FAIL ts-bugfix-pagination #2 84.9s · 11 turns · 14 tools · grader
+  FAIL ts-bugfix-pagination #3 210.8s · 34 turns · 39 tools · grader
+  FAIL ts-bugfix-pagination #4 315.5s · 53 turns · 63 tools · grader
+  FAIL ts-bugfix-pagination #5 151.6s · 15 turns · 21 tools · grader
+  FAIL go-feature-stack #1 203.9s · 24 turns · 23 tools · grader
+  FAIL go-feature-stack #2 600.0s · 59 turns · 59 tools · timeout
+  FAIL go-feature-stack #3 600.1s · 60 turns · 62 tools · timeout
+  FAIL go-feature-stack #4 467.5s · 37 turns · 36 tools · grader
+  FAIL go-feature-stack #5 320.6s · 36 turns · 35 tools · grader
+  PASS py-bugfix-duration #1 111.6s · 13 turns · 15 tools
+  FAIL py-bugfix-duration #2 50.3s · 5 turns · 6 tools · grader
+  FAIL py-bugfix-duration #3 216.1s · 28 turns · 36 tools · grader
+  PASS py-bugfix-duration #4 131.6s · 14 turns · 14 tools
+  PASS py-bugfix-duration #5 115.5s · 13 turns · 14 tools
+  PASS rust-fix-compile-and-logic #1 309.0s · 28 turns · 29 tools
+  FAIL rust-fix-compile-and-logic #2 690.0s · 29 turns · 30 tools · grader
+  FAIL rust-fix-compile-and-logic #3 458.2s · 21 turns · 26 tools · grader
+  FAIL rust-fix-compile-and-logic #4 540.4s · 42 turns · 52 tools · grader
+  FAIL rust-fix-compile-and-logic #5 420.1s · 24 turns · 32 tools · grader
+  PASS ts-debug-cross-file #1 115.6s · 13 turns · 18 tools
+  PASS ts-debug-cross-file #2 44.3s · 9 turns · 10 tools
+  PASS ts-debug-cross-file #3 37.8s · 7 turns · 11 tools
+  FAIL ts-debug-cross-file #4 241.9s · 11 turns · 18 tools · grader
+  PASS ts-debug-cross-file #5 63.3s · 12 turns · 17 tools
+  FAIL ts-feature-lru #1 355.0s · 41 turns · 43 tools · grader
+  FAIL ts-feature-lru #2 327.7s · 22 turns · 27 tools · grader
+  FAIL ts-feature-lru #3 331.2s · 27 turns · 30 tools · grader
+  FAIL ts-feature-lru #4 446.6s · 41 turns · 43 tools · grader
+  FAIL ts-feature-lru #5 320.8s · 36 turns · 36 tools · grader
+  FAIL ts-multifile-rename #1 64.0s · 6 turns · 14 tools · grader
+  FAIL ts-multifile-rename #2 320.7s · 24 turns · 45 tools · grader
+  PASS ts-multifile-rename #3 157.1s · 17 turns · 33 tools
+  FAIL ts-multifile-rename #4 485.9s · 33 turns · 57 tools · grader
+  PASS ts-multifile-rename #5 134.2s · 10 turns · 25 tools
+  FAIL ts-write-tests #1 237.4s · 22 turns · 32 tools · grader
+  FAIL ts-write-tests #2 244.3s · 21 turns · 29 tools · grader
+  FAIL ts-write-tests #3 163.8s · 15 turns · 16 tools · grader
+  FAIL ts-write-tests #4 166.8s · 16 turns · 17 tools · grader
+  FAIL ts-write-tests #5 185.0s · 18 turns · 26 tools · grader
+
+result 10/40 trials · pass@1 25% · pass^5 0% · 4/8 tasks solved
+report: /Users/acotech/workspace/ah-bench-9700548/examples/bench/h2h-lfm-core-t5/hermes/report.md
